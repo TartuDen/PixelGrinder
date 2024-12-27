@@ -201,8 +201,8 @@
 
 | Milestone | Description                                               | Status       |
 |-----------|-----------------------------------------------------------|--------------|
-| Alpha 1   | Basic movement & combat in a browser-based environment    | Complete     |
-| Alpha 2   | Implementation of basic skill system, UI improvements     | In Progress  |
+| Alpha 1   | Basic movement & combat in a browser-based environment    | In Progress  |
+| Alpha 2   | Implementation of basic skill system, UI improvements     | Pending      |
 | Beta 1    | Multiple zones & mobs, introduction of Skill Stones       | Pending      |
 | Beta 2    | Crafting, gathering, advanced mob/boss mechanics          | Pending      |
 | Release   | Feature-complete version                                  | TBD          |
