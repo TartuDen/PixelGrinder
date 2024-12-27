@@ -1,0 +1,17 @@
+{
+  "name": "pixelgrinder",
+  "version": "1.0.0",
+  "description": "**PixelGrinder** is a single-player, browser-based top-down pixel art RPG that emphasizes level-based progression and flexible character builds. Journey through distinct zones, battle challenging mobs, and grow your character’s power step by step—all within your web browser.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2",
+    "sqlite3": "^5.1.7"
+  }
+}
