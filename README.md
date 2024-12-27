@@ -48,10 +48,10 @@
 
 1. **Experience & Leveling**  
    - Defeat mobs close to your level to earn experience.  
-   - Leveling up raises your base stats (Health, Mana) and makes tougher zones more accessible.
+   - Leveling up raises your base stats (Health, Mana), makes tougher zones more accessible, **and grants additional attribute points** you can spend on **INT**, **STR**, **DEX**, or **CON**.
 
 2. **Flow of Progression**  
-   - **Kill mobs → Gain XP → Level Up → Move to next zone**  
+   - **Kill mobs → Gain XP → Level Up → Allocate Attribute Points → Move to next zone**  
    - Most initial progression and gear acquisition comes from mob grinding.  
    - Equipment drops are intentionally rare, encouraging players to explore and defeat more mobs.
 
@@ -68,10 +68,11 @@
      - **STR** (boosts physical attacks, overall strength)  
      - **DEX** (improves accuracy, agility, possibly crit rate)  
      - **CON** (raises health pool and survivability)  
+   - Each time you level up, you gain additional points to invest in these attributes, shaping your character’s growth.
 
 2. **Any Armor, Any Skill**  
    - Unlike traditional class-based systems, you can freely equip any armor or learn any skill.  
-   - Armor types (robes, heavy armor, leather, etc.) have stat bonuses that synergize with different playstyles.  
+   - Armor types (robe, heavy, leather, etc.) have stat bonuses that synergize with different playstyles.
 
 3. **No Holy Trinity**  
    - Everyone can learn healing spells (if they find the right Skill Stones), so each build can include sustain or support abilities if desired.
@@ -81,7 +82,7 @@
 ## Core Mechanics
 
 1. **Level-Based Zones**  
-   Venture into zones appropriate for your level. Tougher zones carry higher risk but better rewards.
+   Venturing into zones appropriate for your level is recommended. Tougher zones carry higher risk but yield better rewards.
 
 2. **Top-Down 2D Pixel Art**  
    Classic retro style with modern, responsive controls.
@@ -90,27 +91,53 @@
    Each zone features unique mobs and loot tables, encouraging repeat visits to farm rare items.
 
 4. **Skill Learning & Improvement from Mobs**  
-   - **Basic Skill**: You start with one basic skill (e.g., a simple melee strike or minor spell).  
+   - **Basic Weapon & Attack**: You begin with a basic version of each weapon type (staff, bow, dagger, one-handed sword), which provides a simple auto-attack skill. This lets you fight the first mobs in the starting zone and earn your first **Skill Stones**.  
    - **Skill Stones**: Rare drops from mobs that unlock entirely new abilities—ranging from melee combos to healing spells.  
-   - **Skill Shards**: Another type of rare drop that upgrades already learned skills (e.g., increases damage, reduces cooldown, adds area-of-effect, etc.).  
+   - **Skill Shards**: Another rare drop that upgrades already learned skills (e.g., increases damage, reduces cooldown, adds area-of-effect, etc.).
+
+5. **Tab-Target Combat**  
+   - You must target a mob with your cursor before using skills.  
+   - Each skill has its own attributes, including:
+     1. **Range**: Close-range (melee) or long-range (spells, bows).  
+     2. **Type of Attack**:  
+        - **Magic** (staffs, spells)  
+        - **Piercing** (daggers, bows)  
+        - **Slashing** (one-handed & two-handed swords)  
+   - Different attack types may have advantages against certain mobs or synergize with specific buffs.
 
 ---
 
 ## Equipment & Loot
 
 1. **Weapon Types**  
-   - **Staff**: Good for focusing on magic damage or healing.  
-   - **Two Knives**: Dual-wielding for quick strikes, ideal for DEX builds.  
-   - **One-Handed Sword**: Balanced option for STR builds.  
-   - **Shield**: Added defense; pair with one-handed weapon for a tanky setup.  
-   - **Two-Handed Sword**: Heavy DPS potential, best for high STR.  
-   - **Bow**: Ranged physical damage, scaling well with DEX or hybrid builds.
+   - **Staff**: Magic-based attacks for spells or healing.  
+   - **Daggers**: Dual-wielding for quick, **piercing** strikes (DEX-oriented).  
+   - **One-Handed Sword**: Balanced **slashing** option for STR builds.  
+   - **Two-Handed Sword**: High DPS **slashing** potential, best with high STR.  
+   - **Bow**: Ranged **piercing** damage, scales well with DEX or hybrid builds.  
+   - *(A shield can be paired with a one-handed weapon for extra defense, though not a separate damage type.)*
 
 2. **Armor & Stat Bonuses**  
-   - Different armor sets (robe, heavy, etc.) have distinct stat bonuses (e.g., INT-boosting robes, STR-boosting plate, etc.).  
+   - Different armor sets (robe, heavy, leather, etc.) have distinct stat bonuses (e.g., INT-boosting robes, STR-boosting plate).  
    - You can mix armor pieces for a hybrid approach (e.g., wearing heavy gauntlets with a robe chest piece).
 
-3. **Rare Drops**  
+3. **Armor Passive Buffs**  
+   - Each armor type may also provide **passive buffs** that support certain playstyles.  
+   - Some buffs cannot be active together (e.g., Holy cannot coexist with Unholy, Poison conflicts with Bleeding).  
+   - **Initial Buff Types** (either for active skills or passives):
+     - **Holy** (cannot stack with Unholy)  
+     - **Unholy** (cannot stack with Holy)  
+     - **Elemental**  
+     - **Physical**  
+     - **Poison** (cannot stack with Bleeding)  
+     - **Bleeding** (cannot stack with Poison)
+
+   Examples:  
+   - A robe might offer an **Elemental** buff, increasing elemental skill damage.  
+   - Heavy armor might grant a **Holy** buff, boosting healing spells.  
+   - Leather armor might provide a **Poison** or **Bleeding** buff, adding a DOT effect to piercing attacks.
+
+4. **Rare Drops**  
    - Equipment and weapons can drop from mobs, but the drop rate is intentionally low.  
    - Encourages repeated mob fights or boss runs to acquire desired gear.
 
@@ -118,19 +145,19 @@
 
 ## Key Features
 
-- **Browser-Based, Single Player**: Play directly in your web browser. No installation required.  
-- **Flexible Builds**: Create a staff-wielding warrior or a dagger-throwing mage if you want.  
+- **Browser-Based, Single Player**: Play directly in your web browser without installation.  
+- **Flexible Builds**: Create a staff-wielding warrior or a dagger-throwing mage—your imagination is the limit.  
 - **Boss Fights**: Each zone may feature stronger mobs or bosses that reward special loot or skill items.  
-- **Exploration**: Hidden paths and secrets scattered across zones.
+- **Exploration**: Hidden paths and secrets scattered across each zone.
 
 ---
 
 ## Planned Features
 
 1. **Crafting System**  
-   - Future updates will introduce gathering and crafting, offering alternative ways to obtain gear beyond rare drops.
+   - Future updates will introduce gathering and crafting, offering alternative ways to obtain gear beyond rare drops.  
 2. **Questing & Storyline**  
-   - NPCs and quest lines for structured play and narrative depth.
+   - NPCs and quest lines for structured play and narrative depth.  
 3. **Further Zones & Bosses**  
    - Continuous expansion of the game world with new areas and tougher encounters.
 
@@ -139,34 +166,34 @@
 ## Tech Stack & Implementation
 
 - **Frontend**: Since this is a browser-based 2D game, you could use:
-  - **Phaser** (a popular JS framework for 2D games),  
-  - **PIXI.js** (for rendering), or  
-  - **HTML5 Canvas** with plain JavaScript or TypeScript.  
+  - **Phaser** (a popular JS framework for 2D games)  
+  - **PIXI.js** (for rendering)  
+  - **HTML5 Canvas** with plain JavaScript or TypeScript  
 - **Backend**:  
-  - A simple **SQLite3** database can store player data (e.g., character stats, inventory, progression).  
-  - You could use **Node.js** with Express (or a similar framework) if you need a server-side component for saving game states or handling updates.  
+  - A simple **SQLite3** database to store player data (e.g., character stats, inventory, progression).  
+  - Optionally use **Node.js** with Express (or similar) if you need server-side logic for saving states or running events.
 
 **Suggested Approach**  
-- **Phaser + TypeScript** is a common and well-documented combo for browser games, offering a balance of simplicity and scalability.  
-- If you want to keep it extremely minimal, **pure HTML5 Canvas + JavaScript** is also viable, but may require more manual setup for physics, input handling, etc.
+- **Phaser + TypeScript**: Common, well-documented for browser games, easy to scale.  
+- Or **pure HTML5 Canvas + JavaScript** if you want more control (but you’ll handle many systems manually).
 
 ---
 
 ## How to Play
 
 1. **Controls**  
-   - **Movement**: (WASD or Arrow Keys) to navigate.  
-   - **Attack/Skill**: (Left Mouse, Spacebar, or custom hotkeys).  
-   - **Inventory**: (I key).
+   - **Movement**: (WASD or Arrow Keys)  
+   - **Attack/Skill**: (Left Mouse, Spacebar, or hotkeys)  
+   - **Inventory**: (I key)
 
 2. **Early-Game Tips**  
    - Distribute your 5 attribute points wisely—decide if you want to focus on INT, STR, DEX, or CON.  
    - Target mobs within or slightly above your level for optimal XP gain.  
-   - Rare drops (gear, Skill Stones, Skill Shards) can take time, so expect a grind.
+   - Rely on your starting weapons’ basic attacks to farm early mobs. Save up Skill Stones for abilities you truly want.
 
 3. **Progression**  
-   - Invest Skill Stones to unlock new abilities, and Skill Shards to upgrade them.  
-   - Experiment with different armor and weapons for unique stat combinations.
+   - Invest Skill Stones to unlock new abilities; invest Skill Shards to upgrade them.  
+   - Experiment with different armor sets and passive buffs to find powerful synergies.
 
 ---
 
@@ -174,8 +201,8 @@
 
 | Milestone | Description                                               | Status       |
 |-----------|-----------------------------------------------------------|--------------|
-| Alpha 1   | Basic movement & combat in a browser-based environment    | In Progress  |
-| Alpha 2   | Implementation of basic skill system, UI improvements     | Pending      |
+| Alpha 1   | Basic movement & combat in a browser-based environment    | Complete     |
+| Alpha 2   | Implementation of basic skill system, UI improvements     | In Progress  |
 | Beta 1    | Multiple zones & mobs, introduction of Skill Stones       | Pending      |
 | Beta 2    | Crafting, gathering, advanced mob/boss mechanics          | Pending      |
 | Release   | Feature-complete version                                  | TBD          |
