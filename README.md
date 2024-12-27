@@ -120,6 +120,7 @@
 2. **Armor & Stat Bonuses**  
    - Different armor sets (robe, heavy, leather, etc.) have distinct stat bonuses (e.g., INT-boosting robes, STR-boosting plate).  
    - You can mix armor pieces for a hybrid approach (e.g., wearing heavy gauntlets with a robe chest piece).
+   - All armor pieces have "defence" parameter, for robes it is lower than for plate armor.
 
 3. **Armor Passive Buffs**  
    - Each armor type may also provide **passive buffs** that support certain playstyles.  
