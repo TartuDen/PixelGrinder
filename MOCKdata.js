@@ -1,17 +1,19 @@
-const player = {
-    username: "Omigod",
-    level: 1,
-    experiance: 0,
+const player_data = {
+    playerName: "Omigod",
+    totalExp: 0,
 };
 
-const player_stats = {
-    basic_health: 100,
-    basic_mana: 150,
+const player_basic_stats = {
     int_stat: 5,
     str_stat: 3,
     dex_stat: 3,
     con_stat: 4
 };
+
+const player_main_stats = {
+    health: 100,
+    mana: 150
+}
 
 const player_items = {
     weapon: "basic_staff",
