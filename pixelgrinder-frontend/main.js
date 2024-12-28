@@ -1,56 +1,119 @@
 /*******************************************************
  * main.js
- * 
- * Basic Phaser setup demonstrating:
- *  - A config object
- *  - A simple scene with preload(), create(), and update()
- *  - Drawing a sprite or text for testing
+ *
+ * This file sets up:
+ *   1. A Phaser "config" object
+ *   2. A basic "scene" with preload(), create(), update()
+ *   3. Creates a new Phaser.Game instance
  *******************************************************/
 
-// 1) Define a game scene
+// 1) Create a Scene
 class MainScene extends Phaser.Scene {
-    constructor() {
-      super('MainScene');
+  /**
+   * The constructor simply calls the parent Phaser.Scene constructor
+   * with a key (optional). We'll call our scene "MainScene".
+   */
+  constructor() {
+    super("MainScene");
+  }
+
+  /**
+   * preload()
+   *
+   * - Loads assets (images, sprites, sound, etc.) into memory
+   *   before the game starts.
+   * - This function is called automatically by Phaser before create().
+   */
+  preload() {
+    // Example: if you have an image in "assets/player.png", you could load it here:
+    this.load.image("player", "assets/player.png");
+
+    // For now, we won’t load any external assets.
+  }
+
+  /**
+   * create()
+   *
+   * - Called once after all assets in preload() are loaded.
+   * - Usually used to set up objects, sprites, text, etc. in your scene.
+   */
+  create() {
+    console.log("MainScene create() running!");
+    // Let's add a piece of text to verify we see *something*
+    this.add.text(50, 50, "Hello from Phaser!", {
+      font: "20px Arial",
+      fill: "#ffffff",
+    });
+
+
+    // 1) Enable Arcade Physics for this scene
+    this.physics.world.setBounds(0, 0, 800, 600);
+    // 2) Create a physics-enabled sprite
+    this.player = this.physics.add.sprite(100, 100, "player");
+    // So the player can't leave the game bounds
+    this.player.setCollideWorldBounds(true);
+
+    // 3) Create WASD keys
+    this.cursors = this.input.keyboard.addKeys({
+      up: Phaser.Input.Keyboard.KeyCodes.W,
+      down: Phaser.Input.Keyboard.KeyCodes.S,
+      left: Phaser.Input.Keyboard.KeyCodes.A,
+      right: Phaser.Input.Keyboard.KeyCodes.D,
+    });
+
+    // Movement speed in pixels per second
+    this.playerSpeed = 200;
+  }
+
+  /**
+   * update(time, delta)
+   *
+   * - Runs in a loop ~60 times per second (depending on your device).
+   * - Great for continuously checking input, moving sprites, collisions, etc.
+   * @param {number} time - The current time in milliseconds since the game started
+   * @param {number} delta - The delta time in ms since the last frame
+   */
+  update(time, delta) {
+    /// 4) Set up velocity each frame
+    this.player.body.setVelocity(0);
+
+    if (this.cursors.up.isDown) {
+      this.player.body.setVelocityY(-this.playerSpeed);
+    } else if (this.cursors.down.isDown) {
+      this.player.body.setVelocityY(this.playerSpeed);
     }
-  
-    preload() {
-      // Load an image or sprite
-      // e.g. this.load.image('player', 'assets/player.png');
-      // For demo, we won't load any external assets yet
-    }
-  
-    create() {
-      // A basic text to confirm the scene is working
-      this.add.text(50, 50, 'Hello PixelGrinder!', {
-        font: '24px Arial',
-        fill: '#ffffff'
-      });
-  
-      // Example: fetch mock data from your Node server
-      fetch('http://localhost:3000/api/player')
-        .then(response => response.json())
-        .then(data => {
-          console.log('Player data fetched:', data);
-          // You can now display or use the data in your game
-        })
-        .catch(err => console.error('Fetch error:', err));
-    }
-  
-    update(time, delta) {
-      // Called ~60 times per second
-      // Put game logic (movement, collision checks, etc.) here
+
+    if (this.cursors.left.isDown) {
+      this.player.body.setVelocityX(-this.playerSpeed);
+    } else if (this.cursors.right.isDown) {
+      this.player.body.setVelocityX(this.playerSpeed);
     }
   }
-  
-  // 2) Define Phaser game config
-  const config = {
-    type: Phaser.AUTO,              // Choose WebGL or Canvas automatically
-    width: 800,                     // Width of the game canvas
-    height: 600,                    // Height of the game canvas
-    backgroundColor: '#1a1a1a',     // Optional background color
-    parent: 'game-container',       // ID of the DOM element where you want to insert the game
-    scene: [MainScene]              // Our single scene
-  };
-  
-  // 3) Create the Phaser Game instance
-  const game = new Phaser.Game(config);  
+}
+
+// 2) Create a Phaser config object
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scene: [MainScene],
+  physics: {
+    default: "arcade",
+    arcade: {
+      gravity: { y: 0 },
+      debug: false,
+    },
+  },
+};
+
+// 3) Launch the game
+const game = new Phaser.Game(config);
+
+/**
+ * Explanation of core config properties:
+ * - type: Phaser.AUTO tries WebGL first, then falls back to Canvas if not supported.
+ * - width, height: The dimension of your game’s canvas in pixels.
+ * - parent: An HTML element ID where Phaser will create the <canvas> or <webgl> context.
+ * - scene: An array (or single object) of Scenes to load. We only have one (MainScene).
+ * - backgroundColor: The default background color, can be hex or other CSS color formats.
+ */
