@@ -6,7 +6,8 @@
  *   2. A basic "scene" with preload(), create(), update()
  *   3. Creates a new Phaser.Game instance
  *******************************************************/
-
+const worldW = 800;
+const worldH = 600;
 // 1) Create a Scene
 class MainScene extends Phaser.Scene {
   /**
@@ -38,18 +39,32 @@ class MainScene extends Phaser.Scene {
    * - Usually used to set up objects, sprites, text, etc. in your scene.
    */
   create() {
-    console.log("MainScene create() running!");
-    // Let's add a piece of text to verify we see *something*
-    this.add.text(50, 50, "Hello from Phaser!", {
-      font: "20px Arial",
-      fill: "#ffffff",
-    });
-
 
     // 1) Enable Arcade Physics for this scene
-    this.physics.world.setBounds(0, 0, 800, 600);
+    this.physics.world.setBounds(0, 0, worldW, worldH);
     // 2) Create a physics-enabled sprite
     this.player = this.physics.add.sprite(100, 100, "player");
+    this.player.depth = 999;
+
+    this.player.setScale(0.1); // to scale the img
+
+
+    //============= main methods ===================
+    // this.player.setOrigin(0,0); // changing the center of the image form center to top left corner
+    
+    // this.player.x = 11  // this can be used to set position
+
+    // this.player.setScale(1,1); // to scale the img
+    // this.player.scaleX = 2 // alternative way to scale
+    // this.player.displayWidth = 300 // altenative way to scale
+
+    // this.player.flipX = true; // way of flipping the img
+
+    // this.player.angle = 45; // rotate img 45deg clockwise
+    // this.player.setAngle(- 45); // same thing with rotation
+
+    //================================================================
+
     // So the player can't leave the game bounds
     this.player.setCollideWorldBounds(true);
 
@@ -74,6 +89,8 @@ class MainScene extends Phaser.Scene {
    * @param {number} delta - The delta time in ms since the last frame
    */
   update(time, delta) {
+
+    // this.player.x += 1;
     /// 4) Set up velocity each frame
     this.player.body.setVelocity(0);
 
@@ -94,8 +111,8 @@ class MainScene extends Phaser.Scene {
 // 2) Create a Phaser config object
 const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: worldW,
+  height: worldH,
   scene: [MainScene],
   physics: {
     default: "arcade",
