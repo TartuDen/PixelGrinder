@@ -28,6 +28,7 @@ class MainScene extends Phaser.Scene {
   preload() {
     // Example: if you have an image in "assets/player.png", you could load it here:
     this.load.image("player", "assets/player.png");
+    this.load.image("grassBg", "assets/grass bg 4.png");
 
     // For now, we won’t load any external assets.
   }
@@ -42,6 +43,9 @@ class MainScene extends Phaser.Scene {
 
     // 1) Enable Arcade Physics for this scene
     this.physics.world.setBounds(0, 0, worldW, worldH);
+
+    this.bg = this.add.sprite(worldH/2, worldH/2, "grassBg")
+
     // 2) Create a physics-enabled sprite
     this.player = this.physics.add.sprite(100, 100, "player");
     this.player.depth = 999;
