@@ -45,6 +45,17 @@
                  "width":32,
                  "x":1.5,
                  "y":448.5
+                }, 
+                {
+                 "height":96,
+                 "id":3,
+                 "name":"MobSpawnZone1",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":95.9999999999999,
+                 "x":48.7272727272727,
+                 "y":312.272727272727
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -53,7 +64,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":2,
+ "nextobjectid":5,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.0",
@@ -448,6 +459,19 @@
                          "wangid":[1, 1, 1, 1, 1, 1, 1, 0]
                         }]
                 }]
+        }, 
+        {
+         "columns":12,
+         "firstgid":49,
+         "image":"..\/..\/..\/..\/tile packs\/Tiny16\/Characters\/characters.png",
+         "imageheight":256,
+         "imagewidth":384,
+         "margin":0,
+         "name":"characters",
+         "spacing":0,
+         "tilecount":96,
+         "tileheight":32,
+         "tilewidth":32
         }],
  "tilewidth":32,
  "type":"map",

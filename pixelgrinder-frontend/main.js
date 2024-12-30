@@ -123,7 +123,6 @@ class MainScene extends Phaser.Scene {
     });
 
     // Add the player at the HeroStart position
-    // this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "player");
     this.player = this.physics.add.sprite(
       heroStart.x,
       heroStart.y,
@@ -132,6 +131,8 @@ class MainScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
     this.physics.add.collider(this.player, this.collisionLayer);
+
+    console.log(".......player.......\n", this.player);
 
     // For demonstration, let’s just play "walk-down"
     // this.player.anims.play("walk-down");
@@ -159,7 +160,82 @@ class MainScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
 
-    this.playerSpeed = 200;
+    this.playerSpeed = 100;
+
+    // ========== mobs ============
+
+    // Group for mobs
+    this.mobs = this.physics.add.group();
+
+    // Find all mob spawn zones
+    const mobSpawns = this.map.objects.filter((obj) =>
+      obj.name.startsWith("MobSpawnZone")
+    );
+
+    console.log("......mobs.......\n",this.mobs);
+
+    // Loop through spawn zones
+    mobSpawns.forEach((spawnZone, index) => {
+      const mob = this.physics.add.sprite(
+        spawnZone.x,
+        spawnZone.y,
+        "characters"
+      );
+
+      // Play a default animation (e.g., "mob-walk-down")
+      // mob.anims.play("mob-walk-down");
+
+      // Add the mob to the group
+      this.mobs.add(mob);
+      console.log("......mobs.......\n",mob);
+    });
+
+    // Optional: Add collisions between mobs and the world
+    this.physics.add.collider(this.mobs, this.collisionLayer);
+
+    // Mob: Walking Down
+    this.anims.create({
+      key: "mob-walk-down",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 52,
+        end: 54,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // Mob: Walking Left
+    this.anims.create({
+      key: "mob-walk-left",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 76,
+        end: 78,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // Mob: Walking Right
+    this.anims.create({
+      key: "mob-walk-right",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 64,
+        end: 66,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // Mob: Walking Up
+    this.anims.create({
+      key: "mob-walk-up",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 88,
+        end: 90,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
   }
 
   /**
@@ -203,6 +279,36 @@ class MainScene extends Phaser.Scene {
       // Optionally set the frame to a default pose, e.g. frame 0
       // this.player.setFrame(0);
     }
+
+    //========== mob wandering ===============
+    this.time.addEvent({
+      delay: 2000, // Every 2 seconds
+      loop: true,
+      callback: () => {
+        this.mobs.getChildren().forEach((mob) => {
+          const randomDirection = Phaser.Math.Between(0, 3);
+          switch (randomDirection) {
+            case 0:
+              mob.body.setVelocity(5, 0);
+              mob.anims.play("mob-walk-right", true);
+              break; // Right
+            case 1:
+              mob.body.setVelocity(-5, 0);
+              mob.anims.play("mob-walk-left", true);
+              break; // Left
+            case 2:
+              mob.body.setVelocity(0, 5);
+              mob.anims.play("mob-walk-down", true);
+              break; // Down
+            case 3:
+              mob.body.setVelocity(0, -5);
+              mob.anims.play("mob-walk-up", true);
+              break; // Up
+          }
+        });
+      },
+    });
+    //============================================
   }
 }
 
