@@ -26,10 +26,15 @@ class MainScene extends Phaser.Scene {
    * - This function is called automatically by Phaser before create().
    */
   preload() {
-    // Example: if you have an image in "assets/player.png", you could load it here:
-    this.load.image("player", "assets/player.png");
-    this.load.image("grassBg", "assets/grass bg 4.png");
+    // 1) Load your tilemap JSON
+    // In Tiled, exporting as JSON typically uses extension .json or .tmj, so "tilemapTiledJSON" is the correct loader
+    this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
 
+    // 2) Load the tileset image
+    this.load.image("tmw_desert_spacing", "assets/map/tmw_desert_spacing.png");
+
+    // 3) (Optional) load other assets, e.g., the player
+    this.load.image("player", "assets/player.png");
   }
 
   /**
@@ -39,49 +44,46 @@ class MainScene extends Phaser.Scene {
    * - Usually used to set up objects, sprites, text, etc. in your scene.
    */
   create() {
-
-    // 1) Enable Arcade Physics for this scene
-    this.physics.world.setBounds(0, 0, worldW, worldH);
-
-    this.bg = this.add.sprite(worldH/2, worldH/2, "grassBg")
-
-    // 2) Create a physics-enabled sprite
+    // Create tilemap
+    this.map = this.make.tilemap({ key: "Map0" });
+    const tileset = this.map.addTilesetImage("tmw_desert_spacing", "tmw_desert_spacing");
+  
+    // Background layer
+    this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
+  
+    // Collisions layer
+    this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
+    this.collisionLayer.setCollision([30, 31, 37, 38, 39, 45, 46, 47]);
+  
+    // Debugging (optional)
+    this.collisionLayer.renderDebug(this.add.graphics(), {
+      tileColor: null, // No color for non-colliding tiles
+      collidingTileColor: new Phaser.Display.Color(255, 0, 0, 100), // Red for colliding tiles
+      faceColor: new Phaser.Display.Color(0, 255, 0, 100), // Green for colliding face edges
+    });
+  
+    // Add player
     this.player = this.physics.add.sprite(100, 100, "player");
-    this.player.depth = 999;
-
-    this.player.setScale(0.1); // to scale the img
-
-
-    //============= main methods ===================
-    // this.player.setOrigin(0,0); // changing the center of the image form center to top left corner
-    
-    // this.player.x = 11  // this can be used to set position
-
-    // this.player.setScale(1,1); // to scale the img
-    // this.player.scaleX = 2 // alternative way to scale
-    // this.player.displayWidth = 300 // altenative way to scale
-
-    // this.player.flipX = true; // way of flipping the img
-
-    // this.player.angle = 45; // rotate img 45deg clockwise
-    // this.player.setAngle(- 45); // same thing with rotation
-
-    //================================================================
-
-    // So the player can't leave the game bounds
     this.player.setCollideWorldBounds(true);
-
-    // 3) Create WASD keys
+    this.player.setScale(0.1);
+    this.physics.add.collider(this.player, this.collisionLayer);
+  
+    // Camera
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.startFollow(this.player);
+  
+    // WASD keys
     this.cursors = this.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
       down: Phaser.Input.Keyboard.KeyCodes.S,
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
-
-    // Movement speed in pixels per second
+  
     this.playerSpeed = 200;
   }
+  
 
   /**
    * update(time, delta)
@@ -92,7 +94,6 @@ class MainScene extends Phaser.Scene {
    * @param {number} delta - The delta time in ms since the last frame
    */
   update(time, delta) {
-
     // this.player.x += 1;
     /// 4) Set up velocity each frame
     this.player.body.setVelocity(0);
@@ -129,11 +130,18 @@ const config = {
 // 3) Launch the game
 const game = new Phaser.Game(config);
 
-/**
- * Explanation of core config properties:
- * - type: Phaser.AUTO tries WebGL first, then falls back to Canvas if not supported.
- * - width, height: The dimension of your game’s canvas in pixels.
- * - parent: An HTML element ID where Phaser will create the <canvas> or <webgl> context.
- * - scene: An array (or single object) of Scenes to load. We only have one (MainScene).
- * - backgroundColor: The default background color, can be hex or other CSS color formats.
- */
+//============= main methods ===================
+    // this.player.setOrigin(0,0); // changing the center of the image form center to top left corner
+
+    // this.player.x = 11  // this can be used to set position
+
+    // this.player.setScale(1,1); // to scale the img
+    // this.player.scaleX = 2 // alternative way to scale
+    // this.player.displayWidth = 300 // altenative way to scale
+
+    // this.player.flipX = true; // way of flipping the img
+
+    // this.player.angle = 45; // rotate img 45deg clockwise
+    // this.player.setAngle(- 45); // same thing with rotation
+
+    //================================================================
