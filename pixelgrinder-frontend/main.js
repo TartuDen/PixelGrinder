@@ -46,33 +46,54 @@ class MainScene extends Phaser.Scene {
   create() {
     // Create tilemap
     this.map = this.make.tilemap({ key: "Map0" });
-    const tileset = this.map.addTilesetImage("tmw_desert_spacing", "tmw_desert_spacing");
-  
+    const tileset = this.map.addTilesetImage(
+      "tmw_desert_spacing",
+      "tmw_desert_spacing"
+    );
+
     // Background layer
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
-  
+
     // Collisions layer
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
-    this.collisionLayer.setCollision([30, 31, 37, 38, 39, 45, 46, 47]);
-  
+    this.collisionLayer.setCollision([
+      30, 31, 32, 37, 38, 39, 40, 45, 46, 47, 48,
+    ]);
+
     // Debugging (optional)
     this.collisionLayer.renderDebug(this.add.graphics(), {
       tileColor: null, // No color for non-colliding tiles
       collidingTileColor: new Phaser.Display.Color(255, 0, 0, 100), // Red for colliding tiles
       faceColor: new Phaser.Display.Color(0, 255, 0, 100), // Green for colliding face edges
     });
-  
-    // Add player
-    this.player = this.physics.add.sprite(100, 100, "player");
+
+    // Find the "HeroStart" object in the "GameObjects" layer
+    const heroStart = this.map.findObject(
+      "GameObjects",
+      (obj) => obj.name === "HeroStart"
+    );
+
+    // Add the player at the HeroStart position
+    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "player");
     this.player.setCollideWorldBounds(true);
     this.player.setScale(0.1);
     this.physics.add.collider(this.player, this.collisionLayer);
-  
+
     // Camera
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
+    this.physics.world.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
     this.cameras.main.startFollow(this.player);
-  
+
     // WASD keys
     this.cursors = this.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -80,10 +101,9 @@ class MainScene extends Phaser.Scene {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
-  
+
     this.playerSpeed = 200;
   }
-  
 
   /**
    * update(time, delta)
@@ -131,17 +151,17 @@ const config = {
 const game = new Phaser.Game(config);
 
 //============= main methods ===================
-    // this.player.setOrigin(0,0); // changing the center of the image form center to top left corner
+// this.player.setOrigin(0,0); // changing the center of the image form center to top left corner
 
-    // this.player.x = 11  // this can be used to set position
+// this.player.x = 11  // this can be used to set position
 
-    // this.player.setScale(1,1); // to scale the img
-    // this.player.scaleX = 2 // alternative way to scale
-    // this.player.displayWidth = 300 // altenative way to scale
+// this.player.setScale(1,1); // to scale the img
+// this.player.scaleX = 2 // alternative way to scale
+// this.player.displayWidth = 300 // altenative way to scale
 
-    // this.player.flipX = true; // way of flipping the img
+// this.player.flipX = true; // way of flipping the img
 
-    // this.player.angle = 45; // rotate img 45deg clockwise
-    // this.player.setAngle(- 45); // same thing with rotation
+// this.player.angle = 45; // rotate img 45deg clockwise
+// this.player.setAngle(- 45); // same thing with rotation
 
-    //================================================================
+//================================================================
