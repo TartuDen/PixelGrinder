@@ -30,7 +30,6 @@ class MainScene extends Phaser.Scene {
     this.load.image("player", "assets/player.png");
     this.load.image("grassBg", "assets/grass bg 4.png");
 
-    // For now, we won’t load any external assets.
   }
 
   /**
