@@ -38,7 +38,7 @@ class MainScene extends Phaser.Scene {
 
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
-      frameHeight: 32
+      frameHeight: 32,
     });
   }
 
@@ -66,11 +66,11 @@ class MainScene extends Phaser.Scene {
     ]);
 
     // Debugging (optional)
-    this.collisionLayer.renderDebug(this.add.graphics(), {
-      tileColor: null, // No color for non-colliding tiles
-      collidingTileColor: new Phaser.Display.Color(255, 0, 0, 100), // Red for colliding tiles
-      faceColor: new Phaser.Display.Color(0, 255, 0, 100), // Green for colliding face edges
-    });
+    // this.collisionLayer.renderDebug(this.add.graphics(), {
+    //   tileColor: null, // No color for non-colliding tiles
+    //   collidingTileColor: new Phaser.Display.Color(255, 0, 0, 100), // Red for colliding tiles
+    //   faceColor: new Phaser.Display.Color(0, 255, 0, 100), // Green for colliding face edges
+    // });
 
     // Find the "HeroStart" object in the "GameObjects" layer
     const heroStart = this.map.findObject(
@@ -78,11 +78,63 @@ class MainScene extends Phaser.Scene {
       (obj) => obj.name === "HeroStart"
     );
 
+    // 1) Walking Down (row 0: frames 0..2)
+    this.anims.create({
+      key: "walk-down",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 0,
+        end: 2,
+      }),
+      frameRate: 10, // frames per second
+      repeat: -1, // loop forever
+    });
+
+    // 2) Walking Left (row 1: frames 3..5)
+    this.anims.create({
+      key: "walk-left",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 12,
+        end: 14,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // 3) Walking Right (row 2: frames 6..8)
+    this.anims.create({
+      key: "walk-right",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 24,
+        end: 26,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // 4) Walking Up (row 3: frames 9..11)
+    this.anims.create({
+      key: "walk-up",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 36,
+        end: 38,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
     // Add the player at the HeroStart position
-    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "player");
+    // this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "player");
+    this.player = this.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
-    this.player.setScale(0.1);
+    this.player.setScale(1);
     this.physics.add.collider(this.player, this.collisionLayer);
+
+    // For demonstration, let’s just play "walk-down"
+    // this.player.anims.play("walk-down");
 
     // Camera
     this.cameras.main.setBounds(
@@ -118,21 +170,38 @@ class MainScene extends Phaser.Scene {
    * @param {number} time - The current time in milliseconds since the game started
    * @param {number} delta - The delta time in ms since the last frame
    */
-  update(time, delta) {
-    // this.player.x += 1;
-    /// 4) Set up velocity each frame
+  update() {
+    // Reset velocity
     this.player.body.setVelocity(0);
 
+    // Movement logic
     if (this.cursors.up.isDown) {
       this.player.body.setVelocityY(-this.playerSpeed);
+      // Play the "walk-up" animation if it's not already playing
+      this.player.anims.play("walk-up", true);
     } else if (this.cursors.down.isDown) {
       this.player.body.setVelocityY(this.playerSpeed);
+      this.player.anims.play("walk-down", true);
     }
 
     if (this.cursors.left.isDown) {
       this.player.body.setVelocityX(-this.playerSpeed);
+      this.player.anims.play("walk-left", true);
     } else if (this.cursors.right.isDown) {
       this.player.body.setVelocityX(this.playerSpeed);
+      this.player.anims.play("walk-right", true);
+    }
+
+    // If no keys are pressed, optionally stop on the first frame of "walk-down" or a separate "idle" anim
+    if (
+      !this.cursors.up.isDown &&
+      !this.cursors.down.isDown &&
+      !this.cursors.left.isDown &&
+      !this.cursors.right.isDown
+    ) {
+      this.player.anims.stop();
+      // Optionally set the frame to a default pose, e.g. frame 0
+      // this.player.setFrame(0);
     }
   }
 }
