@@ -35,6 +35,11 @@ class MainScene extends Phaser.Scene {
 
     // 3) (Optional) load other assets, e.g., the player
     this.load.image("player", "assets/player.png");
+
+    this.load.spritesheet("characters", "assets/characters.png", {
+      frameWidth: 32,
+      frameHeight: 32
+    });
   }
 
   /**
