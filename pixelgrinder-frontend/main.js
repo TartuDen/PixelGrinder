@@ -115,7 +115,7 @@ class MainScene extends Phaser.Scene {
         start: 51,
         end: 53,
       }),
-      frameRate: 5, // Slower frame rate
+      frameRate: 10, // Slower frame rate
       repeat: -1,
     });
 
@@ -126,7 +126,7 @@ class MainScene extends Phaser.Scene {
         start: 75,
         end: 77,
       }),
-      frameRate: 5,
+      frameRate: 10,
       repeat: -1,
     });
 
@@ -137,7 +137,7 @@ class MainScene extends Phaser.Scene {
         start: 63,
         end: 65,
       }),
-      frameRate: 5,
+      frameRate: 10,
       repeat: -1,
     });
 
@@ -148,7 +148,7 @@ class MainScene extends Phaser.Scene {
         start: 87,
         end: 89,
       }),
-      frameRate: 5,
+      frameRate: 10,
       repeat: -1,
     });
 
@@ -234,7 +234,7 @@ class MainScene extends Phaser.Scene {
     // Function to change mob direction
     const changeDirection = () => {
       const randomDirection = Phaser.Math.Between(0, 3);
-      const speed = 150; // Increased speed
+      const speed = 50; // Increased speed
 
       switch (randomDirection) {
         case 0: // Right
