@@ -53,9 +53,20 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":95.9999999999999,
-                 "x":48.7272727272727,
-                 "y":312.272727272727
+                 "width":96,
+                 "x":48.7273,
+                 "y":312.273
+                }, 
+                {
+                 "height":96,
+                 "id":5,
+                 "name":"MobSpawnZone2",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":53,
+                 "y":528
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -64,7 +75,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":5,
+ "nextobjectid":6,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.0",

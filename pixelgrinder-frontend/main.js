@@ -8,46 +8,30 @@
  *******************************************************/
 const worldW = 800;
 const worldH = 600;
+
 // 1) Create a Scene
 class MainScene extends Phaser.Scene {
-  /**
-   * The constructor simply calls the parent Phaser.Scene constructor
-   * with a key (optional). We'll call our scene "MainScene".
-   */
   constructor() {
     super("MainScene");
   }
 
-  /**
-   * preload()
-   *
-   * - Loads assets (images, sprites, sound, etc.) into memory
-   *   before the game starts.
-   * - This function is called automatically by Phaser before create().
-   */
   preload() {
     // 1) Load your tilemap JSON
-    // In Tiled, exporting as JSON typically uses extension .json or .tmj, so "tilemapTiledJSON" is the correct loader
     this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
 
     // 2) Load the tileset image
     this.load.image("tmw_desert_spacing", "assets/map/tmw_desert_spacing.png");
 
-    // 3) (Optional) load other assets, e.g., the player
+    // 3) Load other assets
     this.load.image("player", "assets/player.png");
 
+    // 4) Load the sprite sheet for characters
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
   }
 
-  /**
-   * create()
-   *
-   * - Called once after all assets in preload() are loaded.
-   * - Usually used to set up objects, sprites, text, etc. in your scene.
-   */
   create() {
     // Create tilemap
     this.map = this.make.tilemap({ key: "Map0" });
@@ -78,6 +62,7 @@ class MainScene extends Phaser.Scene {
       (obj) => obj.name === "HeroStart"
     );
 
+    // Define Player Animations
     // 1) Walking Down (row 0: frames 0..2)
     this.anims.create({
       key: "walk-down",
@@ -85,8 +70,8 @@ class MainScene extends Phaser.Scene {
         start: 0,
         end: 2,
       }),
-      frameRate: 10, // frames per second
-      repeat: -1, // loop forever
+      frameRate: 10,
+      repeat: -1,
     });
 
     // 2) Walking Left (row 1: frames 3..5)
@@ -122,6 +107,51 @@ class MainScene extends Phaser.Scene {
       repeat: -1,
     });
 
+    // Define Mob Animations (Slower Frame Rate)
+    // Mob: Walking Down
+    this.anims.create({
+      key: "mob-walk-down",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 51,
+        end: 53,
+      }),
+      frameRate: 5, // Slower frame rate
+      repeat: -1,
+    });
+
+    // Mob: Walking Left
+    this.anims.create({
+      key: "mob-walk-left",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 75,
+        end: 77,
+      }),
+      frameRate: 5,
+      repeat: -1,
+    });
+
+    // Mob: Walking Right
+    this.anims.create({
+      key: "mob-walk-right",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 63,
+        end: 65,
+      }),
+      frameRate: 5,
+      repeat: -1,
+    });
+
+    // Mob: Walking Up
+    this.anims.create({
+      key: "mob-walk-up",
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 87,
+        end: 89,
+      }),
+      frameRate: 5,
+      repeat: -1,
+    });
+
     // Add the player at the HeroStart position
     this.player = this.physics.add.sprite(
       heroStart.x,
@@ -132,10 +162,8 @@ class MainScene extends Phaser.Scene {
     this.player.setScale(1);
     this.physics.add.collider(this.player, this.collisionLayer);
 
-    console.log(".......player.......\n", this.player);
-
-    // For demonstration, let’s just play "walk-down"
-    // this.player.anims.play("walk-down");
+    // Play initial animation based on direction or idle
+    this.player.anims.play("walk-down"); // Example: start walking down
 
     // Camera
     this.cameras.main.setBounds(
@@ -163,97 +191,90 @@ class MainScene extends Phaser.Scene {
     this.playerSpeed = 100;
 
     // ========== mobs ============
-
     // Group for mobs
-    this.mobs = this.physics.add.group();
+    this.mobs = this.physics.add.group({
+      collideWorldBounds: true, // auto-sets collideWorldBounds for children
+      // You could also set immovable, bounce, etc. here if you want
+    });
+    // Prevent mobs from overlapping with other mobs
+    this.physics.add.collider(this.mobs, this.mobs);
+
+    // Prevent mobs from overlapping with the player (optional)
+    this.physics.add.collider(this.mobs, this.player);
 
     // Find all mob spawn zones
-    const mobSpawns = this.map.objects.filter((obj) =>
-      obj.name.startsWith("MobSpawnZone")
-    );
+    const mobSpawns = this.map
+      .getObjectLayer("GameObjects")
+      .objects.filter((obj) => obj.name.startsWith("MobSpawnZone"));
 
-    console.log("......mobs.......\n",this.mobs);
+    console.log("Mob spawn zones:", mobSpawns);
 
-    // Loop through spawn zones
-    mobSpawns.forEach((spawnZone, index) => {
-      const mob = this.physics.add.sprite(
-        spawnZone.x,
-        spawnZone.y,
-        "characters"
-      );
+    // Loop through spawn zones and spawn mobs
+    mobSpawns.forEach((spawnZone) => {
+      // Create the mob using the group's create(), not this.physics.add.sprite
+      const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
+      mob.setScale(1);
 
-      // Play a default animation (e.g., "mob-walk-down")
-      // mob.anims.play("mob-walk-down");
+      // Now each child automatically respects collideWorldBounds, etc.
+      mob.anims.play("mob-walk-down");
 
-      // Add the mob to the group
-      this.mobs.add(mob);
-      console.log("......mobs.......\n",mob);
+      // Assign movement
+      this.assignMobMovement(mob);
     });
 
     // Optional: Add collisions between mobs and the world
     this.physics.add.collider(this.mobs, this.collisionLayer);
-
-    // Mob: Walking Down
-    this.anims.create({
-      key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 52,
-        end: 54,
-      }),
-      frameRate: 10,
-      repeat: -1,
-    });
-
-    // Mob: Walking Left
-    this.anims.create({
-      key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 76,
-        end: 78,
-      }),
-      frameRate: 10,
-      repeat: -1,
-    });
-
-    // Mob: Walking Right
-    this.anims.create({
-      key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 64,
-        end: 66,
-      }),
-      frameRate: 10,
-      repeat: -1,
-    });
-
-    // Mob: Walking Up
-    this.anims.create({
-      key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 88,
-        end: 90,
-      }),
-      frameRate: 10,
-      repeat: -1,
-    });
   }
 
   /**
-   * update(time, delta)
-   *
-   * - Runs in a loop ~60 times per second (depending on your device).
-   * - Great for continuously checking input, moving sprites, collisions, etc.
-   * @param {number} time - The current time in milliseconds since the game started
-   * @param {number} delta - The delta time in ms since the last frame
+   * Assigns movement behavior to a mob with randomized direction changes.
+   * @param {Phaser.Physics.Arcade.Sprite} mob - The mob sprite to assign movement to.
    */
+  assignMobMovement(mob) {
+    // Function to change mob direction
+    const changeDirection = () => {
+      const randomDirection = Phaser.Math.Between(0, 3);
+      const speed = 150; // Increased speed
+
+      switch (randomDirection) {
+        case 0: // Right
+          mob.body.setVelocity(speed, 0);
+          mob.anims.play("mob-walk-right", true);
+          break;
+        case 1: // Left
+          mob.body.setVelocity(-speed, 0);
+          mob.anims.play("mob-walk-left", true);
+          break;
+        case 2: // Down
+          mob.body.setVelocity(0, speed);
+          mob.anims.play("mob-walk-down", true);
+          break;
+        case 3: // Up
+          mob.body.setVelocity(0, -speed);
+          mob.anims.play("mob-walk-up", true);
+          break;
+      }
+
+      // Schedule the next direction change with a random delay (e.g., 3-6 seconds)
+      this.time.addEvent({
+        delay: Phaser.Math.Between(3000, 6000), // 3 to 6 seconds
+        callback: changeDirection,
+        callbackScope: this,
+        loop: false,
+      });
+    };
+
+    // Initialize the first direction change
+    changeDirection();
+  }
+
   update() {
-    // Reset velocity
+    // Reset player velocity
     this.player.body.setVelocity(0);
 
-    // Movement logic
+    // Player Movement logic
     if (this.cursors.up.isDown) {
       this.player.body.setVelocityY(-this.playerSpeed);
-      // Play the "walk-up" animation if it's not already playing
       this.player.anims.play("walk-up", true);
     } else if (this.cursors.down.isDown) {
       this.player.body.setVelocityY(this.playerSpeed);
@@ -268,7 +289,7 @@ class MainScene extends Phaser.Scene {
       this.player.anims.play("walk-right", true);
     }
 
-    // If no keys are pressed, optionally stop on the first frame of "walk-down" or a separate "idle" anim
+    // If no keys are pressed, stop the animation
     if (
       !this.cursors.up.isDown &&
       !this.cursors.down.isDown &&
@@ -276,39 +297,9 @@ class MainScene extends Phaser.Scene {
       !this.cursors.right.isDown
     ) {
       this.player.anims.stop();
-      // Optionally set the frame to a default pose, e.g. frame 0
+      // Optionally set the frame to a default pose, e.g., idle
       // this.player.setFrame(0);
     }
-
-    //========== mob wandering ===============
-    this.time.addEvent({
-      delay: 2000, // Every 2 seconds
-      loop: true,
-      callback: () => {
-        this.mobs.getChildren().forEach((mob) => {
-          const randomDirection = Phaser.Math.Between(0, 3);
-          switch (randomDirection) {
-            case 0:
-              mob.body.setVelocity(5, 0);
-              mob.anims.play("mob-walk-right", true);
-              break; // Right
-            case 1:
-              mob.body.setVelocity(-5, 0);
-              mob.anims.play("mob-walk-left", true);
-              break; // Left
-            case 2:
-              mob.body.setVelocity(0, 5);
-              mob.anims.play("mob-walk-down", true);
-              break; // Down
-            case 3:
-              mob.body.setVelocity(0, -5);
-              mob.anims.play("mob-walk-up", true);
-              break; // Up
-          }
-        });
-      },
-    });
-    //============================================
   }
 }
 
@@ -330,18 +321,18 @@ const config = {
 // 3) Launch the game
 const game = new Phaser.Game(config);
 
-//============= main methods ===================
+/*============= main methods ===================*/
 // this.player.setOrigin(0,0); // changing the center of the image form center to top left corner
 
 // this.player.x = 11  // this can be used to set position
 
 // this.player.setScale(1,1); // to scale the img
 // this.player.scaleX = 2 // alternative way to scale
-// this.player.displayWidth = 300 // altenative way to scale
+// this.player.displayWidth = 300 // alternative way to scale
 
 // this.player.flipX = true; // way of flipping the img
 
 // this.player.angle = 45; // rotate img 45deg clockwise
-// this.player.setAngle(- 45); // same thing with rotation
+// this.player.setAngle(-45); // same thing with rotation
 
 //================================================================
