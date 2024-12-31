@@ -98,25 +98,25 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 51, end: 53 }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 75, end: 77 }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 63, end: 65 }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 87, end: 89 }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -200,7 +200,7 @@ export default class MainScene extends Phaser.Scene {
 
       // Random re-trigger
       this.time.addEvent({
-        delay: Phaser.Math.Between(3000, 6000),
+        delay: Phaser.Math.Between(3000, 7000),
         callback: changeDirection,
         callbackScope: this,
         loop: false,
