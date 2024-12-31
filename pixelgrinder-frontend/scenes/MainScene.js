@@ -156,7 +156,7 @@ export default class MainScene extends Phaser.Scene {
     this.mobs = this.physics.add.group({ collideWorldBounds: true });
 
     // Collisions
-    this.physics.add.collider(this.mobs, this.mobs);
+    // this.physics.add.collider(this.mobs, this.mobs);
     this.physics.add.collider(this.mobs, this.player);
     this.physics.add.collider(this.mobs, this.collisionLayer);
 
