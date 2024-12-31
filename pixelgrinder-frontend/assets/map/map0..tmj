@@ -65,8 +65,41 @@
                  "type":"",
                  "visible":true,
                  "width":96,
-                 "x":53,
-                 "y":528
+                 "x":246,
+                 "y":616
+                }, 
+                {
+                 "height":96,
+                 "id":6,
+                 "name":"MobSpawnZone3",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":414,
+                 "y":124
+                }, 
+                {
+                 "height":96,
+                 "id":7,
+                 "name":"MobSpawnZone4",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":719,
+                 "y":282
+                }, 
+                {
+                 "height":96,
+                 "id":8,
+                 "name":"MobSpawnZone5",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1012,
+                 "y":650
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -75,7 +108,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":6,
+ "nextobjectid":9,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.0",
