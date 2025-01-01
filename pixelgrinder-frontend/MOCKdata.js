@@ -14,7 +14,11 @@ const player_basic_stats = {
 
 const player_main_stats = {
     health: 100,
-    mana: 150
+    mana: 150,
+    magic_attack: 5,
+    melee_attack: 5,
+    magic_def: 5,
+    melee_def: 5
 }
 
 const player_items = {
@@ -36,10 +40,35 @@ const player_backpack = {
 };
 
 
+
+//================= MOBS=======================
+const mobsData = {
+    slime: {
+        name: "Slime",
+        health: 30,
+        mana: 0,
+        magic_attack: 0,
+        melee_attack: 3,
+        magic_def: 2,
+        melee_def: 3
+    },
+    goblin: {
+      name: "Goblin",
+      health: 40,
+      mana: 0,
+      magic_attack: 3,
+      melee_attack: 4,
+      magic_def: 2,
+      melee_def: 5
+    },
+    // Add more mob types as needed
+  };
+
 export {
     player_data,
     player_basic_stats,
     player_main_stats,
     player_items,
-    player_backpack
+    player_backpack,
+    mobsData
   };

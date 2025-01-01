@@ -1,13 +1,14 @@
 // scenes/MainScene.js
 
 import { worldW, worldH } from "../config.js"; // if you need them
-// import {
-//   player_data,
-//   player_basic_stats,
-//   player_main_stats,
-//   player_items,
-//   player_backpack,
-// } from "../../MOCKdata.js";
+import {
+  player_data,
+  player_basic_stats,
+  player_main_stats,
+  player_items,
+  player_backpack,
+  mobsData,
+} from "../MOCKdata.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -40,10 +41,6 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
-
-
-
-
   cycleTarget() {
     const mobArray = this.mobs.getChildren();
     if (!mobArray.length) return;
@@ -55,7 +52,6 @@ export default class MainScene extends Phaser.Scene {
     }
     this.targetedMob = mobArray[this.currentTargetIndex];
     this.highlightMob(this.targetedMob);
-    console.log("this.targetedMob\n",this.targetedMob);
   }
 
   highlightMob(mob) {
@@ -66,29 +62,59 @@ export default class MainScene extends Phaser.Scene {
   }
 
   basicAttack() {
-    if (!this.targetedMob) {
-      console.log("No mob targeted!");
-      return;
-    }
-    // Basic damage formula
-    const damage = 5 + (this.player.customData.str || 0);
-    if (!this.targetedMob.customData) {
-      this.targetedMob.customData = { health: 50 };
-    }
+    if (!this.targetedMob) return;
 
-    this.targetedMob.customData.health -= damage;
-    console.log(`Hit for ${damage}! Mob HP now: ${this.targetedMob.customData.health}`);
+    const damage = Math.max(
+      (this.player.customData.str || 0) -
+        (this.targetedMob.customData.melee_def || 0),
+      1
+    );
+    this.targetedMob.customData.hp -= damage;
 
-    if (this.targetedMob.customData.health <= 0) {
-      console.log("Mob defeated!");
-      this.targetedMob.destroy();
-      this.targetedMob = null;
+    if (this.targetedMob.customData.hp <= 0) {
+      console.log("Mob died!");
+      // spawn a corpse
+      this.spawnCorpse(this.targetedMob.x, this.targetedMob.y);
+
+      // "Deactivate" this mob
+      this.targetedMob.setActive(false).setVisible(false);
+      this.targetedMob.body.setEnable(false); // remove collisions
+      const deadMob = this.targetedMob;
+      this.targetedMob = null; // no longer have a valid target
+
+      // Wait 5s then re-activate
+      this.time.addEvent({
+        delay: 5000,
+        callback: () => {
+          this.respawnMob(deadMob);
+        },
+      });
     }
   }
 
+  respawnMob(mob) {
+    // Reset or fetch your mob’s base HP from data, or just pick a default
+    mob.customData.hp = 30;
 
+    // Move it back to spawn coords
+    mob.x = mob.customData.spawnX;
+    mob.y = mob.customData.spawnY;
 
+    // Re-enable
+    mob.setActive(true).setVisible(true);
+    mob.body.setEnable(true);
 
+    // Optionally set an initial animation
+    mob.anims.play("mob-walk-down");
+    console.log("Mob re-activated at:", mob.x, mob.y);
+  }
+
+  spawnCorpse(x, y) {
+    const corpse = this.add.sprite(x, y, "characters");
+    corpse.setTint(0x666666);
+    // remove corpse after 10s
+    this.time.delayedCall(10000, () => corpse.destroy());
+  }
 
   update() {
     this.handlePlayerMovement();
@@ -237,6 +263,15 @@ export default class MainScene extends Phaser.Scene {
     // Optionally start an idle or walk animation
     this.player.anims.play("walk-down");
     this.playerSpeed = 100;
+
+    // asign player stats to the player object
+    this.player.customData = {
+      name: player_data.playerName,
+      totalExp: player_data.totalExp,
+      str: player_main_stats.melee_attack,
+      def: player_main_stats.melee_def,
+      // etc.
+    };
   }
 
   setupCamera() {
@@ -265,11 +300,13 @@ export default class MainScene extends Phaser.Scene {
   }
 
   createMobs() {
+    const mobTypeID = "slime"; // or "goblin"
+    const mobInfo = mobsData[mobTypeID];
+
     // Create group for mobs
     this.mobs = this.physics.add.group({ collideWorldBounds: true });
 
     // Collisions
-    // this.physics.add.collider(this.mobs, this.mobs);
     this.physics.add.collider(this.mobs, this.player);
     this.physics.add.collider(this.mobs, this.collisionLayer);
 
@@ -280,6 +317,16 @@ export default class MainScene extends Phaser.Scene {
 
     mobSpawns.forEach((spawnZone) => {
       const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
+
+      // Assign customData, including spawn coords
+      mob.customData = {
+        id: mobTypeID,
+        hp: mobInfo.health,
+        melee_def: mobInfo.melee_def,
+        spawnX: spawnZone.x,
+        spawnY: spawnZone.y,
+      };
+
       mob.setScale(1);
       mob.anims.play("mob-walk-down");
 
@@ -289,6 +336,11 @@ export default class MainScene extends Phaser.Scene {
 
   assignMobMovement(mob) {
     const changeDirection = () => {
+      // If mob is no longer active, skip
+      if (!mob.active) {
+        return;
+      }
+
       const randomDirection = Phaser.Math.Between(0, 3);
       const speed = 50;
 
@@ -311,7 +363,7 @@ export default class MainScene extends Phaser.Scene {
           break;
       }
 
-      // Random re-trigger
+      // Re-trigger after a random delay
       this.time.addEvent({
         delay: Phaser.Math.Between(3000, 7000),
         callback: changeDirection,
