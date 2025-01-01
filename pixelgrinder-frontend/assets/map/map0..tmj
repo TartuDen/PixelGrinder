@@ -100,6 +100,28 @@
                  "width":96,
                  "x":1012,
                  "y":650
+                }, 
+                {
+                 "height":96,
+                 "id":9,
+                 "name":"MobSpawnZone6",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1357,
+                 "y":168
+                }, 
+                {
+                 "height":96,
+                 "id":10,
+                 "name":"MobSpawnZone7",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1651,
+                 "y":606
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -108,7 +130,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":9,
+ "nextobjectid":11,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.0",

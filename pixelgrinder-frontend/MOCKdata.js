@@ -1,3 +1,5 @@
+// MOCKdata.js
+
 const player_data = {
     playerName: "Omigod",
     totalExp: 0,
@@ -32,3 +34,12 @@ const player_backpack = {
     cell_4_0: null, cell_4_1: null, cell_4_2: null, cell_4_3: null, cell_4_4: null,
     cell_5_0: null, cell_5_1: null, cell_5_2: null, cell_5_3: null, cell_5_4: null
 };
+
+
+export {
+    player_data,
+    player_basic_stats,
+    player_main_stats,
+    player_items,
+    player_backpack
+  };

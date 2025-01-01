@@ -1,10 +1,19 @@
 // scenes/MainScene.js
 
 import { worldW, worldH } from "../config.js"; // if you need them
+// import {
+//   player_data,
+//   player_basic_stats,
+//   player_main_stats,
+//   player_items,
+//   player_backpack,
+// } from "../../MOCKdata.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
+    this.currentTargetIndex = null;
+    this.targetedMob = null;
   }
 
   preload() {
@@ -18,7 +27,68 @@ export default class MainScene extends Phaser.Scene {
     this.setupCamera();
     this.setupControls();
     this.createMobs();
+
+    // Tab-target logic
+    this.input.keyboard.on("keydown-TAB", (event) => {
+      event.preventDefault();
+      this.cycleTarget();
+    });
+
+    // Basic attack on key "1"
+    this.input.keyboard.on("keydown-ONE", () => {
+      this.basicAttack();
+    });
   }
+
+
+
+
+
+  cycleTarget() {
+    const mobArray = this.mobs.getChildren();
+    if (!mobArray.length) return;
+
+    if (this.currentTargetIndex === null) {
+      this.currentTargetIndex = 0;
+    } else {
+      this.currentTargetIndex = (this.currentTargetIndex + 1) % mobArray.length;
+    }
+    this.targetedMob = mobArray[this.currentTargetIndex];
+    this.highlightMob(this.targetedMob);
+    console.log("this.targetedMob\n",this.targetedMob);
+  }
+
+  highlightMob(mob) {
+    // Clear tint on all
+    this.mobs.getChildren().forEach((m) => m.clearTint());
+    // Tint the newly targeted mob
+    mob.setTint(0xff0000);
+  }
+
+  basicAttack() {
+    if (!this.targetedMob) {
+      console.log("No mob targeted!");
+      return;
+    }
+    // Basic damage formula
+    const damage = 5 + (this.player.customData.str || 0);
+    if (!this.targetedMob.customData) {
+      this.targetedMob.customData = { health: 50 };
+    }
+
+    this.targetedMob.customData.health -= damage;
+    console.log(`Hit for ${damage}! Mob HP now: ${this.targetedMob.customData.health}`);
+
+    if (this.targetedMob.customData.health <= 0) {
+      console.log("Mob defeated!");
+      this.targetedMob.destroy();
+      this.targetedMob = null;
+    }
+  }
+
+
+
+
 
   update() {
     this.handlePlayerMovement();
@@ -55,7 +125,9 @@ export default class MainScene extends Phaser.Scene {
 
     // Collisions layer
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
-    this.collisionLayer.setCollision([30, 31, 32, 37, 38, 39, 40, 45, 46, 47, 48]);
+    this.collisionLayer.setCollision([
+      30, 31, 32, 37, 38, 39, 40, 45, 46, 47, 48,
+    ]);
 
     // Optional debug
     // this.collisionLayer.renderDebug(this.add.graphics(), {
@@ -69,28 +141,40 @@ export default class MainScene extends Phaser.Scene {
     // Player animations
     this.anims.create({
       key: "walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 0, end: 2 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 0,
+        end: 2,
+      }),
       frameRate: 10,
       repeat: -1,
     });
 
     this.anims.create({
       key: "walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 12, end: 14 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 12,
+        end: 14,
+      }),
       frameRate: 10,
       repeat: -1,
     });
 
     this.anims.create({
       key: "walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 24, end: 26 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 24,
+        end: 26,
+      }),
       frameRate: 10,
       repeat: -1,
     });
 
     this.anims.create({
       key: "walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 36, end: 38 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 36,
+        end: 38,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -98,25 +182,37 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 48,
+        end: 50,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 60,
+        end: 62,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 72,
+        end: 74,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 84,
+        end: 86,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -124,8 +220,15 @@ export default class MainScene extends Phaser.Scene {
 
   createPlayer() {
     // HeroStart position
-    const heroStart = this.map.findObject("GameObjects", (obj) => obj.name === "HeroStart");
-    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
+    const heroStart = this.map.findObject(
+      "GameObjects",
+      (obj) => obj.name === "HeroStart"
+    );
+    this.player = this.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -137,8 +240,18 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
+    this.physics.world.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
     this.cameras.main.startFollow(this.player);
   }
 
