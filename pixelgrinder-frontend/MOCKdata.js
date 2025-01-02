@@ -45,7 +45,7 @@ const player_backpack = {
 const mobsData = {
     slime: {
         name: "Slime",
-        health: 22,
+        health: 5,
         mana: 0,
         magic_attack: 0,
         melee_attack: 3,

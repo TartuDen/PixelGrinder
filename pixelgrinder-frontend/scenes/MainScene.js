@@ -69,9 +69,13 @@ export default class MainScene extends Phaser.Scene {
         (this.targetedMob.customData.melee_def || 0),
       1
     );
-    this.targetedMob.customData.hp -= damage;
 
-    // Update the HP text
+    // Clamp HP at 0
+    this.targetedMob.customData.hp = Math.max(
+      0,
+      this.targetedMob.customData.hp - damage
+    );
+
     this.targetedMob.customData.hpText.setText(
       `HP: ${this.targetedMob.customData.hp}`
     );
@@ -79,49 +83,55 @@ export default class MainScene extends Phaser.Scene {
     if (this.targetedMob.customData.hp <= 0) {
       console.log("Mob died!");
 
-      // Spawn a corpse
-      this.spawnCorpse(this.targetedMob.x, this.targetedMob.y);
-
-      // Hide mob and text
-      this.targetedMob.setActive(false).setVisible(false);
-      this.targetedMob.body.setEnable(false); // Remove collisions
-      this.targetedMob.customData.hpText.setVisible(false); // Hide HP text
-
       const deadMob = this.targetedMob;
-      this.targetedMob = null;
 
-      // Wait 5s then re-activate
-      this.time.addEvent({
-        delay: 5000,
-        callback: () => {
-          this.respawnMob(deadMob);
-        },
+      // Mark as dead so movement code ignores it
+      deadMob.customData.isDead = true;
+      // Immediately stop velocity
+      deadMob.body.setVelocity(0, 0);
+
+      // Play dead animation
+      deadMob.anims.play("mob-dead", true);
+
+      // Delay hiding mob until the animation finishes
+      this.time.delayedCall(1000, () => {
+        deadMob.setActive(false).setVisible(false);
+        deadMob.body.setEnable(false);
+        deadMob.customData.hpText.setVisible(false);
+
+        // Wait 5s then re-activate
+        this.time.addEvent({
+          delay: 5000,
+          callback: () => {
+            this.respawnMob(deadMob);
+          },
+        });
       });
+
+      this.targetedMob = null;
     }
   }
 
   respawnMob(mob) {
     const mobInfo = mobsData[mob.customData.id];
 
-    // Reset HP from mobsData
+    // Reset HP
     mob.customData.hp = mobInfo.health;
+    // Mark alive again
+    mob.customData.isDead = false;
 
-    // Move back to spawn coords
     mob.x = mob.customData.spawnX;
     mob.y = mob.customData.spawnY;
 
-    // Re-enable mob and reset its text
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
 
     mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
-    mob.customData.hpText.setPosition(mob.x, mob.y - 20); // Reposition above mob
+    mob.customData.hpText.setPosition(mob.x, mob.y - 20);
     mob.customData.hpText.setVisible(true);
 
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-walk-down");
-
-    // **Clear Tint**
     mob.clearTint();
 
     console.log(
@@ -132,7 +142,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   spawnCorpse(x, y) {
-    const corpse = this.add.sprite(x, y, "characters");
+    const corpse = this.add.sprite(x, y, "$dead").setFrame(9); // Set the first frame of the dead animation
     corpse.setTint(0x666666);
     // remove corpse after 10s
     this.time.delayedCall(10000, () => corpse.destroy());
@@ -164,6 +174,12 @@ export default class MainScene extends Phaser.Scene {
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
       frameHeight: 32,
+    });
+
+    // DEAD MOB ANIMATION
+    this.load.spritesheet("$dead", "assets/$dead.png", {
+      frameWidth: 32, // Individual frame width (96px / 3 columns)
+      frameHeight: 32, // Individual frame height (128px / 4 rows)
     });
   }
 
@@ -269,6 +285,17 @@ export default class MainScene extends Phaser.Scene {
       }),
       frameRate: 10,
       repeat: -1,
+    });
+
+    // Dead animation for mobs
+    this.anims.create({
+      key: "mob-dead",
+      frames: this.anims.generateFrameNumbers("$dead", {
+        start: 7, // The frame index corresponding to row 3, column 2 (row index starts at 0)
+        end: 7, // Adjust as needed for the number of frames in the dead animation
+      }),
+      frameRate: 0, // Animation speed
+      repeat: 0, // Play only once
     });
   }
 
@@ -399,7 +426,10 @@ export default class MainScene extends Phaser.Scene {
 
   assignMobMovement(mob) {
     const changeDirection = () => {
-      if (!mob.active) return;
+      // If mob is inactive or flagged dead, skip
+      if (!mob.active || mob.customData.isDead) {
+        return;
+      }
 
       const randomDirection = Phaser.Math.Between(0, 3);
       const speed = 50;
@@ -423,10 +453,10 @@ export default class MainScene extends Phaser.Scene {
           break;
       }
 
-      // Update HP text position on every direction change
+      // Update HP text position
       mob.customData.hpText.setPosition(mob.x, mob.y - 20);
 
-      // Re-trigger movement after random delay
+      // Schedule next direction change
       this.time.addEvent({
         delay: Phaser.Math.Between(3000, 7000),
         callback: changeDirection,
