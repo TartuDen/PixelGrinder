@@ -121,6 +121,9 @@ export default class MainScene extends Phaser.Scene {
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-walk-down");
 
+    // **Clear Tint**
+    mob.clearTint();
+
     console.log(
       `Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}) with HP: ${mob.customData.hp}`
     );
