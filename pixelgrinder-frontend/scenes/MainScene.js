@@ -71,16 +71,24 @@ export default class MainScene extends Phaser.Scene {
     );
     this.targetedMob.customData.hp -= damage;
 
+    // Update the HP text
+    this.targetedMob.customData.hpText.setText(
+      `HP: ${this.targetedMob.customData.hp}`
+    );
+
     if (this.targetedMob.customData.hp <= 0) {
       console.log("Mob died!");
-      // spawn a corpse
+
+      // Spawn a corpse
       this.spawnCorpse(this.targetedMob.x, this.targetedMob.y);
 
-      // "Deactivate" this mob
+      // Hide mob and text
       this.targetedMob.setActive(false).setVisible(false);
-      this.targetedMob.body.setEnable(false); // remove collisions
+      this.targetedMob.body.setEnable(false); // Remove collisions
+      this.targetedMob.customData.hpText.setVisible(false); // Hide HP text
+
       const deadMob = this.targetedMob;
-      this.targetedMob = null; // no longer have a valid target
+      this.targetedMob = null;
 
       // Wait 5s then re-activate
       this.time.addEvent({
@@ -93,20 +101,31 @@ export default class MainScene extends Phaser.Scene {
   }
 
   respawnMob(mob) {
-    // Reset or fetch your mob’s base HP from data, or just pick a default
-    mob.customData.hp = 30;
+    const mobInfo = mobsData[mob.customData.id];
 
-    // Move it back to spawn coords
+    // Reset HP from mobsData
+    mob.customData.hp = mobInfo.health;
+
+    // Move back to spawn coords
     mob.x = mob.customData.spawnX;
     mob.y = mob.customData.spawnY;
 
-    // Re-enable
+    // Re-enable mob and reset its text
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
 
-    // Optionally set an initial animation
+    mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
+    mob.customData.hpText.setPosition(mob.x, mob.y - 20); // Reposition above mob
+    mob.customData.hpText.setVisible(true);
+
+    mob.body.setVelocity(0, 0);
     mob.anims.play("mob-walk-down");
-    console.log("Mob re-activated at:", mob.x, mob.y);
+
+    console.log(
+      `Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}) with HP: ${mob.customData.hp}`
+    );
+
+    this.assignMobMovement(mob);
   }
 
   spawnCorpse(x, y) {
@@ -118,6 +137,12 @@ export default class MainScene extends Phaser.Scene {
 
   update() {
     this.handlePlayerMovement();
+    // Update HP text positions for all mobs
+    this.mobs.getChildren().forEach((mob) => {
+      if (mob.active && mob.customData && mob.customData.hpText) {
+        mob.customData.hpText.setPosition(mob.x, mob.y - 20);
+      }
+    });
   }
 
   /* ================ Helper Methods ================ */
@@ -327,6 +352,15 @@ export default class MainScene extends Phaser.Scene {
         spawnY: spawnZone.y,
       };
 
+      // Create a Text object for HP
+      mob.customData.hpText = this.add.text(
+        spawnZone.x,
+        spawnZone.y - 20, // Above the mob
+        `HP: ${mob.customData.hp}`,
+        { font: "12px Arial", fill: "#ffffff" }
+      );
+      mob.customData.hpText.setOrigin(0.5); // Center align text
+
       mob.setScale(1);
       mob.anims.play("mob-walk-down");
 
@@ -336,10 +370,7 @@ export default class MainScene extends Phaser.Scene {
 
   assignMobMovement(mob) {
     const changeDirection = () => {
-      // If mob is no longer active, skip
-      if (!mob.active) {
-        return;
-      }
+      if (!mob.active) return;
 
       const randomDirection = Phaser.Math.Between(0, 3);
       const speed = 50;
@@ -363,12 +394,14 @@ export default class MainScene extends Phaser.Scene {
           break;
       }
 
-      // Re-trigger after a random delay
+      // Update HP text position on every direction change
+      mob.customData.hpText.setPosition(mob.x, mob.y - 20);
+
+      // Re-trigger movement after random delay
       this.time.addEvent({
         delay: Phaser.Math.Between(3000, 7000),
         callback: changeDirection,
         callbackScope: this,
-        loop: false,
       });
     };
 
