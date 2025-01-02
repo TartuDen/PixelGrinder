@@ -350,11 +350,18 @@ export default class MainScene extends Phaser.Scene {
         spawnY: spawnZone.y,
       };
 
-      // Create HP text
       mob.customData.hpText = this.add
         .text(spawnZone.x, spawnZone.y - 20, `HP: ${mob.customData.hp}`, {
-          font: "12px Arial",
+          font: "14px Arial",
           fill: "#ffffff",
+          shadow: {
+            offsetX: 2,
+            offsetY: 2,
+            color: "#000000",
+            blur: 2,
+            stroke: true,
+            fill: true,
+          },
         })
         .setOrigin(0.5);
 
