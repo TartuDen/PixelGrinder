@@ -331,14 +331,10 @@ export default class MainScene extends Phaser.Scene {
     const mobTypeID = "slime"; // or "goblin"
     const mobInfo = mobsData[mobTypeID];
 
-    // Create group for mobs
     this.mobs = this.physics.add.group({ collideWorldBounds: true });
-
-    // Collisions
     this.physics.add.collider(this.mobs, this.player);
     this.physics.add.collider(this.mobs, this.collisionLayer);
 
-    // Find mob spawns
     const mobSpawns = this.map
       .getObjectLayer("GameObjects")
       .objects.filter((obj) => obj.name.startsWith("MobSpawnZone"));
@@ -346,7 +342,6 @@ export default class MainScene extends Phaser.Scene {
     mobSpawns.forEach((spawnZone) => {
       const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
 
-      // Assign customData, including spawn coords
       mob.customData = {
         id: mobTypeID,
         hp: mobInfo.health,
@@ -355,20 +350,44 @@ export default class MainScene extends Phaser.Scene {
         spawnY: spawnZone.y,
       };
 
-      // Create a Text object for HP
-      mob.customData.hpText = this.add.text(
-        spawnZone.x,
-        spawnZone.y - 20, // Above the mob
-        `HP: ${mob.customData.hp}`,
-        { font: "12px Arial", fill: "#ffffff" }
-      );
-      mob.customData.hpText.setOrigin(0.5); // Center align text
+      // Create HP text
+      mob.customData.hpText = this.add
+        .text(spawnZone.x, spawnZone.y - 20, `HP: ${mob.customData.hp}`, {
+          font: "12px Arial",
+          fill: "#ffffff",
+        })
+        .setOrigin(0.5);
 
+      // ***** Make interactive & add click event
+      mob.setInteractive({ useHandCursor: true });
+      mob.on("pointerdown", () => {
+        this.onMobClicked(mob);
+      });
+
+      // Basic setup
       mob.setScale(1);
       mob.anims.play("mob-walk-down");
-
       this.assignMobMovement(mob);
     });
+  }
+
+  onMobClicked(mob) {
+    if (!mob.active) return;
+
+    // Clear tints
+    this.mobs.getChildren().forEach((m) => m.clearTint());
+
+    // Tint this one
+    mob.setTint(0xff0000);
+
+    // Set as main target
+    this.targetedMob = mob;
+
+    // Sync the index if you want
+    const mobArray = this.mobs.getChildren();
+    this.currentTargetIndex = mobArray.indexOf(mob);
+
+    console.log("Mob clicked:", mob.customData.id, "HP:", mob.customData.hp);
   }
 
   assignMobMovement(mob) {
