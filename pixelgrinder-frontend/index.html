@@ -1,21 +1,56 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>PixelGrinder</title>
-  <style>
-    canvas {
-        width: 100%;
-        /* height: 100%; */
-    }
-  </style>
-</head>
-<body>
-  <!-- 1) Load Phaser via script -->
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.js"></script>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PixelGrinder</title>
+    <link rel="stylesheet" href="ui.css" />
 
-  <!-- 2) Mark your main.js as a module -->
-  <script type="module" src="./main.js"></script>
-  
-</body>
+    <!-- Phaser -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.js"></script>
+
+    <style>
+      canvas {
+        width: 100%;
+      }
+
+      
+    </style>
+  </head>
+  <body>
+    <!-- UI Panel in the top-left corner -->
+    <div id="player-ui">
+      <h3 id="player-name">Name: ???</h3>
+
+      <div class="health-bar">
+        <div class="health-fill" id="health-fill"></div>
+      </div>
+
+      <div class="mana-bar">
+        <div class="mana-fill" id="mana-fill"></div>
+      </div>
+
+      <div class="level-info">
+        <p id="player-level">Level: ???</p>
+        <p id="player-xp">XP: ???</p>
+      </div>
+    </div>
+
+    <!-- Casting Bar UI -->
+    <div id="casting-bar">
+      <!-- 10 Slots -->
+      <div class="casting-slot">1</div>
+      <div class="casting-slot">2</div>
+      <div class="casting-slot">3</div>
+      <div class="casting-slot">4</div>
+      <div class="casting-slot">5</div>
+      <div class="casting-slot">6</div>
+      <div class="casting-slot">7</div>
+      <div class="casting-slot">8</div>
+      <div class="casting-slot">9</div>
+      <div class="casting-slot">10</div>
+    </div>
+
+    <!-- Put your main.js script at the bottom of body -->
+    <script type="module" src="./main.js"></script>
+  </body>
 </html>

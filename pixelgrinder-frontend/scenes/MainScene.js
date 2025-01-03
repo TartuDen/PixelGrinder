@@ -29,10 +29,18 @@ export default class MainScene extends Phaser.Scene {
     this.setupControls();
     this.createMobs();
 
-    // Tab-target logic
+    // 1) Always grab these references so they're never undefined
+    this.uiName = document.getElementById("player-name");
+    this.uiHealthFill = document.getElementById("health-fill");
+    this.uiManaFill = document.getElementById("mana-fill");
+    this.uiLevel = document.getElementById("player-level");
+    this.uiXP = document.getElementById("player-xp");
+
+    // TAB logic
     this.input.keyboard.on("keydown-TAB", (event) => {
       event.preventDefault();
       this.cycleTarget();
+      this.updateUI();
     });
 
     // Basic attack on key "1"
@@ -149,6 +157,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   update() {
+    this.updateUI();
     this.handlePlayerMovement();
     // Update HP text positions for all mobs
     this.mobs.getChildren().forEach((mob) => {
@@ -156,6 +165,36 @@ export default class MainScene extends Phaser.Scene {
         mob.customData.hpText.setPosition(mob.x, mob.y - 20);
       }
     });
+  }
+
+  updateUI() {
+    // Suppose we have "player_main_stats" object
+    const { health, mana } = player_main_stats;
+    // The player_data object might have a "currentLevel" or "totalExp"
+    const { playerName, totalExp } = player_data;
+    // If you have a "level" calculation, e.g. level = 5
+    const level = 5; // placeholder
+    const currentHealth = 80; // example; maybe you store this in your player object
+    const maxHealth = health; // 100 from your data
+    const currentMana = 130; // example
+    const maxMana = mana; // 150 from your data
+
+    // 1) Player Name
+    this.uiName.textContent = `Name: ${playerName}`;
+
+    // 2) Health
+    const healthPercentage = (currentHealth / maxHealth) * 100;
+    this.uiHealthFill.style.width = `${healthPercentage}%`;
+
+    // 3) Mana
+    const manaPercentage = (currentMana / maxMana) * 100;
+    this.uiManaFill.style.width = `${manaPercentage}%`;
+
+    // 4) Level
+    this.uiLevel.textContent = `Level: ${level}`;
+
+    // 5) XP
+    this.uiXP.textContent = `XP: ${totalExp}`;
   }
 
   /* ================ Helper Methods ================ */
