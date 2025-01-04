@@ -82,7 +82,7 @@
 
 #casting-bar .casting-slot {
   width: 60px;             /* Increased width for longer skill names */
-  height: 40px;            /* Increased height for better visibility */
+  height: 60px;            /* Increased height for better visibility */
   background-color: #999;
   border: 1px solid #666;
   border-radius: 3px;
@@ -90,15 +90,33 @@
   /* 3D effect */
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
 
-  /* Center text inside each slot */
+  /* Center content inside each slot */
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: Arial, sans-serif;
   font-weight: bold;
   color: #333;
-  font-size: 0.8rem;        /* Smaller text for skill names */
+  font-size: 0.7rem;        /* Smaller text for mana costs */
   white-space: nowrap;      /* Prevent multi-line */
   overflow: hidden;         /* Hide overflow */
   text-overflow: ellipsis;  /* Show "..." if overflow */
+  position: relative;       /* To position mana cost */
+}
+
+#casting-bar .casting-slot .skill-icon {
+  width: 40px;               /* Adjust size as needed */
+  height: 40px;
+  object-fit: contain;
+}
+
+#casting-bar .casting-slot .mana-cost {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.6rem;
+  padding: 2px 4px;
+  border-radius: 3px;
 }

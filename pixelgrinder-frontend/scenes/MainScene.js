@@ -29,6 +29,19 @@ export default class MainScene extends Phaser.Scene {
 
   preload() {
     this.loadAssets();
+
+    // Dynamically load skill icons and skillImages
+    playerSkills.forEach((skill, index) => {
+      // Load skill icon
+      this.load.image(`skill-icon-${index}`, skill.icon);
+
+      // Load skillImage as a spritesheet
+      // Assuming each frame is 72x72 pixels (576 / 8 = 72)
+      this.load.spritesheet(`skill-sprite-${index}`, skill.skillImage, {
+        frameWidth: 72,
+        frameHeight: 72,
+      });
+    });
   }
 
   create() {
@@ -61,7 +74,10 @@ export default class MainScene extends Phaser.Scene {
     this.maxMana = playerStats.mana;
     this.currentMana = this.maxMana;
 
-    // 3) Start natural regeneration
+    // 3) Create skill animations
+    this.createSkillAnimations();
+
+    // 4) Start natural regeneration
     this.time.addEvent({
       delay: naturalRegeneration.regenerationTime, // milliseconds
       callback: this.regenerateStats,
@@ -81,12 +97,39 @@ export default class MainScene extends Phaser.Scene {
     this.updateUI();
     this.handlePlayerMovement();
 
+    // Emit an event to update skill animations' positions
+    this.events.emit("updateSkillPosition");
+
     // Update HP text positions for all mobs
     this.mobs.getChildren().forEach((mob) => {
       if (mob.active && mob.customData && mob.customData.hpText) {
         mob.customData.hpText.setPosition(mob.x, mob.y - 20);
       }
     });
+  }
+
+  updateUI() {
+    const { name, totalExp } = playerProfile;
+    const level = 5;
+
+    // Update health bar
+    const healthPercent = (this.currentHealth / this.maxHealth) * 100;
+    this.uiHealthFill.style.width = `${healthPercent}%`;
+    // Update health text
+    const healthText = document.getElementById("health-text");
+    healthText.textContent = `HP: ${this.currentHealth}/${this.maxHealth}`;
+
+    // Update mana bar
+    const manaPercent = (this.currentMana / this.maxMana) * 100;
+    this.uiManaFill.style.width = `${manaPercent}%`;
+    // Update mana text
+    const manaText = document.getElementById("mana-text");
+    manaText.textContent = `Mana: ${this.currentMana}/${this.maxMana}`;
+
+    // Update texts
+    this.uiName.textContent = `${name}`;
+    this.uiLevel.textContent = `Level: ${level}`;
+    this.uiXP.textContent = `XP: ${totalExp}`;
   }
 
   /* ============================================= */
@@ -113,8 +156,11 @@ export default class MainScene extends Phaser.Scene {
       const key = keyCodes[index];
       const slotEl = this.castingBarSlots[index];
 
-      // Update casting bar slot text with skill name and mana cost
-      slotEl.textContent = `${skill.name} (${skill.manaCost})`;
+      // Set casting slot to display skill icon and mana cost
+      slotEl.innerHTML = `
+        <img src="${skill.icon}" alt="${skill.name}" class="skill-icon" />
+        <span class="mana-cost">${skill.manaCost}</span>
+      `;
 
       // Register skill to the corresponding key
       this.input.keyboard.addKey(key).on("down", () => {
@@ -122,6 +168,30 @@ export default class MainScene extends Phaser.Scene {
       });
     });
   }
+
+  /* ============================================= */
+  /*           Skill Animation Setup               */
+  /* ============================================= */
+
+  createSkillAnimations() {
+    playerSkills.forEach((skill, index) => {
+      const animKey = `skill-anim-${index}`;
+
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(`skill-sprite-${index}`, {
+          start: skill.animationSeq[0],
+          end: skill.animationSeq[1],
+        }),
+        frameRate: 10,
+        repeat: 0, // Play once
+      });
+    });
+  }
+
+  /* ============================================= */
+  /*           Skill Usage Handling                */
+  /* ============================================= */
 
   useSkill(skill) {
     if (this.currentMana < skill.manaCost) {
@@ -158,6 +228,10 @@ export default class MainScene extends Phaser.Scene {
 
     this.applyDamageToMob(this.targetedMob, damage);
     console.log(`Used magic skill: ${skill.name}, dealt ${damage} damage.`);
+
+    // Play skill animation at the mob's position
+    this.playSkillAnimation(skill, this.targetedMob);
+
     return true; // Indicate success
   }
 
@@ -175,47 +249,54 @@ export default class MainScene extends Phaser.Scene {
 
     this.applyDamageToMob(this.targetedMob, damage);
     console.log(`Used melee skill: ${skill.name}, dealt ${damage} damage.`);
+
+    // Play skill animation at the mob's position
+    this.playSkillAnimation(skill, this.targetedMob);
+
     return true; // Indicate success
+  }
+
+  playSkillAnimation(skill, mob) {
+    const skillIndex = playerSkills.indexOf(skill);
+    const animKey = `skill-anim-${skillIndex}`;
+
+    // Create a sprite at the mob's current position
+    const skillSprite = this.add.sprite(
+      mob.x,
+      mob.y,
+      `skill-sprite-${skillIndex}`
+    );
+
+    // Play the animation
+    skillSprite.anims.play(animKey);
+
+    // Optional: Adjust scale or other properties
+    skillSprite.setScale(1.5); // Example: make the animation bigger
+
+    // Update the skillSprite's position to follow the mob
+    const updateSkillPosition = () => {
+      if (mob.active && !mob.customData.isDead) {
+        skillSprite.x = mob.x;
+        skillSprite.y = mob.y;
+      } else {
+        // If the mob is no longer active or dead, destroy the skillSprite
+        skillSprite.destroy();
+        this.events.off("updateSkillPosition", updateSkillPosition);
+      }
+    };
+
+    // Listen to the scene's update event to continuously update the skillSprite's position
+    this.events.on("updateSkillPosition", updateSkillPosition);
+
+    // Destroy the sprite after animation completes
+    skillSprite.on("animationcomplete", () => {
+      skillSprite.destroy();
+      this.events.off("updateSkillPosition", updateSkillPosition);
+    });
   }
 
   deductMana(amount) {
     this.currentMana = Math.max(0, this.currentMana - amount);
-  }
-
-  regenerateStats() {
-    // Regenerate mana
-    const manaBefore = this.currentMana;
-    this.currentMana = Math.min(
-      this.maxMana,
-      this.currentMana + naturalRegeneration.manaRegen
-    );
-    const manaAfter = this.currentMana;
-
-    // Regenerate health
-    const healthBefore = this.currentHealth;
-    this.currentHealth = Math.min(
-      this.maxHealth,
-      this.currentHealth + naturalRegeneration.hpRegen
-    );
-    const healthAfter = this.currentHealth;
-
-    // Debug log
-    console.log(
-      `Regenerated: +${manaAfter - manaBefore} mana, +${
-        healthAfter - healthBefore
-      } health.`
-    );
-  }
-
-  applyDamageToMob(mob, damage) {
-    mob.customData.hp = Math.max(0, mob.customData.hp - damage);
-    mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
-
-    if (mob.customData.hp <= 0) {
-      console.log("Mob died!");
-      this.handleMobDeath(mob);
-      this.targetedMob = null;
-    }
   }
 
   /* ============================================= */
@@ -240,6 +321,21 @@ export default class MainScene extends Phaser.Scene {
     this.mobs.getChildren().forEach((m) => m.clearTint());
     // Tint the newly targeted mob
     mob.setTint(0xff0000);
+  }
+
+  basicAttack() {
+    // (Optional fallback if you want a default melee attack on key "1")
+    if (!this.targetedMob) return;
+
+    const playerStats = calculatePlayerStats();
+    const mobKey = this.targetedMob.customData.id;
+    const mobStats = mobsData[mobKey];
+    if (!mobStats) return;
+
+    const damage = calculateMeleeDamage(playerStats, mobStats);
+
+    this.applyDamageToMob(this.targetedMob, damage);
+    console.log(`Player did a basic melee attack for ${damage} damage.`);
   }
 
   handleMobDeath(mob) {
@@ -303,28 +399,33 @@ export default class MainScene extends Phaser.Scene {
     this.time.delayedCall(10000, () => corpse.destroy());
   }
 
-  updateUI() {
-    const { name, totalExp } = playerProfile;
-    const level = 5;
+  /* ============================================= */
+  /*           Natural Regeneration                */
+  /* ============================================= */
 
-    // Update health bar
-    const healthPercent = (this.currentHealth / this.maxHealth) * 100;
-    this.uiHealthFill.style.width = `${healthPercent}%`;
-    // Update health text
-    const healthText = document.getElementById("health-text");
-    healthText.textContent = `HP: ${this.currentHealth}/${this.maxHealth}`;
+  regenerateStats() {
+    // Regenerate mana
+    const manaBefore = this.currentMana;
+    this.currentMana = Math.min(
+      this.maxMana,
+      this.currentMana + naturalRegeneration.manaRegen
+    );
+    const manaAfter = this.currentMana;
 
-    // Update mana bar
-    const manaPercent = (this.currentMana / this.maxMana) * 100;
-    this.uiManaFill.style.width = `${manaPercent}%`;
-    // Update mana text
-    const manaText = document.getElementById("mana-text");
-    manaText.textContent = `Mana: ${this.currentMana}/${this.maxMana}`;
+    // Regenerate health
+    const healthBefore = this.currentHealth;
+    this.currentHealth = Math.min(
+      this.maxHealth,
+      this.currentHealth + naturalRegeneration.hpRegen
+    );
+    const healthAfter = this.currentHealth;
 
-    // Update texts
-    this.uiName.textContent = `${name}`;
-    this.uiLevel.textContent = `Level: ${level}`;
-    this.uiXP.textContent = `XP: ${totalExp}`;
+    // Debug log
+    console.log(
+      `Regenerated: +${manaAfter - manaBefore} mana, +${
+        healthAfter - healthBefore
+      } health.`
+    );
   }
 
   /* ============================================= */
@@ -644,13 +745,13 @@ export default class MainScene extends Phaser.Scene {
   /*        Targeting, Attacking, & UI            */
   /* ============================================= */
 
-  /* (Already defined above) */
+  /* Already defined above */
 
   /* ============================================= */
   /*           Damage Handling Methods             */
   /* ============================================= */
 
-  /* (Already defined above: useSkill, useMagicSkill, useMeleeSkill, applyDamageToMob, etc.) */
+  /* Already defined above: useSkill, useMagicSkill, useMeleeSkill, applyDamageToMob, etc. */
 
   /* ============================================= */
   /*           Natural Regeneration                */
@@ -682,8 +783,23 @@ export default class MainScene extends Phaser.Scene {
   }
 
   /* ============================================= */
+  /*              Assets & Map Setup              */
+  /* ============================================= */
+
+  /* Already defined above: loadAssets, createTilemap, defineAnimations, createPlayer, setupCamera, setupControls */
+
+  /* ============================================= */
   /*        Additional Helper Methods             */
   /* ============================================= */
 
-  /* (Already defined above: applyDamageToMob, etc.) */
+  applyDamageToMob(mob, damage) {
+    mob.customData.hp = Math.max(0, mob.customData.hp - damage);
+    mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
+
+    if (mob.customData.hp <= 0) {
+      console.log("Mob died!");
+      this.handleMobDeath(mob);
+      this.targetedMob = null;
+    }
+  }
 }

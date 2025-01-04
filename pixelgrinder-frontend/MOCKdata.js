@@ -159,6 +159,10 @@ const playerSkills = [
     range: 20,
     magicAttack: 2,
     meleeAttack: 0,
+    
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
+    animationSeq: [0,7],
   },
   {
     name: "fire_ball",
@@ -166,6 +170,9 @@ const playerSkills = [
     range: 20,
     magicAttack: 3,
     meleeAttack: 0,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
+    animationSeq: [0,7],
   },
 ];
 
