@@ -5,9 +5,9 @@ import {
   player_data,
   player_basic_stats,
   player_main_stats,
-  player_items,
+  player_wear_items,
   player_backpack,
-  mobsData,
+  mobsData
 } from "../MOCKdata.js";
 
 export default class MainScene extends Phaser.Scene {
