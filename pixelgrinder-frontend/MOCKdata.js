@@ -197,6 +197,12 @@ const mobsData = {
   },
 };
 
+const naturalRegeneration = {
+    manaRegen: 3,          // Regenerates 3 mana per regenerationTime
+    hpRegen: 4,            // Regenerates 4 health per regenerationTime
+    regenerationTime: 5000 // Time in milliseconds (e.g., 5000ms = 5 seconds)
+  };
+
 // Export everything
 export {
   playerProfile,
@@ -208,4 +214,5 @@ export {
   playerBackpack,
   playerSkills,
   mobsData,
+  naturalRegeneration,
 };

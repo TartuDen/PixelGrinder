@@ -3,7 +3,8 @@
 import {
   playerProfile,
   mobsData,
-  playerSkills, // <-- IMPORT playerSkills!
+  playerSkills, // Import playerSkills
+  naturalRegeneration, // Import naturalRegeneration
 } from "../MOCKdata.js";
 
 import {
@@ -18,9 +19,12 @@ export default class MainScene extends Phaser.Scene {
     this.currentTargetIndex = null;
     this.targetedMob = null;
 
-    // Store skill references and player's current mana
+    // Store skill references and player's current stats
     this.skillKeyMap = {}; // e.g., { 1: { name: 'magic_wip', ... }, 2: {...} }
-    this.currentMana = 150; // Example: fetch from calculatePlayerStats() or mock
+    this.currentMana = 0;
+    this.currentHealth = 0;
+    this.maxMana = 0;
+    this.maxHealth = 0;
   }
 
   preload() {
@@ -50,16 +54,27 @@ export default class MainScene extends Phaser.Scene {
     // 1) Assign skills to keys 1..10 and update HTML
     this.setupSkills();
 
-    // TAB logic
+    // 2) Initialize player's current and max health/mana
+    const playerStats = calculatePlayerStats();
+    this.maxHealth = playerStats.health;
+    this.currentHealth = this.maxHealth;
+    this.maxMana = playerStats.mana;
+    this.currentMana = this.maxMana;
+
+    // 3) Start natural regeneration
+    this.time.addEvent({
+      delay: naturalRegeneration.regenerationTime, // milliseconds
+      callback: this.regenerateStats,
+      callbackScope: this,
+      loop: true,
+    });
+
+    // TAB targeting logic
     this.input.keyboard.on("keydown-TAB", (event) => {
       event.preventDefault();
       this.cycleTarget();
       this.updateUI();
     });
-
-    // Just for demonstration, we'll keep the old "basicAttack" on key "1"
-    // but it will be overridden if playerSkills[0] (1st skill) exists.
-    // See setupSkills() below for how we register skill keys.
   }
 
   update() {
@@ -114,47 +129,82 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
+    // Use the skill based on its type
     if (skill.magicAttack > 0) {
-      this.useMagicSkill(skill);
+      const success = this.useMagicSkill(skill);
+      if (success) this.deductMana(skill.manaCost); // Deduct mana only on success
     } else if (skill.meleeAttack > 0) {
-      this.useMeleeSkill(skill);
+      const success = this.useMeleeSkill(skill);
+      if (success) this.deductMana(skill.manaCost); // Deduct mana only on success
     } else {
       console.log(`Skill ${skill.name} doesn't have a recognized damage type!`);
     }
 
-    // Deduct mana and update the UI
-    this.currentMana = Math.max(0, this.currentMana - skill.manaCost);
+    // Update the UI
     this.updateUI();
   }
 
   useMagicSkill(skill) {
     if (!this.targetedMob) {
       console.log(`No target selected for magic skill: ${skill.name}`);
-      return;
+      return false; // Indicate failure
     }
 
     const playerStats = calculatePlayerStats();
     const mobKey = this.targetedMob.customData.id;
     const mobStats = mobsData[mobKey];
-    const damage = calculateMagicDamage(playerStats, mobStats) + skill.magicAttack;
+    const damage =
+      calculateMagicDamage(playerStats, mobStats) + skill.magicAttack;
 
     this.applyDamageToMob(this.targetedMob, damage);
     console.log(`Used magic skill: ${skill.name}, dealt ${damage} damage.`);
+    return true; // Indicate success
   }
 
   useMeleeSkill(skill) {
     if (!this.targetedMob) {
       console.log(`No target selected for melee skill: ${skill.name}`);
-      return;
+      return false; // Indicate failure
     }
 
     const playerStats = calculatePlayerStats();
     const mobKey = this.targetedMob.customData.id;
     const mobStats = mobsData[mobKey];
-    const damage = calculateMeleeDamage(playerStats, mobStats) + skill.meleeAttack;
+    const damage =
+      calculateMeleeDamage(playerStats, mobStats) + skill.meleeAttack;
 
     this.applyDamageToMob(this.targetedMob, damage);
     console.log(`Used melee skill: ${skill.name}, dealt ${damage} damage.`);
+    return true; // Indicate success
+  }
+
+  deductMana(amount) {
+    this.currentMana = Math.max(0, this.currentMana - amount);
+  }
+
+  regenerateStats() {
+    // Regenerate mana
+    const manaBefore = this.currentMana;
+    this.currentMana = Math.min(
+      this.maxMana,
+      this.currentMana + naturalRegeneration.manaRegen
+    );
+    const manaAfter = this.currentMana;
+
+    // Regenerate health
+    const healthBefore = this.currentHealth;
+    this.currentHealth = Math.min(
+      this.maxHealth,
+      this.currentHealth + naturalRegeneration.hpRegen
+    );
+    const healthAfter = this.currentHealth;
+
+    // Debug log
+    console.log(
+      `Regenerated: +${manaAfter - manaBefore} mana, +${
+        healthAfter - healthBefore
+      } health.`
+    );
   }
 
   applyDamageToMob(mob, damage) {
@@ -191,21 +241,6 @@ export default class MainScene extends Phaser.Scene {
     // Tint the newly targeted mob
     mob.setTint(0xff0000);
   }
-
-  // basicAttack() {
-  //   // (Optional fallback if you want a default melee attack on key "1")
-  //   if (!this.targetedMob) return;
-
-  //   const playerStats = calculatePlayerStats();
-  //   const mobKey = this.targetedMob.customData.id;
-  //   const mobStats = mobsData[mobKey];
-  //   if (!mobStats) return;
-
-  //   const damage = calculateMeleeDamage(playerStats, mobStats);
-
-  //   this.applyDamageToMob(this.targetedMob, damage);
-  //   console.log(`Player did a basic melee attack for ${damage} damage.`);
-  // }
 
   handleMobDeath(mob) {
     // Mark as dead so movement code ignores it
@@ -269,23 +304,28 @@ export default class MainScene extends Phaser.Scene {
   }
 
   updateUI() {
-    const finalStats = calculatePlayerStats();
-    const { health, mana } = finalStats;
     const { name, totalExp } = playerProfile;
     const level = 5;
 
-    const currentHealth = health; // Replace with actual logic if needed
-    const healthPercent = (currentHealth / health) * 100;
+    // Update health bar
+    const healthPercent = (this.currentHealth / this.maxHealth) * 100;
     this.uiHealthFill.style.width = `${healthPercent}%`;
+    // Update health text
+    const healthText = document.getElementById("health-text");
+    healthText.textContent = `HP: ${this.currentHealth}/${this.maxHealth}`;
 
-    const manaPercent = (this.currentMana / mana) * 100;
+    // Update mana bar
+    const manaPercent = (this.currentMana / this.maxMana) * 100;
     this.uiManaFill.style.width = `${manaPercent}%`;
+    // Update mana text
+    const manaText = document.getElementById("mana-text");
+    manaText.textContent = `Mana: ${this.currentMana}/${this.maxMana}`;
 
+    // Update texts
     this.uiName.textContent = `Name: ${name}`;
     this.uiLevel.textContent = `Level: ${level}`;
     this.uiXP.textContent = `XP: ${totalExp}`;
   }
-
 
   /* ============================================= */
   /*              Assets & Map Setup              */
@@ -599,4 +639,51 @@ export default class MainScene extends Phaser.Scene {
       // this.player.setFrame(0);
     }
   }
+
+  /* ============================================= */
+  /*        Targeting, Attacking, & UI            */
+  /* ============================================= */
+
+  /* (Already defined above) */
+
+  /* ============================================= */
+  /*           Damage Handling Methods             */
+  /* ============================================= */
+
+  /* (Already defined above: useSkill, useMagicSkill, useMeleeSkill, applyDamageToMob, etc.) */
+
+  /* ============================================= */
+  /*           Natural Regeneration                */
+  /* ============================================= */
+
+  regenerateStats() {
+    // Regenerate mana
+    const manaBefore = this.currentMana;
+    this.currentMana = Math.min(
+      this.maxMana,
+      this.currentMana + naturalRegeneration.manaRegen
+    );
+    const manaAfter = this.currentMana;
+
+    // Regenerate health
+    const healthBefore = this.currentHealth;
+    this.currentHealth = Math.min(
+      this.maxHealth,
+      this.currentHealth + naturalRegeneration.hpRegen
+    );
+    const healthAfter = this.currentHealth;
+
+    // Debug log
+    console.log(
+      `Regenerated: +${manaAfter - manaBefore} mana, +${
+        healthAfter - healthBefore
+      } health.`
+    );
+  }
+
+  /* ============================================= */
+  /*        Additional Helper Methods             */
+  /* ============================================= */
+
+  /* (Already defined above: applyDamageToMob, etc.) */
 }
