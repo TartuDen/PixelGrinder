@@ -322,7 +322,7 @@ export default class MainScene extends Phaser.Scene {
     manaText.textContent = `Mana: ${this.currentMana}/${this.maxMana}`;
 
     // Update texts
-    this.uiName.textContent = `Name: ${name}`;
+    this.uiName.textContent = `${name}`;
     this.uiLevel.textContent = `Level: ${level}`;
     this.uiXP.textContent = `XP: ${totalExp}`;
   }
