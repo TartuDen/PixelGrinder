@@ -155,12 +155,14 @@ const playerBackpack = {
 const playerSkills = [
   {
     name: "magic_wip",
+    manaCost: 5,
     range: 20,
     magicAttack: 2,
     meleeAttack: 0,
   },
   {
     name: "fire_ball",
+    manaCost: 10,
     range: 20,
     magicAttack: 3,
     meleeAttack: 0,
