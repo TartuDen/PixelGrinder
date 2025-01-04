@@ -18,8 +18,9 @@ export default class MainScene extends Phaser.Scene {
     this.currentTargetIndex = null;
     this.targetedMob = null;
 
-    // We'll store skill references here:
-    this.skillKeyMap = {}; // e.g. { 1: { name: 'magic_wip', ... }, 2: {...} }
+    // Store skill references and player's current mana
+    this.skillKeyMap = {}; // e.g., { 1: { name: 'magic_wip', ... }, 2: {...} }
+    this.currentMana = 150; // Example: fetch from calculatePlayerStats() or mock
   }
 
   preload() {
@@ -42,7 +43,9 @@ export default class MainScene extends Phaser.Scene {
     this.uiXP = document.getElementById("player-xp");
 
     // --- Casting Bar (10 slots) ---
-    this.castingBarSlots = document.querySelectorAll("#casting-bar .casting-slot");
+    this.castingBarSlots = document.querySelectorAll(
+      "#casting-bar .casting-slot"
+    );
 
     // 1) Assign skills to keys 1..10 and update HTML
     this.setupSkills();
@@ -76,11 +79,7 @@ export default class MainScene extends Phaser.Scene {
   /* ============================================= */
 
   setupSkills() {
-    // We have up to 10 skill slots
     const maxSlots = 10;
-
-    // Phaser KeyCodes for digits 1..10
-    // (10 is KeyCodes.ZERO, but let's keep it simple and do 1..9 and 0, if you prefer)
     const keyCodes = [
       Phaser.Input.Keyboard.KeyCodes.ONE,
       Phaser.Input.Keyboard.KeyCodes.TWO,
@@ -91,46 +90,41 @@ export default class MainScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.SEVEN,
       Phaser.Input.Keyboard.KeyCodes.EIGHT,
       Phaser.Input.Keyboard.KeyCodes.NINE,
-      Phaser.Input.Keyboard.KeyCodes.ZERO, 
+      Phaser.Input.Keyboard.KeyCodes.ZERO,
     ];
 
-    // Loop through 0..9
-    for (let i = 0; i < maxSlots; i++) {
-      const skill = playerSkills[i]; // might be undefined if player has < i+1 skills
-      const slotIndex = i; // 0-based
-      const displayIndex = i + 1; // for human reading (slot #1..10)
+    playerSkills.forEach((skill, index) => {
+      if (index >= maxSlots) return; // Ignore extra skills beyond 10
+      const key = keyCodes[index];
+      const slotEl = this.castingBarSlots[index];
 
-      // Update the casting bar slot text
-      const slotEl = this.castingBarSlots[i];
-      if (skill) {
-        slotEl.textContent = skill.name; 
-      } else {
-        // If no skill, you could leave blank or keep the default "1,2.."
-        slotEl.textContent = "";
-      }
+      // Update casting bar slot text with skill name and mana cost
+      slotEl.textContent = `${skill.name} (${skill.manaCost})`;
 
-      // Register the key input
-      const key = this.input.keyboard.addKey(keyCodes[i]);
-
-      // On press, execute the skill or fallback
-      key.on("down", () => {
-        if (!skill) {
-          // No skill in this slot
-          console.log(`Slot ${displayIndex} has no skill assigned.`);
-          return;
-        }
-        // We do a simple check if the skill is magic or melee-based
-        // based on whether skill object has "magicAttack" or "meleeAttack"
-        // (This is flexible; adjust as you see fit.)
-        if (skill.magicAttack && skill.magicAttack > 0) {
-          this.useMagicSkill(skill);
-        } else if (skill.meleeAttack && skill.meleeAttack > 0) {
-          this.useMeleeSkill(skill);
-        } else {
-          console.log(`Skill ${skill.name} doesn't have a recognized damage type!`);
-        }
+      // Register skill to the corresponding key
+      this.input.keyboard.addKey(key).on("down", () => {
+        this.useSkill(skill);
       });
+    });
+  }
+
+  useSkill(skill) {
+    if (this.currentMana < skill.manaCost) {
+      console.log(`Not enough mana to use ${skill.name}!`);
+      return;
     }
+
+    if (skill.magicAttack > 0) {
+      this.useMagicSkill(skill);
+    } else if (skill.meleeAttack > 0) {
+      this.useMeleeSkill(skill);
+    } else {
+      console.log(`Skill ${skill.name} doesn't have a recognized damage type!`);
+    }
+
+    // Deduct mana and update the UI
+    this.currentMana = Math.max(0, this.currentMana - skill.manaCost);
+    this.updateUI();
   }
 
   useMagicSkill(skill) {
@@ -138,20 +132,14 @@ export default class MainScene extends Phaser.Scene {
       console.log(`No target selected for magic skill: ${skill.name}`);
       return;
     }
-    // 1) Get final player stats
+
     const playerStats = calculatePlayerStats();
-    // 2) Get mob stats
     const mobKey = this.targetedMob.customData.id;
     const mobStats = mobsData[mobKey];
+    const damage = calculateMagicDamage(playerStats, mobStats) + skill.magicAttack;
 
-    // 3) Calculate magic damage
-    const dmg = calculateMagicDamage(playerStats, mobStats);
-    // Optionally scale by skill's magicAttack if you want, e.g. + skill.magicAttack
-    const totalDamage = dmg + skill.magicAttack;
-
-    // 4) Apply damage
-    this.applyDamageToMob(this.targetedMob, totalDamage);
-    console.log(`Used magic skill: ${skill.name}, dealt ${totalDamage} damage.`);
+    this.applyDamageToMob(this.targetedMob, damage);
+    console.log(`Used magic skill: ${skill.name}, dealt ${damage} damage.`);
   }
 
   useMeleeSkill(skill) {
@@ -159,15 +147,14 @@ export default class MainScene extends Phaser.Scene {
       console.log(`No target selected for melee skill: ${skill.name}`);
       return;
     }
+
     const playerStats = calculatePlayerStats();
     const mobKey = this.targetedMob.customData.id;
     const mobStats = mobsData[mobKey];
+    const damage = calculateMeleeDamage(playerStats, mobStats) + skill.meleeAttack;
 
-    const dmg = calculateMeleeDamage(playerStats, mobStats);
-    const totalDamage = dmg + skill.meleeAttack;
-
-    this.applyDamageToMob(this.targetedMob, totalDamage);
-    console.log(`Used melee skill: ${skill.name}, dealt ${totalDamage} damage.`);
+    this.applyDamageToMob(this.targetedMob, damage);
+    console.log(`Used melee skill: ${skill.name}, dealt ${damage} damage.`);
   }
 
   applyDamageToMob(mob, damage) {
@@ -205,20 +192,20 @@ export default class MainScene extends Phaser.Scene {
     mob.setTint(0xff0000);
   }
 
-  basicAttack() {
-    // (Optional fallback if you want a default melee attack on key "1")
-    if (!this.targetedMob) return;
+  // basicAttack() {
+  //   // (Optional fallback if you want a default melee attack on key "1")
+  //   if (!this.targetedMob) return;
 
-    const playerStats = calculatePlayerStats();
-    const mobKey = this.targetedMob.customData.id;
-    const mobStats = mobsData[mobKey];
-    if (!mobStats) return;
+  //   const playerStats = calculatePlayerStats();
+  //   const mobKey = this.targetedMob.customData.id;
+  //   const mobStats = mobsData[mobKey];
+  //   if (!mobStats) return;
 
-    const damage = calculateMeleeDamage(playerStats, mobStats);
+  //   const damage = calculateMeleeDamage(playerStats, mobStats);
 
-    this.applyDamageToMob(this.targetedMob, damage);
-    console.log(`Player did a basic melee attack for ${damage} damage.`);
-  }
+  //   this.applyDamageToMob(this.targetedMob, damage);
+  //   console.log(`Player did a basic melee attack for ${damage} damage.`);
+  // }
 
   handleMobDeath(mob) {
     // Mark as dead so movement code ignores it
@@ -282,30 +269,23 @@ export default class MainScene extends Phaser.Scene {
   }
 
   updateUI() {
-    // 1) Retrieve player's final stats
     const finalStats = calculatePlayerStats();
-    const { health, mana } = finalStats; 
-
-    // 2) Retrieve meta data from playerProfile
+    const { health, mana } = finalStats;
     const { name, totalExp } = playerProfile;
-    // For demo: pretend level is 5
     const level = 5;
 
-    // 3) Suppose current HP/Mana = derived HP/Mana
-    const currentHealth = health;
-    const currentMana = mana;
-
-    // 4) Update UI
-    this.uiName.textContent = `Name: ${name}`;
+    const currentHealth = health; // Replace with actual logic if needed
     const healthPercent = (currentHealth / health) * 100;
     this.uiHealthFill.style.width = `${healthPercent}%`;
 
-    const manaPercent = (currentMana / mana) * 100;
+    const manaPercent = (this.currentMana / mana) * 100;
     this.uiManaFill.style.width = `${manaPercent}%`;
 
+    this.uiName.textContent = `Name: ${name}`;
     this.uiLevel.textContent = `Level: ${level}`;
     this.uiXP.textContent = `XP: ${totalExp}`;
   }
+
 
   /* ============================================= */
   /*              Assets & Map Setup              */
@@ -355,25 +335,37 @@ export default class MainScene extends Phaser.Scene {
     // Player animations
     this.anims.create({
       key: "walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 0, end: 2 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 0,
+        end: 2,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 12, end: 14 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 12,
+        end: 14,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 24, end: 26 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 24,
+        end: 26,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 36, end: 38 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 36,
+        end: 38,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -381,25 +373,37 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 48,
+        end: 50,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 60,
+        end: 62,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 72,
+        end: 74,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 84,
+        end: 86,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -419,7 +423,11 @@ export default class MainScene extends Phaser.Scene {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
+    this.player = this.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -560,7 +568,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   handlePlayerMovement() {
-    if (!this.player || !this.player.body) return; 
+    if (!this.player || !this.player.body) return;
 
     this.player.body.setVelocity(0);
 
