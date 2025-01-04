@@ -1,20 +1,25 @@
 // scenes/MainScene.js
 
-import { worldW, worldH } from "../config.js"; // if you need them
 import {
-  player_data,
-  player_basic_stats,
-  player_main_stats,
-  player_wear_items,
-  player_backpack,
-  mobsData
+  playerProfile,
+  mobsData,
+  playerSkills, // <-- IMPORT playerSkills!
 } from "../MOCKdata.js";
+
+import {
+  calculatePlayerStats,
+  calculateMagicDamage,
+  calculateMeleeDamage,
+} from "../helpers/calculatePlayerStats.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
     this.currentTargetIndex = null;
     this.targetedMob = null;
+
+    // We'll store skill references here:
+    this.skillKeyMap = {}; // e.g. { 1: { name: 'magic_wip', ... }, 2: {...} }
   }
 
   preload() {
@@ -29,12 +34,18 @@ export default class MainScene extends Phaser.Scene {
     this.setupControls();
     this.createMobs();
 
-    // 1) Always grab these references so they're never undefined
+    // -- Grab DOM references (UI)
     this.uiName = document.getElementById("player-name");
     this.uiHealthFill = document.getElementById("health-fill");
     this.uiManaFill = document.getElementById("mana-fill");
     this.uiLevel = document.getElementById("player-level");
     this.uiXP = document.getElementById("player-xp");
+
+    // --- Casting Bar (10 slots) ---
+    this.castingBarSlots = document.querySelectorAll("#casting-bar .casting-slot");
+
+    // 1) Assign skills to keys 1..10 and update HTML
+    this.setupSkills();
 
     // TAB logic
     this.input.keyboard.on("keydown-TAB", (event) => {
@@ -43,11 +54,136 @@ export default class MainScene extends Phaser.Scene {
       this.updateUI();
     });
 
-    // Basic attack on key "1"
-    this.input.keyboard.on("keydown-ONE", () => {
-      this.basicAttack();
+    // Just for demonstration, we'll keep the old "basicAttack" on key "1"
+    // but it will be overridden if playerSkills[0] (1st skill) exists.
+    // See setupSkills() below for how we register skill keys.
+  }
+
+  update() {
+    this.updateUI();
+    this.handlePlayerMovement();
+
+    // Update HP text positions for all mobs
+    this.mobs.getChildren().forEach((mob) => {
+      if (mob.active && mob.customData && mob.customData.hpText) {
+        mob.customData.hpText.setPosition(mob.x, mob.y - 20);
+      }
     });
   }
+
+  /* ============================================= */
+  /*           Skills & Key Assignments           */
+  /* ============================================= */
+
+  setupSkills() {
+    // We have up to 10 skill slots
+    const maxSlots = 10;
+
+    // Phaser KeyCodes for digits 1..10
+    // (10 is KeyCodes.ZERO, but let's keep it simple and do 1..9 and 0, if you prefer)
+    const keyCodes = [
+      Phaser.Input.Keyboard.KeyCodes.ONE,
+      Phaser.Input.Keyboard.KeyCodes.TWO,
+      Phaser.Input.Keyboard.KeyCodes.THREE,
+      Phaser.Input.Keyboard.KeyCodes.FOUR,
+      Phaser.Input.Keyboard.KeyCodes.FIVE,
+      Phaser.Input.Keyboard.KeyCodes.SIX,
+      Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      Phaser.Input.Keyboard.KeyCodes.NINE,
+      Phaser.Input.Keyboard.KeyCodes.ZERO, 
+    ];
+
+    // Loop through 0..9
+    for (let i = 0; i < maxSlots; i++) {
+      const skill = playerSkills[i]; // might be undefined if player has < i+1 skills
+      const slotIndex = i; // 0-based
+      const displayIndex = i + 1; // for human reading (slot #1..10)
+
+      // Update the casting bar slot text
+      const slotEl = this.castingBarSlots[i];
+      if (skill) {
+        slotEl.textContent = skill.name; 
+      } else {
+        // If no skill, you could leave blank or keep the default "1,2.."
+        slotEl.textContent = "";
+      }
+
+      // Register the key input
+      const key = this.input.keyboard.addKey(keyCodes[i]);
+
+      // On press, execute the skill or fallback
+      key.on("down", () => {
+        if (!skill) {
+          // No skill in this slot
+          console.log(`Slot ${displayIndex} has no skill assigned.`);
+          return;
+        }
+        // We do a simple check if the skill is magic or melee-based
+        // based on whether skill object has "magicAttack" or "meleeAttack"
+        // (This is flexible; adjust as you see fit.)
+        if (skill.magicAttack && skill.magicAttack > 0) {
+          this.useMagicSkill(skill);
+        } else if (skill.meleeAttack && skill.meleeAttack > 0) {
+          this.useMeleeSkill(skill);
+        } else {
+          console.log(`Skill ${skill.name} doesn't have a recognized damage type!`);
+        }
+      });
+    }
+  }
+
+  useMagicSkill(skill) {
+    if (!this.targetedMob) {
+      console.log(`No target selected for magic skill: ${skill.name}`);
+      return;
+    }
+    // 1) Get final player stats
+    const playerStats = calculatePlayerStats();
+    // 2) Get mob stats
+    const mobKey = this.targetedMob.customData.id;
+    const mobStats = mobsData[mobKey];
+
+    // 3) Calculate magic damage
+    const dmg = calculateMagicDamage(playerStats, mobStats);
+    // Optionally scale by skill's magicAttack if you want, e.g. + skill.magicAttack
+    const totalDamage = dmg + skill.magicAttack;
+
+    // 4) Apply damage
+    this.applyDamageToMob(this.targetedMob, totalDamage);
+    console.log(`Used magic skill: ${skill.name}, dealt ${totalDamage} damage.`);
+  }
+
+  useMeleeSkill(skill) {
+    if (!this.targetedMob) {
+      console.log(`No target selected for melee skill: ${skill.name}`);
+      return;
+    }
+    const playerStats = calculatePlayerStats();
+    const mobKey = this.targetedMob.customData.id;
+    const mobStats = mobsData[mobKey];
+
+    const dmg = calculateMeleeDamage(playerStats, mobStats);
+    const totalDamage = dmg + skill.meleeAttack;
+
+    this.applyDamageToMob(this.targetedMob, totalDamage);
+    console.log(`Used melee skill: ${skill.name}, dealt ${totalDamage} damage.`);
+  }
+
+  applyDamageToMob(mob, damage) {
+    mob.customData.hp = Math.max(0, mob.customData.hp - damage);
+    mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
+
+    if (mob.customData.hp <= 0) {
+      console.log("Mob died!");
+      this.handleMobDeath(mob);
+      this.targetedMob = null;
+    }
+  }
+
+  /* ============================================= */
+  /*        Targeting, Attacking, & UI            */
+  /* ============================================= */
 
   cycleTarget() {
     const mobArray = this.mobs.getChildren();
@@ -70,58 +206,47 @@ export default class MainScene extends Phaser.Scene {
   }
 
   basicAttack() {
+    // (Optional fallback if you want a default melee attack on key "1")
     if (!this.targetedMob) return;
 
-    const damage = Math.max(
-      (this.player.customData.str || 0) -
-        (this.targetedMob.customData.melee_def || 0),
-      1
-    );
+    const playerStats = calculatePlayerStats();
+    const mobKey = this.targetedMob.customData.id;
+    const mobStats = mobsData[mobKey];
+    if (!mobStats) return;
 
-    // Clamp HP at 0
-    this.targetedMob.customData.hp = Math.max(
-      0,
-      this.targetedMob.customData.hp - damage
-    );
+    const damage = calculateMeleeDamage(playerStats, mobStats);
 
-    this.targetedMob.customData.hpText.setText(
-      `HP: ${this.targetedMob.customData.hp}`
-    );
+    this.applyDamageToMob(this.targetedMob, damage);
+    console.log(`Player did a basic melee attack for ${damage} damage.`);
+  }
 
-    if (this.targetedMob.customData.hp <= 0) {
-      console.log("Mob died!");
+  handleMobDeath(mob) {
+    // Mark as dead so movement code ignores it
+    mob.customData.isDead = true;
+    // Immediately stop velocity
+    mob.body.setVelocity(0, 0);
+    // Play dead animation
+    mob.anims.play("mob-dead", true);
 
-      const deadMob = this.targetedMob;
+    // Delay hiding mob until the animation finishes
+    this.time.delayedCall(1000, () => {
+      mob.setActive(false).setVisible(false);
+      mob.body.setEnable(false);
+      mob.customData.hpText.setVisible(false);
 
-      // Mark as dead so movement code ignores it
-      deadMob.customData.isDead = true;
-      // Immediately stop velocity
-      deadMob.body.setVelocity(0, 0);
-
-      // Play dead animation
-      deadMob.anims.play("mob-dead", true);
-
-      // Delay hiding mob until the animation finishes
-      this.time.delayedCall(1000, () => {
-        deadMob.setActive(false).setVisible(false);
-        deadMob.body.setEnable(false);
-        deadMob.customData.hpText.setVisible(false);
-
-        // Wait 5s then re-activate
-        this.time.addEvent({
-          delay: 5000,
-          callback: () => {
-            this.respawnMob(deadMob);
-          },
-        });
+      // Respawn after 5s
+      this.time.addEvent({
+        delay: 5000,
+        callback: () => {
+          this.respawnMob(mob);
+        },
       });
-
-      this.targetedMob = null;
-    }
+    });
   }
 
   respawnMob(mob) {
     const mobInfo = mobsData[mob.customData.id];
+    if (!mobInfo) return;
 
     // Reset HP
     mob.customData.hp = mobInfo.health;
@@ -150,75 +275,62 @@ export default class MainScene extends Phaser.Scene {
   }
 
   spawnCorpse(x, y) {
-    const corpse = this.add.sprite(x, y, "$dead").setFrame(9); // Set the first frame of the dead animation
+    const corpse = this.add.sprite(x, y, "$dead").setFrame(9);
     corpse.setTint(0x666666);
-    // remove corpse after 10s
+    // Remove corpse after 10s
     this.time.delayedCall(10000, () => corpse.destroy());
   }
 
-  update() {
-    this.updateUI();
-    this.handlePlayerMovement();
-    // Update HP text positions for all mobs
-    this.mobs.getChildren().forEach((mob) => {
-      if (mob.active && mob.customData && mob.customData.hpText) {
-        mob.customData.hpText.setPosition(mob.x, mob.y - 20);
-      }
-    });
-  }
-
   updateUI() {
-    // Suppose we have "player_main_stats" object
-    const { health, mana } = player_main_stats;
-    // The player_data object might have a "currentLevel" or "totalExp"
-    const { playerName, totalExp } = player_data;
-    // If you have a "level" calculation, e.g. level = 5
-    const level = 5; // placeholder
-    const currentHealth = 80; // example; maybe you store this in your player object
-    const maxHealth = health; // 100 from your data
-    const currentMana = 130; // example
-    const maxMana = mana; // 150 from your data
+    // 1) Retrieve player's final stats
+    const finalStats = calculatePlayerStats();
+    const { health, mana } = finalStats; 
 
-    // 1) Player Name
-    this.uiName.textContent = `Name: ${playerName}`;
+    // 2) Retrieve meta data from playerProfile
+    const { name, totalExp } = playerProfile;
+    // For demo: pretend level is 5
+    const level = 5;
 
-    // 2) Health
-    const healthPercentage = (currentHealth / maxHealth) * 100;
-    this.uiHealthFill.style.width = `${healthPercentage}%`;
+    // 3) Suppose current HP/Mana = derived HP/Mana
+    const currentHealth = health;
+    const currentMana = mana;
 
-    // 3) Mana
-    const manaPercentage = (currentMana / maxMana) * 100;
-    this.uiManaFill.style.width = `${manaPercentage}%`;
+    // 4) Update UI
+    this.uiName.textContent = `Name: ${name}`;
+    const healthPercent = (currentHealth / health) * 100;
+    this.uiHealthFill.style.width = `${healthPercent}%`;
 
-    // 4) Level
+    const manaPercent = (currentMana / mana) * 100;
+    this.uiManaFill.style.width = `${manaPercent}%`;
+
     this.uiLevel.textContent = `Level: ${level}`;
-
-    // 5) XP
     this.uiXP.textContent = `XP: ${totalExp}`;
   }
 
-  /* ================ Helper Methods ================ */
+  /* ============================================= */
+  /*              Assets & Map Setup              */
+  /* ============================================= */
 
   loadAssets() {
-    // 1) Load your tilemap JSON
+    // Tilemap JSON
     this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
 
-    // 2) Load the tileset image
+    // Tileset image
     this.load.image("tmw_desert_spacing", "assets/map/tmw_desert_spacing.png");
 
-    // 3) Load other assets
+    // Other assets
     this.load.image("player", "assets/player.png");
 
-    // 4) Load the sprite sheet for characters
+    // Characters sprite sheet
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
 
-    // DEAD MOB ANIMATION
+    // Dead mob animation
     this.load.spritesheet("$dead", "assets/$dead.png", {
-      frameWidth: 32, // Individual frame width (96px / 3 columns)
-      frameHeight: 32, // Individual frame height (128px / 4 rows)
+      frameWidth: 32,
+      frameHeight: 32,
     });
   }
 
@@ -237,53 +349,31 @@ export default class MainScene extends Phaser.Scene {
     this.collisionLayer.setCollision([
       30, 31, 32, 37, 38, 39, 40, 45, 46, 47, 48,
     ]);
-
-    // Optional debug
-    // this.collisionLayer.renderDebug(this.add.graphics(), {
-    //   tileColor: null,
-    //   collidingTileColor: new Phaser.Display.Color(255, 0, 0, 100),
-    //   faceColor: new Phaser.Display.Color(0, 255, 0, 100),
-    // });
   }
 
   defineAnimations() {
     // Player animations
     this.anims.create({
       key: "walk-down",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 0,
-        end: 2,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 0, end: 2 }),
       frameRate: 10,
       repeat: -1,
     });
-
     this.anims.create({
       key: "walk-left",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 12,
-        end: 14,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 12, end: 14 }),
       frameRate: 10,
       repeat: -1,
     });
-
     this.anims.create({
       key: "walk-right",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 24,
-        end: 26,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 24, end: 26 }),
       frameRate: 10,
       repeat: -1,
     });
-
     this.anims.create({
       key: "walk-up",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 36,
-        end: 38,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 36, end: 38 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -291,37 +381,25 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 48,
-        end: 50,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 60,
-        end: 62,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 72,
-        end: 74,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 84,
-        end: 86,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -329,43 +407,28 @@ export default class MainScene extends Phaser.Scene {
     // Dead animation for mobs
     this.anims.create({
       key: "mob-dead",
-      frames: this.anims.generateFrameNumbers("$dead", {
-        start: 7, // The frame index corresponding to row 3, column 2 (row index starts at 0)
-        end: 7, // Adjust as needed for the number of frames in the dead animation
-      }),
-      frameRate: 0, // Animation speed
-      repeat: 0, // Play only once
+      frames: this.anims.generateFrameNumbers("$dead", { start: 7, end: 7 }),
+      frameRate: 0,
+      repeat: 0,
     });
   }
 
   createPlayer() {
-    // HeroStart position
+    // Find HeroStart position from Tiled
     const heroStart = this.map.findObject(
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(
-      heroStart.x,
-      heroStart.y,
-      "characters"
-    );
+    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
+    // Collision with walls
     this.physics.add.collider(this.player, this.collisionLayer);
 
-    // Optionally start an idle or walk animation
+    // Start an idle or walk-down animation
     this.player.anims.play("walk-down");
     this.playerSpeed = 100;
-
-    // asign player stats to the player object
-    this.player.customData = {
-      name: player_data.playerName,
-      totalExp: player_data.totalExp,
-      str: player_main_stats.melee_attack,
-      def: player_main_stats.melee_def,
-      // etc.
-    };
   }
 
   setupCamera() {
@@ -393,8 +456,12 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  /* ============================================= */
+  /*                 Mobs Setup                   */
+  /* ============================================= */
+
   createMobs() {
-    const mobTypeID = "slime"; // or "goblin"
+    const mobTypeID = "slime";
     const mobInfo = mobsData[mobTypeID];
 
     this.mobs = this.physics.add.group({ collideWorldBounds: true });
@@ -411,9 +478,9 @@ export default class MainScene extends Phaser.Scene {
       mob.customData = {
         id: mobTypeID,
         hp: mobInfo.health,
-        melee_def: mobInfo.melee_def,
         spawnX: spawnZone.x,
         spawnY: spawnZone.y,
+        isDead: false,
       };
 
       mob.customData.hpText = this.add
@@ -431,13 +498,11 @@ export default class MainScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
 
-      // ***** Make interactive & add click event
       mob.setInteractive({ useHandCursor: true });
       mob.on("pointerdown", () => {
         this.onMobClicked(mob);
       });
 
-      // Basic setup
       mob.setScale(1);
       mob.anims.play("mob-walk-down");
       this.assignMobMovement(mob);
@@ -447,55 +512,43 @@ export default class MainScene extends Phaser.Scene {
   onMobClicked(mob) {
     if (!mob.active) return;
 
-    // Clear tints
     this.mobs.getChildren().forEach((m) => m.clearTint());
-
-    // Tint this one
     mob.setTint(0xff0000);
 
-    // Set as main target
     this.targetedMob = mob;
-
-    // Sync the index if you want
     const mobArray = this.mobs.getChildren();
     this.currentTargetIndex = mobArray.indexOf(mob);
-
     console.log("Mob clicked:", mob.customData.id, "HP:", mob.customData.hp);
   }
 
   assignMobMovement(mob) {
     const changeDirection = () => {
-      // If mob is inactive or flagged dead, skip
       if (!mob.active || mob.customData.isDead) {
         return;
       }
-
       const randomDirection = Phaser.Math.Between(0, 3);
       const speed = 50;
 
       switch (randomDirection) {
-        case 0: // Right
+        case 0:
           mob.body.setVelocity(speed, 0);
           mob.anims.play("mob-walk-right", true);
           break;
-        case 1: // Left
+        case 1:
           mob.body.setVelocity(-speed, 0);
           mob.anims.play("mob-walk-left", true);
           break;
-        case 2: // Down
+        case 2:
           mob.body.setVelocity(0, speed);
           mob.anims.play("mob-walk-down", true);
           break;
-        case 3: // Up
+        case 3:
           mob.body.setVelocity(0, -speed);
           mob.anims.play("mob-walk-up", true);
           break;
       }
 
-      // Update HP text position
       mob.customData.hpText.setPosition(mob.x, mob.y - 20);
-
-      // Schedule next direction change
       this.time.addEvent({
         delay: Phaser.Math.Between(3000, 7000),
         callback: changeDirection,
@@ -507,9 +560,8 @@ export default class MainScene extends Phaser.Scene {
   }
 
   handlePlayerMovement() {
-    if (!this.player || !this.player.body) return; // safety
+    if (!this.player || !this.player.body) return; 
 
-    // Reset velocity
     this.player.body.setVelocity(0);
 
     if (this.cursors.up.isDown) {
@@ -528,7 +580,6 @@ export default class MainScene extends Phaser.Scene {
       this.player.anims.play("walk-right", true);
     }
 
-    // Idle
     if (
       !this.cursors.up.isDown &&
       !this.cursors.down.isDown &&
@@ -536,6 +587,7 @@ export default class MainScene extends Phaser.Scene {
       !this.cursors.right.isDown
     ) {
       this.player.anims.stop();
+      // Optionally set an idle frame:
       // this.player.setFrame(0);
     }
   }

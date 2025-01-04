@@ -83,3 +83,10 @@
 #casting-bar {
   --bar-scale: 1.8; /* or 0.8, 1.5, etc. */
 }
+#casting-bar .casting-slot {
+  font-size: 0.3rem;    /* Smaller text */
+  /*white-space: nowrap;  /* Prevent multi-line */
+  overflow: hidden;     /* Hide overflow */
+  text-overflow: ellipsis; /* Show "..." if overflow */
+  text-align: center;   /* Center the text */
+}

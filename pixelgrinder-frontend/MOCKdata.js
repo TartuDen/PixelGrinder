@@ -1,37 +1,125 @@
 // MOCKdata.js
 
-const player_data = {
-  playerName: "Omigod",
+// --- Player Profile (Meta info) ---
+const playerProfile = {
+  class: "mage",
+  name: "Omigod",
   totalExp: 0,
 };
 
-const player_basic_stats = {
-  int_stat: 5,
-  str_stat: 3,
-  dex_stat: 3,
-  con_stat: 4,
-};
-
-const player_main_stats = {
+// --- Player Base Stats ---
+const playerBaseStats = {
   health: 100,
   mana: 150,
-  magic_attack: 5,
-  melee_attack: 5,
-  magic_def: 5,
-  melee_def: 5,
-  evasion: 3,
+  intellect: 5, // formerly int_stat
+  strength: 3, // formerly str_stat
+  dexterity: 3, // formerly dex_stat
+  constitution: 4, // formerly con_stat
 };
 
-const player_wear_items = {
-  weapon: "basic_staff",
-  armor_head: null,
-  armor_chest: null,
-  armor_shoulders: null,
-  armor_legs: null,
-  armor_feet: null,
+// --- Stat Weights (How base stats affect derived stats) ---
+const statWeights = {
+  intellect: {
+    magicAttack: 3,
+    meleeAttack: 0,
+    magicDefense: 2,
+    meleeDefense: 0,
+    magicEvasion: 1,
+    meleeEvasion: 0,
+  },
+  strength: {
+    magicAttack: 0,
+    meleeAttack: 3,
+    magicDefense: 0,
+    meleeDefense: 2,
+    magicEvasion: 0,
+    meleeEvasion: 1,
+  },
+  dexterity: {
+    magicAttack: 1,
+    meleeAttack: 1,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 2,
+    meleeEvasion: 2,
+  },
+  constitution: {
+    magicAttack: 0,
+    meleeAttack: 0,
+    magicDefense: 3,
+    meleeDefense: 3,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+  },
 };
 
-const player_backpack = {
+// --- Weapons and Armors ---
+const weaponItems = [
+  {
+    name: "basic_staff",
+    type: "staff",
+    health: 0,
+    mana: 10,
+    magicAttack: 3,
+    meleeAttack: 1,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+  },
+  {
+    name: "green_branch",
+    type: "staff",
+    health: 0,
+    mana: 10,
+    magicAttack: 5,
+    meleeAttack: 2,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+  },
+];
+
+const armorItems = [
+  {
+    name: "common_robe_chest",
+    type: "robe",
+    health: 10,
+    mana: 12,
+    magicAttack: 0,
+    meleeAttack: 0,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+  },
+  {
+    name: "common_robe_pants",
+    type: "robe",
+    health: 3,
+    mana: 5,
+    magicAttack: 0,
+    meleeAttack: 0,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+  },
+];
+
+// --- What the player is currently wearing ---
+const playerEquippedItems = {
+  weapon: "basic_staff", // matches weaponItems[0].name
+  head: null,
+  chest: null,
+  shoulders: null,
+  legs: null,
+  feet: null,
+};
+
+// --- Player Backpack / Inventory ---
+const playerBackpack = {
   cell_0_0: 0,
   cell_0_1: 0,
   cell_0_2: 0,
@@ -63,85 +151,59 @@ const player_backpack = {
   cell_5_3: null,
   cell_5_4: null,
 };
-
-const player_skills = [
+// --- Skills / Attacks ---
+const playerSkills = [
   {
-    attack_name: "magic wip",
+    name: "magic_wip",
     range: 20,
-    magic_attack: 2,
-    melee_attack: 0,
+    magicAttack: 2,
+    meleeAttack: 0,
   },
   {
-    name: "fire ball",
+    name: "fire_ball",
     range: 20,
-    magic_attack: 3,
-    melee_attack: 0,
+    magicAttack: 3,
+    meleeAttack: 0,
   },
 ];
 
-const STAT_WEIGHTS = {
-  INT: {
-    magic_attack: 3,
-    melee_attack: 0,
-    magic_def: 2,
-    melee_def: 0,
-    magic_evasion: 1,
-    melee_evasion: 0,
-  },
-  STR: {
-    magic_attack: 0,
-    melee_attack: 3,
-    magic_def: 0,
-    melee_def: 2,
-    magic_evasion: 0,
-    melee_evasion: 1,
-  },
-  DEX: {
-    magic_attack: 1,
-    melee_attack: 1,
-    magic_def: 0,
-    melee_def: 0,
-    magic_evasion: 2,
-    melee_evasion: 2,
-  },
-  CON: {
-    magic_attack: 0,
-    melee_attack: 0,
-    magic_def: 3,
-    melee_def: 3,
-    magic_evasion: 0,
-    melee_evasion: 0,
-  },
-};
-
-//================= MOBS=======================
+// --- Mobs Data ---
 const mobsData = {
   slime: {
     name: "Slime",
-    health: 5,
+    range: 3,
+    health: 50,
     mana: 0,
-    magic_attack: 0,
-    melee_attack: 3,
-    magic_def: 200,
-    melee_def: 3,
+    magicAttack: 0,
+    meleeAttack: 3,
+    magicDefense: 2,
+    meleeDefense: 30,
+    magicEvasion: 1,
+    meleeEvasion: 1,
   },
   goblin: {
     name: "Goblin",
+    range: 3,
     health: 40,
     mana: 0,
-    magic_attack: 3,
-    melee_attack: 4,
-    magic_def: 2,
-    melee_def: 5,
+    magicAttack: 3,
+    meleeAttack: 4,
+    magicDefense: 2,
+    meleeDefense: 5,
+    magicEvasion: 2,
+    meleeEvasion: 2,
   },
-  // Add more mob types as needed
 };
 
+// Export everything
 export {
-  player_data,
-  player_basic_stats,
-  player_main_stats,
-  player_wear_items,
-  player_backpack,
+  playerProfile,
+  playerBaseStats,
+  statWeights,
+  weaponItems,
+  armorItems,
+  playerEquippedItems,
+  playerBackpack,
+  playerSkills,
   mobsData,
 };
