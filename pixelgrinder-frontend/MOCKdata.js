@@ -159,10 +159,10 @@ const playerSkills = [
     range: 20,
     magicAttack: 2,
     meleeAttack: 0,
-    
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
-    animationSeq: [0,7],
+    skillImage:
+      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
+    animationSeq: [0, 7],
   },
   {
     name: "fire_ball",
@@ -171,44 +171,53 @@ const playerSkills = [
     magicAttack: 3,
     meleeAttack: 0,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
-    animationSeq: [0,7],
+    skillImage:
+      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
+    animationSeq: [0, 7],
   },
 ];
 
 // --- Mobs Data ---
+
 const mobsData = {
-  slime: {
-    name: "Slime",
-    range: 3,
-    health: 50,
-    mana: 0,
-    magicAttack: 0,
-    meleeAttack: 3,
-    magicDefense: 2,
-    meleeDefense: 30,
-    magicEvasion: 1,
-    meleeEvasion: 1,
-  },
-  goblin: {
-    name: "Goblin",
-    range: 3,
-    health: 40,
-    mana: 0,
-    magicAttack: 3,
-    meleeAttack: 4,
-    magicDefense: 2,
-    meleeDefense: 5,
-    magicEvasion: 2,
-    meleeEvasion: 2,
-  },
-};
+    slime: {
+      name: "Slime",
+      range: 3,
+      health: 50,
+      mana: 0,
+      magicAttack: 0,
+      meleeAttack: 3,
+      magicDefense: 2,
+      meleeDefense: 30,
+      magicEvasion: 1,
+      meleeEvasion: 1,
+      mobType: "friend",
+      mobAgroRange: 30,
+      attackCooldown: 2000, // milliseconds between attacks
+    },
+    goblin: {
+      name: "Goblin",
+      range: 3,
+      health: 40,
+      mana: 0,
+      magicAttack: 3,
+      meleeAttack: 4,
+      magicDefense: 2,
+      meleeDefense: 5,
+      magicEvasion: 2,
+      meleeEvasion: 2,
+      mobType: "enemy",
+      mobAgroRange: 30,
+      attackCooldown: 1500,
+    },
+  };
+  
 
 const naturalRegeneration = {
-    manaRegen: 3,          // Regenerates 3 mana per regenerationTime
-    hpRegen: 4,            // Regenerates 4 health per regenerationTime
-    regenerationTime: 5000 // Time in milliseconds (e.g., 5000ms = 5 seconds)
-  };
+  manaRegen: 3, // Regenerates 3 mana per regenerationTime
+  hpRegen: 4, // Regenerates 4 health per regenerationTime
+  regenerationTime: 5000, // Time in milliseconds (e.g., 5000ms = 5 seconds)
+};
 
 // Export everything
 export {
