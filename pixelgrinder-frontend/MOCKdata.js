@@ -182,7 +182,7 @@ const playerSkills = [
 const mobsData = {
     slime: {
       name: "Slime",
-      range: 3,
+      attackRange: 3,
       health: 50,
       mana: 0,
       magicAttack: 0,
@@ -192,12 +192,12 @@ const mobsData = {
       magicEvasion: 1,
       meleeEvasion: 1,
       mobType: "friend",
-      mobAgroRange: 30,
+      mobAgroRange: 300,
       attackCooldown: 2000, // milliseconds between attacks
     },
     goblin: {
       name: "Goblin",
-      range: 3,
+      attackRange: 3,
       health: 40,
       mana: 0,
       magicAttack: 3,
@@ -207,7 +207,7 @@ const mobsData = {
       magicEvasion: 2,
       meleeEvasion: 2,
       mobType: "enemy",
-      mobAgroRange: 30,
+      mobAgroRange: 300,
       attackCooldown: 1500,
     },
   };

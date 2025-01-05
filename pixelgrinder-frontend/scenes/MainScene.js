@@ -105,6 +105,44 @@ export default class MainScene extends Phaser.Scene {
       if (mob.active && mob.customData && mob.customData.hpText) {
         mob.customData.hpText.setPosition(mob.x, mob.y - 20);
       }
+
+      // Handle mob behaviors based on their currentType and state
+      if (!mob.active || mob.customData.isDead) return;
+
+      const mobInfo = mobsData[mob.customData.id];
+      const distanceToPlayer = Phaser.Math.Distance.Between(
+        mob.x,
+        mob.y,
+        this.player.x,
+        this.player.y
+      );
+
+      if (mob.customData.currentType === "enemy") {
+        if (mob.customData.state === "idle") {
+          if (distanceToPlayer <= mobInfo.mobAgroRange) {
+            mob.customData.state = "chasing";
+            console.log(
+              `Mob "${mob.customData.id}" has detected the player and starts chasing.`
+            );
+            this.chasePlayer(mob);
+          }
+        } else if (mob.customData.state === "chasing") {
+          if (distanceToPlayer > mobInfo.mobAgroRange) {
+            this.stopChasing(mob);
+            console.log(
+              `Mob "${mob.customData.id}" lost sight of the player and stops chasing.`
+            );
+          } else if (distanceToPlayer > mobInfo.attackRange) {
+            // Continue chasing
+            this.chasePlayer(mob);
+          } else {
+            // Within attack range, stop moving
+            mob.body.setVelocity(0, 0);
+            mob.anims.stop();
+            // Optional: Set to idle animation or prepare to attack
+          }
+        }
+      }
     });
   }
 
@@ -368,19 +406,28 @@ export default class MainScene extends Phaser.Scene {
 
     // Reset HP
     mob.customData.hp = mobInfo.health;
+
+    // Reset type and state to original
+    mob.customData.currentType = mobInfo.mobType; // e.g., 'friend'
+    mob.customData.state = "idle"; // Reset state to 'idle'
+
     // Mark alive again
     mob.customData.isDead = false;
 
+    // Reset position to spawn point
     mob.x = mob.customData.spawnX;
     mob.y = mob.customData.spawnY;
 
+    // Reactivate the mob
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
 
+    // Update HP text
     mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
     mob.customData.hpText.setPosition(mob.x, mob.y - 20);
     mob.customData.hpText.setVisible(true);
 
+    // Reset velocity and animations
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-walk-down");
     mob.clearTint();
@@ -389,6 +436,7 @@ export default class MainScene extends Phaser.Scene {
       `Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}) with HP: ${mob.customData.hp}`
     );
 
+    // Resume random movement
     this.assignMobMovement(mob);
   }
 
@@ -610,18 +658,23 @@ export default class MainScene extends Phaser.Scene {
   /* ============================================= */
 
   createMobs() {
-    const mobTypeID = "slime";
-    const mobInfo = mobsData[mobTypeID];
-
+    // Create a physics group for mobs
     this.mobs = this.physics.add.group({ collideWorldBounds: true });
+
+    // Add collision between mobs and player, mobs and collisionLayer, and mobs with themselves
     this.physics.add.collider(this.mobs, this.player);
     this.physics.add.collider(this.mobs, this.collisionLayer);
+    this.physics.add.collider(this.mobs, this.mobs); // Prevent mobs from overlapping
 
+    // Get all mob spawn zones from the tilemap
     const mobSpawns = this.map
       .getObjectLayer("GameObjects")
       .objects.filter((obj) => obj.name.startsWith("MobSpawnZone"));
 
     mobSpawns.forEach((spawnZone) => {
+      const mobTypeID = "slime"; // Explicitly set mob type to "slime"
+      const mobInfo = mobsData[mobTypeID];
+
       const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
 
       mob.customData = {
@@ -630,8 +683,11 @@ export default class MainScene extends Phaser.Scene {
         spawnX: spawnZone.x,
         spawnY: spawnZone.y,
         isDead: false,
+        currentType: mobInfo.mobType, // 'friend' or 'enemy'
+        state: "idle", // 'idle' or 'chasing'
       };
 
+      // Add HP text above the mob
       mob.customData.hpText = this.add
         .text(spawnZone.x, spawnZone.y - 20, `HP: ${mob.customData.hp}`, {
           font: "14px Arial",
@@ -647,6 +703,7 @@ export default class MainScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
 
+      // Make the mob interactive (clickable)
       mob.setInteractive({ useHandCursor: true });
       mob.on("pointerdown", () => {
         this.onMobClicked(mob);
@@ -672,7 +729,11 @@ export default class MainScene extends Phaser.Scene {
 
   assignMobMovement(mob) {
     const changeDirection = () => {
-      if (!mob.active || mob.customData.isDead) {
+      if (
+        !mob.active ||
+        mob.customData.isDead ||
+        mob.customData.state === "chasing"
+      ) {
         return;
       }
       const randomDirection = Phaser.Math.Between(0, 3);
@@ -800,6 +861,50 @@ export default class MainScene extends Phaser.Scene {
       console.log("Mob died!");
       this.handleMobDeath(mob);
       this.targetedMob = null;
+    } else {
+      // If mob is a friend and got attacked, change to enemy and start chasing
+      if (mob.customData.currentType === "friend") {
+        mob.customData.currentType = "enemy";
+        mob.customData.state = "chasing";
+        console.log(
+          `Mob "${mob.customData.id}" is now an enemy and is chasing the player.`
+        );
+        this.chasePlayer(mob);
+      }
     }
+  }
+
+  chasePlayer(mob) {
+    // Calculate direction vector towards the player
+    const direction = new Phaser.Math.Vector2(
+      this.player.x - mob.x,
+      this.player.y - mob.y
+    );
+    direction.normalize();
+
+    // Set velocity towards the player
+    const chaseSpeed = 80; // Adjust speed as needed
+    mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
+
+    // Update animation based on movement direction
+    if (Math.abs(direction.x) > Math.abs(direction.y)) {
+      if (direction.x > 0) {
+        mob.anims.play("mob-walk-right", true);
+      } else {
+        mob.anims.play("mob-walk-left", true);
+      }
+    } else {
+      if (direction.y > 0) {
+        mob.anims.play("mob-walk-down", true);
+      } else {
+        mob.anims.play("mob-walk-up", true);
+      }
+    }
+  }
+
+  stopChasing(mob) {
+    mob.customData.state = "idle";
+    mob.body.setVelocity(0, 0);
+    this.assignMobMovement(mob); // Resume random movement
   }
 }
