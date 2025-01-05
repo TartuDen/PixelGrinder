@@ -182,11 +182,11 @@ const playerSkills = [
 const mobsData = {
     slime: {
       name: "Slime",
-      attackRange: 8,
+      attackRange: 40,
       health: 50,
       mana: 0,
       magicAttack: 0,
-      meleeAttack: 300,
+      meleeAttack: 5,
       magicDefense: 2,
       meleeDefense: 30,
       magicEvasion: 1,

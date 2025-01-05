@@ -60,9 +60,7 @@ export default class MainScene extends Phaser.Scene {
     this.uiXP = document.getElementById("player-xp");
 
     // --- Casting Bar (10 slots) ---
-    this.castingBarSlots = document.querySelectorAll(
-      "#casting-bar .casting-slot"
-    );
+    this.castingBarSlots = document.querySelectorAll("#casting-bar .casting-slot");
 
     // 1) Assign skills to keys 1..10 and update HTML
     this.setupSkills();
@@ -100,13 +98,11 @@ export default class MainScene extends Phaser.Scene {
     // Emit an event to update skill animations' positions
     this.events.emit("updateSkillPosition");
 
-    // Update HP text positions for all mobs
+    // Update HP text positions & handle AI for all mobs
     this.mobs.getChildren().forEach((mob) => {
       if (mob.active && mob.customData && mob.customData.hpText) {
         mob.customData.hpText.setPosition(mob.x, mob.y - 20);
       }
-
-      // Handle mob behaviors based on their currentType and state
       if (!mob.active || mob.customData.isDead) return;
 
       const mobInfo = mobsData[mob.customData.id];
@@ -117,7 +113,9 @@ export default class MainScene extends Phaser.Scene {
         this.player.y
       );
 
+      // Only handle behavior if the mob is enemy
       if (mob.customData.currentType === "enemy") {
+        // 1) IDLE -> CHASING if player in agro range
         if (mob.customData.state === "idle") {
           if (distanceToPlayer <= mobInfo.mobAgroRange) {
             mob.customData.state = "chasing";
@@ -126,26 +124,95 @@ export default class MainScene extends Phaser.Scene {
             );
             this.chasePlayer(mob);
           }
-        } else if (mob.customData.state === "chasing") {
+        }
+        // 2) CHASING -> attacking if player in attack range
+        else if (mob.customData.state === "chasing") {
           if (distanceToPlayer > mobInfo.mobAgroRange) {
+            // Lost player
             this.stopChasing(mob);
             console.log(
               `Mob "${mob.customData.id}" lost sight of the player and stops chasing.`
             );
           } else if (distanceToPlayer > mobInfo.attackRange) {
-            // Continue chasing
+            // Keep chasing
             this.chasePlayer(mob);
           } else {
-            // Within attack range, stop moving
+            // Player is within attack range
             mob.body.setVelocity(0, 0);
             mob.anims.stop();
-            // Optional: Set to idle animation or prepare to attack
+            mob.customData.state = "attacking";
+            console.log(`Mob "${mob.customData.id}" enters attacking state.`);
+          }
+        }
+        // 3) ATTACKING
+        else if (mob.customData.state === "attacking") {
+          // If the player moves out of attack range, go back to chasing
+          if (distanceToPlayer > mobInfo.attackRange) {
+            mob.customData.state = "chasing";
+            console.log(
+              `Mob "${mob.customData.id}" is too far from the player; resumes chasing.`
+            );
+          } else {
+            // Within attack range; keep attacking
+            this.mobAttackPlayer(mob);
           }
         }
       }
     });
   }
 
+  /* ===================== PLAYER ATTACKED BY MOBS ===================== */
+  mobAttackPlayer(mob) {
+    const mobInfo = mobsData[mob.customData.id];
+    if (!mobInfo) return;
+
+    // 1) Check cooldown
+    const currentTime = this.time.now; // Phaser's built-in timestamp
+    if (currentTime < mob.customData.lastAttackTime + mobInfo.attackCooldown) {
+      // Attack not ready
+      return;
+    }
+
+    // 2) Update last attack time
+    mob.customData.lastAttackTime = currentTime;
+
+    // 3) Decide if melee or magic
+    const mobStats = {
+      magicAttack: mobInfo.magicAttack,
+      meleeAttack: mobInfo.meleeAttack,
+    };
+
+    const playerStats = calculatePlayerStats();
+    let damage = 0;
+
+    if (mobInfo.meleeAttack >= mobInfo.magicAttack) {
+      damage = calculateMeleeDamage(mobStats, playerStats);
+    } else {
+      damage = calculateMagicDamage(mobStats, playerStats);
+    }
+
+    console.log(
+      `Mob "${mob.customData.id}" attacks player for ${damage} damage.`
+    );
+
+    // 4) Deduct from player's health
+    this.currentHealth = Math.max(0, this.currentHealth - damage);
+
+    // 5) Update UI
+    this.updateUI();
+
+    // 6) Check if the player is dead
+    if (this.currentHealth <= 0) {
+      this.handlePlayerDeath();
+    }
+  }
+
+  handlePlayerDeath() {
+    console.log("Player died!");
+    // Implement game-over or respawn logic
+  }
+
+  /* ===================== PLAYER UI & STATS ===================== */
   updateUI() {
     const { name, totalExp } = playerProfile;
     const level = 5;
@@ -153,14 +220,14 @@ export default class MainScene extends Phaser.Scene {
     // Update health bar
     const healthPercent = (this.currentHealth / this.maxHealth) * 100;
     this.uiHealthFill.style.width = `${healthPercent}%`;
-    // Update health text
+
     const healthText = document.getElementById("health-text");
     healthText.textContent = `HP: ${this.currentHealth}/${this.maxHealth}`;
 
     // Update mana bar
     const manaPercent = (this.currentMana / this.maxMana) * 100;
     this.uiManaFill.style.width = `${manaPercent}%`;
-    // Update mana text
+
     const manaText = document.getElementById("mana-text");
     manaText.textContent = `Mana: ${this.currentMana}/${this.maxMana}`;
 
@@ -170,10 +237,7 @@ export default class MainScene extends Phaser.Scene {
     this.uiXP.textContent = `XP: ${totalExp}`;
   }
 
-  /* ============================================= */
-  /*           Skills & Key Assignments           */
-  /* ============================================= */
-
+  /* ===================== SKILLS & KEY ASSIGNMENTS ===================== */
   setupSkills() {
     const maxSlots = 10;
     const keyCodes = [
@@ -207,32 +271,23 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
-  /* ============================================= */
-  /*           Skill Animation Setup               */
-  /* ============================================= */
-
   createSkillAnimations() {
     playerSkills.forEach((skill, index) => {
-        const animKey = `skill-anim-${index}`;
+      const animKey = `skill-anim-${index}`;
 
-        // Ensure skill.skillImage is loaded as a spritesheet
-        this.anims.create({
-            key: animKey,
-            frames: this.anims.generateFrameNumbers(`skill-sprite-${index}`, {
-                start: skill.animationSeq[0],
-                end: skill.animationSeq[1],
-            }),
-            frameRate: 10,
-            repeat: 0, // Play once
-        });
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(`skill-sprite-${index}`, {
+          start: skill.animationSeq[0],
+          end: skill.animationSeq[1],
+        }),
+        frameRate: 10,
+        repeat: 0, // Play once
+      });
     });
-}
+  }
 
-
-  /* ============================================= */
-  /*           Skill Usage Handling                */
-  /* ============================================= */
-
+  /* ===================== PLAYER SKILL USAGE ===================== */
   useSkill(skill) {
     if (this.currentMana < skill.manaCost) {
       console.log(`Not enough mana to use ${skill.name}!`);
@@ -242,10 +297,10 @@ export default class MainScene extends Phaser.Scene {
     // Use the skill based on its type
     if (skill.magicAttack > 0) {
       const success = this.useMagicSkill(skill);
-      if (success) this.deductMana(skill.manaCost); // Deduct mana only on success
+      if (success) this.deductMana(skill.manaCost);
     } else if (skill.meleeAttack > 0) {
       const success = this.useMeleeSkill(skill);
-      if (success) this.deductMana(skill.manaCost); // Deduct mana only on success
+      if (success) this.deductMana(skill.manaCost);
     } else {
       console.log(`Skill ${skill.name} doesn't have a recognized damage type!`);
     }
@@ -268,14 +323,14 @@ export default class MainScene extends Phaser.Scene {
 
     console.log(`Used magic skill: ${skill.name}, dealt ${damage} damage.`);
 
-    // **Capture the mob's current position before applying damage**
+    // Capture the mob's current position before applying damage
     const targetX = this.targetedMob.x;
     const targetY = this.targetedMob.y;
 
-    // **Play skill animation at the captured position**
+    // Play skill animation at the captured position
     this.playSkillAnimation(skill, targetX, targetY);
 
-    // **Apply damage after initiating the animation**
+    // Apply damage after initiating the animation
     this.applyDamageToMob(this.targetedMob, damage);
 
     return true; // Indicate success
@@ -303,49 +358,32 @@ export default class MainScene extends Phaser.Scene {
   }
 
   playSkillAnimation(skill, x, y) {
-    // Find the index of the skill in playerSkills
     const skillIndex = playerSkills.indexOf(skill);
-
-    // Handle case where skill is not found in playerSkills
     if (skillIndex === -1) {
       console.log(`Skill "${skill.name}" not found in playerSkills.`);
       return;
     }
 
     const animKey = `skill-anim-${skillIndex}`;
-
-    // Ensure the animation exists
     if (!this.anims.exists(animKey)) {
       console.log(`Animation "${animKey}" does not exist.`);
       return;
     }
 
-    // Create a sprite at the specified position
     const skillSprite = this.add.sprite(x, y, `skill-sprite-${skillIndex}`);
-
-    // Play the animation
     skillSprite.anims.play(animKey);
+    skillSprite.setScale(1.5);
 
-    // Optional: Adjust scale or other properties
-    skillSprite.setScale(1.5); // Example: make the animation bigger
-
-    // Destroy the sprite after animation completes
     skillSprite.on("animationcomplete", () => {
       skillSprite.destroy();
     });
-
-    // No need to follow the mob's position
-    // This ensures the animation plays independently
   }
 
   deductMana(amount) {
     this.currentMana = Math.max(0, this.currentMana - amount);
   }
 
-  /* ============================================= */
-  /*        Targeting, Attacking, & UI            */
-  /* ============================================= */
-
+  /* ===================== TARGETING & UI ===================== */
   cycleTarget() {
     const mobArray = this.mobs.getChildren();
     if (!mobArray.length) return;
@@ -367,7 +405,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   basicAttack() {
-    // (Optional fallback if you want a default melee attack on key "1")
     if (!this.targetedMob) return;
 
     const playerStats = calculatePlayerStats();
@@ -376,7 +413,6 @@ export default class MainScene extends Phaser.Scene {
     if (!mobStats) return;
 
     const damage = calculateMeleeDamage(playerStats, mobStats);
-
     this.applyDamageToMob(this.targetedMob, damage);
     console.log(`Player did a basic melee attack for ${damage} damage.`);
   }
@@ -452,10 +488,7 @@ export default class MainScene extends Phaser.Scene {
     this.time.delayedCall(10000, () => corpse.destroy());
   }
 
-  /* ============================================= */
-  /*           Natural Regeneration                */
-  /* ============================================= */
-
+  /* ===================== NATURAL REGENERATION ===================== */
   regenerateStats() {
     // Regenerate mana
     const manaBefore = this.currentMana;
@@ -473,7 +506,6 @@ export default class MainScene extends Phaser.Scene {
     );
     const healthAfter = this.currentHealth;
 
-    // Debug log
     console.log(
       `Regenerated: +${manaAfter - manaBefore} mana, +${
         healthAfter - healthBefore
@@ -481,10 +513,7 @@ export default class MainScene extends Phaser.Scene {
     );
   }
 
-  /* ============================================= */
-  /*              Assets & Map Setup              */
-  /* ============================================= */
-
+  /* ===================== ASSETS & MAP SETUP ===================== */
   loadAssets() {
     // Tilemap JSON
     this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
@@ -617,11 +646,7 @@ export default class MainScene extends Phaser.Scene {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(
-      heroStart.x,
-      heroStart.y,
-      "characters"
-    );
+    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -658,18 +683,15 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
-  /* ============================================= */
-  /*                 Mobs Setup                   */
-  /* ============================================= */
-
+  /* =============== CREATE MOBS =============== */
   createMobs() {
     // Create a physics group for mobs
     this.mobs = this.physics.add.group({ collideWorldBounds: true });
 
-    // Add collision between mobs and player, mobs and collisionLayer, and mobs with themselves
+    // Add collision between mobs & player, and with the map & each other
     this.physics.add.collider(this.mobs, this.player);
     this.physics.add.collider(this.mobs, this.collisionLayer);
-    this.physics.add.collider(this.mobs, this.mobs); // Prevent mobs from overlapping
+    this.physics.add.collider(this.mobs, this.mobs);
 
     // Get all mob spawn zones from the tilemap
     const mobSpawns = this.map
@@ -689,7 +711,8 @@ export default class MainScene extends Phaser.Scene {
         spawnY: spawnZone.y,
         isDead: false,
         currentType: mobInfo.mobType, // 'friend' or 'enemy'
-        state: "idle", // 'idle' or 'chasing'
+        state: "idle", // can be 'idle', 'chasing', 'attacking'
+        lastAttackTime: 0,
       };
 
       // Add HP text above the mob
@@ -733,11 +756,12 @@ export default class MainScene extends Phaser.Scene {
   }
 
   assignMobMovement(mob) {
+    // Simple random movement when idle
     const changeDirection = () => {
       if (
         !mob.active ||
         mob.customData.isDead ||
-        mob.customData.state === "chasing"
+        mob.customData.state !== "idle"
       ) {
         return;
       }
@@ -802,61 +826,10 @@ export default class MainScene extends Phaser.Scene {
       !this.cursors.right.isDown
     ) {
       this.player.anims.stop();
-      // Optionally set an idle frame:
+      // Optionally set an idle frame
       // this.player.setFrame(0);
     }
   }
-
-  /* ============================================= */
-  /*        Targeting, Attacking, & UI            */
-  /* ============================================= */
-
-  /* Already defined above */
-
-  /* ============================================= */
-  /*           Damage Handling Methods             */
-  /* ============================================= */
-
-  /* Already defined above: useSkill, useMagicSkill, useMeleeSkill, applyDamageToMob, etc. */
-
-  /* ============================================= */
-  /*           Natural Regeneration                */
-  /* ============================================= */
-
-  regenerateStats() {
-    // Regenerate mana
-    const manaBefore = this.currentMana;
-    this.currentMana = Math.min(
-      this.maxMana,
-      this.currentMana + naturalRegeneration.manaRegen
-    );
-    const manaAfter = this.currentMana;
-
-    // Regenerate health
-    const healthBefore = this.currentHealth;
-    this.currentHealth = Math.min(
-      this.maxHealth,
-      this.currentHealth + naturalRegeneration.hpRegen
-    );
-    const healthAfter = this.currentHealth;
-
-    // Debug log
-    console.log(
-      `Regenerated: +${manaAfter - manaBefore} mana, +${
-        healthAfter - healthBefore
-      } health.`
-    );
-  }
-
-  /* ============================================= */
-  /*              Assets & Map Setup              */
-  /* ============================================= */
-
-  /* Already defined above: loadAssets, createTilemap, defineAnimations, createPlayer, setupCamera, setupControls */
-
-  /* ============================================= */
-  /*        Additional Helper Methods             */
-  /* ============================================= */
 
   applyDamageToMob(mob, damage) {
     mob.customData.hp = Math.max(0, mob.customData.hp - damage);
@@ -880,18 +853,15 @@ export default class MainScene extends Phaser.Scene {
   }
 
   chasePlayer(mob) {
-    // Calculate direction vector towards the player
     const direction = new Phaser.Math.Vector2(
       this.player.x - mob.x,
       this.player.y - mob.y
     );
     direction.normalize();
 
-    // Set velocity towards the player
     const chaseSpeed = 80; // Adjust speed as needed
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
 
-    // Update animation based on movement direction
     if (Math.abs(direction.x) > Math.abs(direction.y)) {
       if (direction.x > 0) {
         mob.anims.play("mob-walk-right", true);
@@ -910,6 +880,6 @@ export default class MainScene extends Phaser.Scene {
   stopChasing(mob) {
     mob.customData.state = "idle";
     mob.body.setVelocity(0, 0);
-    this.assignMobMovement(mob); // Resume random movement
+    this.assignMobMovement(mob);
   }
 }
