@@ -193,7 +193,7 @@ const mobsData = {
       meleeEvasion: 1,
       mobType: "friend",
       mobAgroRange: 300,
-      attackCooldown: 1000, // milliseconds between attacks
+      attackCooldown: 2000, // milliseconds between attacks
     },
     goblin: {
       name: "Goblin",
