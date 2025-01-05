@@ -213,19 +213,21 @@ export default class MainScene extends Phaser.Scene {
 
   createSkillAnimations() {
     playerSkills.forEach((skill, index) => {
-      const animKey = `skill-anim-${index}`;
+        const animKey = `skill-anim-${index}`;
 
-      this.anims.create({
-        key: animKey,
-        frames: this.anims.generateFrameNumbers(`skill-sprite-${index}`, {
-          start: skill.animationSeq[0],
-          end: skill.animationSeq[1],
-        }),
-        frameRate: 10,
-        repeat: 0, // Play once
-      });
+        // Ensure skill.skillImage is loaded as a spritesheet
+        this.anims.create({
+            key: animKey,
+            frames: this.anims.generateFrameNumbers(`skill-sprite-${index}`, {
+                start: skill.animationSeq[0],
+                end: skill.animationSeq[1],
+            }),
+            frameRate: 10,
+            repeat: 0, // Play once
+        });
     });
-  }
+}
+
 
   /* ============================================= */
   /*           Skill Usage Handling                */
@@ -264,11 +266,17 @@ export default class MainScene extends Phaser.Scene {
     const damage =
       calculateMagicDamage(playerStats, mobStats) + skill.magicAttack;
 
-    this.applyDamageToMob(this.targetedMob, damage);
     console.log(`Used magic skill: ${skill.name}, dealt ${damage} damage.`);
 
-    // Play skill animation at the mob's position
-    this.playSkillAnimation(skill, this.targetedMob);
+    // **Capture the mob's current position before applying damage**
+    const targetX = this.targetedMob.x;
+    const targetY = this.targetedMob.y;
+
+    // **Play skill animation at the captured position**
+    this.playSkillAnimation(skill, targetX, targetY);
+
+    // **Apply damage after initiating the animation**
+    this.applyDamageToMob(this.targetedMob, damage);
 
     return true; // Indicate success
   }
@@ -294,16 +302,26 @@ export default class MainScene extends Phaser.Scene {
     return true; // Indicate success
   }
 
-  playSkillAnimation(skill, mob) {
+  playSkillAnimation(skill, x, y) {
+    // Find the index of the skill in playerSkills
     const skillIndex = playerSkills.indexOf(skill);
+
+    // Handle case where skill is not found in playerSkills
+    if (skillIndex === -1) {
+      console.log(`Skill "${skill.name}" not found in playerSkills.`);
+      return;
+    }
+
     const animKey = `skill-anim-${skillIndex}`;
 
-    // Create a sprite at the mob's current position
-    const skillSprite = this.add.sprite(
-      mob.x,
-      mob.y,
-      `skill-sprite-${skillIndex}`
-    );
+    // Ensure the animation exists
+    if (!this.anims.exists(animKey)) {
+      console.log(`Animation "${animKey}" does not exist.`);
+      return;
+    }
+
+    // Create a sprite at the specified position
+    const skillSprite = this.add.sprite(x, y, `skill-sprite-${skillIndex}`);
 
     // Play the animation
     skillSprite.anims.play(animKey);
@@ -311,26 +329,13 @@ export default class MainScene extends Phaser.Scene {
     // Optional: Adjust scale or other properties
     skillSprite.setScale(1.5); // Example: make the animation bigger
 
-    // Update the skillSprite's position to follow the mob
-    const updateSkillPosition = () => {
-      if (mob.active && !mob.customData.isDead) {
-        skillSprite.x = mob.x;
-        skillSprite.y = mob.y;
-      } else {
-        // If the mob is no longer active or dead, destroy the skillSprite
-        skillSprite.destroy();
-        this.events.off("updateSkillPosition", updateSkillPosition);
-      }
-    };
-
-    // Listen to the scene's update event to continuously update the skillSprite's position
-    this.events.on("updateSkillPosition", updateSkillPosition);
-
     // Destroy the sprite after animation completes
     skillSprite.on("animationcomplete", () => {
       skillSprite.destroy();
-      this.events.off("updateSkillPosition", updateSkillPosition);
     });
+
+    // No need to follow the mob's position
+    // This ensures the animation plays independently
   }
 
   deductMana(amount) {
