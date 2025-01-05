@@ -186,14 +186,14 @@ const mobsData = {
       health: 50,
       mana: 0,
       magicAttack: 0,
-      meleeAttack: 3,
+      meleeAttack: 300,
       magicDefense: 2,
       meleeDefense: 30,
       magicEvasion: 1,
       meleeEvasion: 1,
       mobType: "friend",
       mobAgroRange: 300,
-      attackCooldown: 2000, // milliseconds between attacks
+      attackCooldown: 100, // milliseconds between attacks
     },
     goblin: {
       name: "Goblin",
