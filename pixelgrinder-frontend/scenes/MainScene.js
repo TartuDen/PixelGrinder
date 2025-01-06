@@ -1,4 +1,4 @@
-// scenes/MainScene.js
+// pixelgrinder-frontend\scenes\MainScene.js
 
 import {
   playerProfile,
@@ -97,10 +97,23 @@ export default class MainScene extends Phaser.Scene {
       this.updateUI();
     });
 
-    // Listen for F1 key to print stats
+    // Listen for B key to print stats
     this.input.keyboard.on("keydown-B", () => {
       this.summarizePlayerStats();
     });
+
+    // Listen for B key to toggle stats menu
+    this.input.keyboard.on("keydown-B", () => {
+      this.toggleStatsMenu();
+    });
+
+    // Handle closing the stats menu
+    const closeStatsButton = document.getElementById("close-stats");
+    if (closeStatsButton) {
+      closeStatsButton.addEventListener("click", () => {
+        this.hideStatsMenu();
+      });
+    }
   }
 
   update() {
@@ -247,6 +260,188 @@ export default class MainScene extends Phaser.Scene {
     this.uiName.textContent = `${name}`;
     this.uiLevel.textContent = `Level: ${level}`;
     this.uiXP.textContent = `XP: ${totalExp}`;
+  }
+
+  /* ===================== STATS MENU ===================== */
+
+  /**
+   * Toggles the visibility of the stats menu.
+   */
+  toggleStatsMenu() {
+    const statsMenu = document.getElementById("stats-menu");
+    if (!statsMenu) return;
+
+    if (statsMenu.style.display === "block") {
+      this.hideStatsMenu();
+    } else {
+      this.showStatsMenu();
+    }
+  }
+
+  /**
+   * Shows the stats menu and populates it with current stats.
+   */
+  showStatsMenu() {
+    const statsMenu = document.getElementById("stats-menu");
+    const statsContent = document.getElementById("stats-content");
+
+    if (!statsMenu || !statsContent) return;
+
+    // Populate the stats content
+    statsContent.innerHTML = this.generateStatsHTML();
+
+    // Display the modal
+    statsMenu.style.display = "block";
+
+    // Pause the game if desired
+    this.scene.pause();
+  }
+
+  /**
+   * Hides the stats menu.
+   */
+  hideStatsMenu() {
+    const statsMenu = document.getElementById("stats-menu");
+    if (!statsMenu) return;
+
+    statsMenu.style.display = "none";
+
+    // Resume the game if it was paused
+    this.scene.resume();
+  }
+
+  /**
+   * Generates HTML content for the stats menu.
+   * @returns {string} HTML string representing the player's stats.
+   */
+  generateStatsHTML() {
+    // 1. Base Stats
+    const baseStats = playerBaseStats;
+
+    // 2. Equipment Stats
+    const equippedWeapon = weaponItems.find(
+      (weapon) => weapon.name === playerEquippedItems.weapon
+    );
+    const equippedArmors = ["head", "chest", "shoulders", "legs", "feet"]
+      .map((slot) => playerEquippedItems[slot])
+      .filter((armorName) => armorName !== null)
+      .map((armorName) => armorItems.find((armor) => armor.name === armorName))
+      .filter((armor) => armor !== undefined);
+
+    // Sum equipment stats
+    const equipmentStats = {
+      health: 0,
+      mana: 0,
+      magicAttack: 0,
+      meleeAttack: 0,
+      magicDefense: 0,
+      meleeDefense: 0,
+      magicEvasion: 0,
+      meleeEvasion: 0,
+    };
+
+    if (equippedWeapon) {
+      Object.keys(equipmentStats).forEach((stat) => {
+        equipmentStats[stat] += equippedWeapon[stat] || 0;
+      });
+    }
+
+    equippedArmors.forEach((armor) => {
+      Object.keys(equipmentStats).forEach((stat) => {
+        equipmentStats[stat] += armor[stat] || 0;
+      });
+    });
+
+    // 3. Derived Stats
+    const derivedStats = calculatePlayerStats();
+
+    // 4. Total Stats
+    const totalStats = {
+      health: derivedStats.health,
+      mana: derivedStats.mana,
+      magicAttack: derivedStats.magicAttack,
+      meleeAttack: derivedStats.meleeAttack,
+      magicDefense: derivedStats.magicDefense,
+      meleeDefense: derivedStats.meleeDefense,
+      magicEvasion: derivedStats.magicEvasion,
+      meleeEvasion: derivedStats.meleeEvasion,
+    };
+
+    // 5. Player Profile
+    const { name, class: playerClass, level, totalExp } = playerProfile;
+
+    // Generate HTML tables for each section
+    const baseStatsHTML = this.generateStatsTable("Base Stats", baseStats);
+    const equipmentStatsHTML = this.generateStatsTable(
+      "Equipment Stats",
+      equipmentStats
+    );
+    const derivedStatsHTML = this.generateStatsTable(
+      "Derived Stats",
+      derivedStats
+    );
+    const totalStatsHTML = this.generateStatsTable("Total Stats", totalStats);
+
+    // Combine all sections
+    return `
+      <h3>Player Information</h3>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Class:</strong> ${playerClass}</p>
+      <p><strong>Level:</strong> ${level || "N/A"}</p>
+      <p><strong>Total Experience:</strong> ${totalExp}</p>
+
+      ${baseStatsHTML}
+      ${equipmentStatsHTML}
+      ${derivedStatsHTML}
+      ${totalStatsHTML}
+    `;
+  }
+
+  /**
+   * Generates an HTML table for a given stats category.
+   * @param {string} title - The title of the stats category.
+   * @param {object} stats - The stats data.
+   * @returns {string} HTML string representing the stats table.
+   */
+  generateStatsTable(title, stats) {
+    let rows = "";
+    for (const [key, value] of Object.entries(stats)) {
+      // Convert camelCase to Title Case with spaces
+      const formattedKey = key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (str) => str.toUpperCase());
+      rows += `
+        <tr>
+          <th>${formattedKey}</th>
+          <td>${value}</td>
+        </tr>
+      `;
+    }
+
+    return `
+      <h3>${title}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Stat</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
+
+  /**
+   * Summarizes and prints the player's stats to the console.
+   * (Optional: You can keep this function if you still want console logs)
+   */
+  summarizePlayerStats() {
+    // ... existing summarizePlayerStats code ...
+    // Optionally, you can remove or keep the console logs
+    console.log("Player stats summarized in the stats menu.");
   }
 
   /* ===================== SKILLS & KEY ASSIGNMENTS ===================== */

@@ -1,4 +1,4 @@
-// config.js
+// pixelgrinder-frontend\config.js
 
 export const worldW = 800;
 export const worldH = 600;

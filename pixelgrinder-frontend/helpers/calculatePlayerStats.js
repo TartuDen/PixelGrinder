@@ -1,4 +1,4 @@
-// helpers/calculatePlayerStats.js
+// pixelgrinder-frontend\helpers\calculatePlayerStats.js
 
 import {
     playerBaseStats,

@@ -1,4 +1,4 @@
-// main.js
+// pixelgrinder-frontend\main.js
 import { gameConfig } from "./config.js";
 import MainScene from "./scenes/MainScene.js";
 

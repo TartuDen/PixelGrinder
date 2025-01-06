@@ -1,4 +1,4 @@
-/* ui.css */
+/* pixelgrinder-frontend\ui.css */
 
 /* Player UI Panel */
 #player-ui {
@@ -119,4 +119,65 @@
   font-size: 0.6rem;
   padding: 2px 4px;
   border-radius: 3px;
+}
+
+/* The Modal Background */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1000; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0, 0, 0, 0.8); /* Black with opacity */
+}
+
+/* Modal Content Box */
+.modal-content {
+  background-color: #fefefe;
+  margin: 10% auto; /* 10% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%; /* Could be more or less, depending on screen size */
+  border-radius: 10px;
+  color: #333;
+  font-family: Arial, sans-serif;
+}
+
+/* Close Button */
+.close-button {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+  color: #000;
+  text-decoration: none;
+}
+
+/* Stats Content */
+#stats-content {
+  margin-top: 20px;
+}
+
+#stats-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#stats-content th,
+#stats-content td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+}
+
+#stats-content th {
+  background-color: #f2f2f2;
+  text-align: left;
 }
