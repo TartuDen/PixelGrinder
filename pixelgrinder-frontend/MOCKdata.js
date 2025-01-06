@@ -11,7 +11,7 @@ const playerProfile = {
 const playerBaseStats = {
   health: 100,
   mana: 150,
-  intellect: 5, // formerly int_stat
+  intellect: 3, // formerly int_stat
   strength: 3, // formerly str_stat
   dexterity: 3, // formerly dex_stat
   constitution: 4, // formerly con_stat
@@ -173,6 +173,17 @@ const playerSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
+    animationSeq: [0, 7],
+  },
+  {
+    name: "earch_root",
+    manaCost: 20,
+    range: 20,
+    magicAttack: 5,
+    meleeAttack: 0,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
+    skillImage:
+      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
     animationSeq: [0, 7],
   },
 ];

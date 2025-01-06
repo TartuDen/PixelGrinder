@@ -2,9 +2,14 @@
 
 import {
   playerProfile,
+  playerBaseStats,
+  statWeights,
+  weaponItems,
+  armorItems,
+  playerEquippedItems,
+  playerSkills,
   mobsData,
-  playerSkills, // Import playerSkills
-  naturalRegeneration, // Import naturalRegeneration
+  naturalRegeneration,
 } from "../MOCKdata.js";
 
 import {
@@ -60,7 +65,9 @@ export default class MainScene extends Phaser.Scene {
     this.uiXP = document.getElementById("player-xp");
 
     // --- Casting Bar (10 slots) ---
-    this.castingBarSlots = document.querySelectorAll("#casting-bar .casting-slot");
+    this.castingBarSlots = document.querySelectorAll(
+      "#casting-bar .casting-slot"
+    );
 
     // 1) Assign skills to keys 1..10 and update HTML
     this.setupSkills();
@@ -88,6 +95,11 @@ export default class MainScene extends Phaser.Scene {
       event.preventDefault();
       this.cycleTarget();
       this.updateUI();
+    });
+
+    // Listen for F1 key to print stats
+    this.input.keyboard.on("keydown-B", () => {
+      this.summarizePlayerStats();
     });
   }
 
@@ -646,7 +658,11 @@ export default class MainScene extends Phaser.Scene {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
+    this.player = this.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -881,5 +897,83 @@ export default class MainScene extends Phaser.Scene {
     mob.customData.state = "idle";
     mob.body.setVelocity(0, 0);
     this.assignMobMovement(mob);
+  }
+
+  /**
+   * Summarizes and prints the player's stats to the console.
+   */
+  summarizePlayerStats() {
+    // 1. Base Stats
+    const baseStats = playerBaseStats;
+
+    // 2. Equipment Stats
+    const equippedWeapon = weaponItems.find(
+      (weapon) => weapon.name === playerEquippedItems.weapon
+    );
+    const equippedArmors = ["head", "chest", "shoulders", "legs", "feet"]
+      .map((slot) => playerEquippedItems[slot])
+      .filter((armorName) => armorName !== null)
+      .map((armorName) => armorItems.find((armor) => armor.name === armorName))
+      .filter((armor) => armor !== undefined);
+
+    // Sum equipment stats
+    const equipmentStats = {
+      health: 0,
+      mana: 0,
+      magicAttack: 0,
+      meleeAttack: 0,
+      magicDefense: 0,
+      meleeDefense: 0,
+      magicEvasion: 0,
+      meleeEvasion: 0,
+    };
+
+    if (equippedWeapon) {
+      Object.keys(equipmentStats).forEach((stat) => {
+        equipmentStats[stat] += equippedWeapon[stat] || 0;
+      });
+    }
+
+    equippedArmors.forEach((armor) => {
+      Object.keys(equipmentStats).forEach((stat) => {
+        equipmentStats[stat] += armor[stat] || 0;
+      });
+    });
+
+    // 3. Derived Stats
+    const derivedStats = calculatePlayerStats();
+
+    // 4. Total Stats
+    const totalStats = {
+      health: derivedStats.health,
+      mana: derivedStats.mana,
+      magicAttack: derivedStats.magicAttack,
+      meleeAttack: derivedStats.meleeAttack,
+      magicDefense: derivedStats.magicDefense,
+      meleeDefense: derivedStats.meleeDefense,
+      magicEvasion: derivedStats.magicEvasion,
+      meleeEvasion: derivedStats.meleeEvasion,
+    };
+
+    // 5. Print Stats to Console
+    console.log("=== Player Stats Summary ===");
+    console.log(`Name: ${playerProfile.name}`);
+    console.log(`Class: ${playerProfile.class}`);
+    console.log(`Level: ${playerProfile.level || "N/A"}`);
+    console.log(`Total Experience: ${playerProfile.totalExp}`);
+
+    console.log("\n--- Base Stats ---");
+    console.table(baseStats);
+
+    console.log("\n--- Equipment Stats ---");
+    console.table(equipmentStats);
+
+    console.log("\n--- Derived Stats ---");
+    console.table(derivedStats);
+
+    console.log("\n--- Total Stats ---");
+    console.table(totalStats);
+
+    console.log("============================");
   }
 }
