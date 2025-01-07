@@ -8,9 +8,7 @@ import {
   playerProfile,
   playerSkills,
 } from "../data/MOCKdata.js";
-import {
-  calculatePlayerStats,
-} from "../helpers/calculatePlayerStats.js";
+import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -125,7 +123,7 @@ export default class MainScene extends Phaser.Scene {
   //  UI
   // --------------------------------------------------------------
   updateUI() {
-    this.uiManager.updateUI({
+    const playerStats = {
       name: playerProfile.name,
       currentHealth: this.currentHealth,
       maxHealth: this.maxHealth,
@@ -133,7 +131,18 @@ export default class MainScene extends Phaser.Scene {
       maxMana: this.maxMana,
       level: 5, // Replace with dynamic level if available
       xp: playerProfile.totalExp,
-    });
+    };
+
+    this.uiManager.updateUI(playerStats);
+
+    // Update Health Bar Width
+    const healthPercent =
+      (playerStats.currentHealth / playerStats.maxHealth) * 100;
+    document.getElementById("health-fill").style.width = `${healthPercent}%`;
+
+    // Update Mana Bar Width
+    const manaPercent = (playerStats.currentMana / playerStats.maxMana) * 100;
+    document.getElementById("mana-fill").style.width = `${manaPercent}%`;
   }
 
   toggleStatsMenu() {
@@ -174,7 +183,10 @@ export default class MainScene extends Phaser.Scene {
     };
 
     const baseStatsHTML = this.generateStatsTable("Base Stats", baseStats);
-    const derivedStatsHTML = this.generateStatsTable("Derived Stats", derivedStats);
+    const derivedStatsHTML = this.generateStatsTable(
+      "Derived Stats",
+      derivedStats
+    );
 
     return `
       <h3>Player Info</h3>
@@ -252,10 +264,15 @@ export default class MainScene extends Phaser.Scene {
   //  Targeting
   // --------------------------------------------------------------
   cycleTarget() {
-    const mobArray = this.mobManager.mobs.getChildren().filter(mob => !mob.customData.isDead);
+    const mobArray = this.mobManager.mobs
+      .getChildren()
+      .filter((mob) => !mob.customData.isDead);
     if (!mobArray.length) return;
 
-    if (this.currentTargetIndex === null || this.currentTargetIndex >= mobArray.length - 1) {
+    if (
+      this.currentTargetIndex === null ||
+      this.currentTargetIndex >= mobArray.length - 1
+    ) {
       this.currentTargetIndex = 0;
     } else {
       this.currentTargetIndex += 1;
@@ -286,13 +303,21 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   regenerateStats() {
     const beforeMana = this.currentMana;
-    this.currentMana = Math.min(this.maxMana, this.currentMana + naturalRegeneration.manaRegen);
+    this.currentMana = Math.min(
+      this.maxMana,
+      this.currentMana + naturalRegeneration.manaRegen
+    );
 
     const beforeHealth = this.currentHealth;
-    this.currentHealth = Math.min(this.maxHealth, this.currentHealth + naturalRegeneration.hpRegen);
+    this.currentHealth = Math.min(
+      this.maxHealth,
+      this.currentHealth + naturalRegeneration.hpRegen
+    );
 
     console.log(
-      `Regenerated +${this.currentMana - beforeMana} mana, +${this.currentHealth - beforeHealth} HP`
+      `Regenerated +${this.currentMana - beforeMana} mana, +${
+        this.currentHealth - beforeHealth
+      } HP`
     );
   }
 
@@ -343,25 +368,37 @@ export default class MainScene extends Phaser.Scene {
     // Player animations
     this.anims.create({
       key: "walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 0, end: 2 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 0,
+        end: 2,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 12, end: 14 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 12,
+        end: 14,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 24, end: 26 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 24,
+        end: 26,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 36, end: 38 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 36,
+        end: 38,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -369,25 +406,37 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 48,
+        end: 50,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 60,
+        end: 62,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 72,
+        end: 74,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 84,
+        end: 86,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -406,7 +455,11 @@ export default class MainScene extends Phaser.Scene {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
+    this.player = this.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -419,8 +472,18 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
+    this.physics.world.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
     this.cameras.main.startFollow(this.player);
   }
 

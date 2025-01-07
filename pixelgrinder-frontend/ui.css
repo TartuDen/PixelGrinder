@@ -1,39 +1,65 @@
-/* pixelgrinder-frontend\ui.css */
+/* ui.css */
 body {
   margin: 0;
   padding: 0;
   font-family: sans-serif;
   background: #333;
   color: #fff;
+  overflow: hidden; /* Prevent scrolling */
 }
 
 #player-ui {
   position: absolute;
   top: 10px;
   left: 10px;
+  z-index: 1; /* Ensure it's above the game canvas */
+  background: rgba(0, 0, 0, 0.8); /* Semi-transparent dark background */
+  padding: 15px;
+  border: 2px solid #fff; /* White border for visibility */
+  border-radius: 8px;
+  width: 220px; /* Adjust width as needed */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Optional: Add shadow for depth */
+}
+
+#player-ui h3 {
+  margin: 0 0 15px 0;
+  text-align: center;
+  font-size: 18px;
+  color: #fff;
+}
+
+.stats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 .health-bar,
 .mana-bar {
   position: relative;
-  width: 200px;
-  height: 20px;
-  background: #555;
-  margin-bottom: 5px;
-  border: 1px solid #222;
+  width: 100%;
+  height: 25px;
+  background: #555; /* Dark grey background for the bar */
+  border: 1px solid #fff; /* White border to define the bar */
+  border-radius: 5px;
+  overflow: hidden; /* Hide overflow to maintain border radius */
 }
 
 .health-fill,
 .mana-fill {
   height: 100%;
+  transition: width 0.3s ease; /* Smooth transition for dynamic width changes */
 }
 
 .health-fill {
-  background: red;
+  background: #ff4c4c; /* Bright red for Health */
+  width: 100%; /* Initial width; will be updated via JavaScript */
 }
 
 .mana-fill {
-  background: blue;
+  background: #4c4cff; /* Bright blue for Mana */
+  width: 100%; /* Initial width; will be updated via JavaScript */
 }
 
 .stat-text {
@@ -42,8 +68,15 @@ body {
   left: 50%;
   transform: translateX(-50%);
   color: #fff;
+  font-size: 12px;
+  line-height: 25px;
+  pointer-events: none; /* Allow clicks to pass through to underlying elements */
+}
+
+.level-info p {
+  margin: 5px 0;
+  text-align: center;
   font-size: 14px;
-  line-height: 20px;
 }
 
 #casting-bar {
@@ -51,18 +84,20 @@ body {
   bottom: 20px;
   left: 20px;
   display: flex;
+  z-index: 1; /* Ensure it's above the game canvas */
 }
 
 .casting-slot {
   width: 50px;
   height: 50px;
-  background: #222;
+  background: #222; /* Dark background for casting slots */
   margin-right: 5px;
-  border: 1px solid #555;
+  border: 1px solid #555; /* Slightly lighter border for visibility */
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  border-radius: 5px; /* Rounded corners for aesthetics */
 }
 
 .casting-slot img {
@@ -72,14 +107,16 @@ body {
 
 .casting-slot .mana-cost {
   position: absolute;
-  bottom: 0px;
+  bottom: 2px;
   right: 2px;
   font-size: 10px;
   color: #fff;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 1px 2px;
+  background: rgba(0, 0, 0, 0.6); /* Semi-transparent background for readability */
+  padding: 1px 3px;
+  border-radius: 3px;
 }
 
+/* Modal Styling (unchanged) */
 .modal {
   display: none;
   position: fixed;
@@ -88,7 +125,7 @@ body {
   top: 0;
   width: 100%;
   height: 100%;
-  overflow: auto;
+  overflow: auto; /* Allow scrolling within the modal if needed */
   background-color: rgba(0,0,0,0.7);
 }
 
@@ -126,4 +163,8 @@ table td {
 table th {
   background: #444;
   font-weight: bold;
+}
+
+canvas {
+  display: block; /* Removes any default inline spacing */
 }
