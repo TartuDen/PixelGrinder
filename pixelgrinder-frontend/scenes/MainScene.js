@@ -29,6 +29,9 @@ export default class MainScene extends Phaser.Scene {
     this.uiManager = null;
     this.skillManager = null;
     this.mobManager = null;
+
+    // Input keys
+    this.cursors = null;
   }
 
   // A helper to always get up-to-date stats
@@ -52,7 +55,7 @@ export default class MainScene extends Phaser.Scene {
     this.setupCamera();
     this.setupControls();
 
-    // Managers
+    // Initialize Managers
     this.uiManager = new UIManager();
     this.uiManager.init();
 
@@ -83,7 +86,7 @@ export default class MainScene extends Phaser.Scene {
       loop: true,
     });
 
-    // TAB target
+    // TAB key for cycling targets
     this.input.keyboard.on("keydown-TAB", (event) => {
       event.preventDefault();
       this.cycleTarget();
@@ -92,7 +95,7 @@ export default class MainScene extends Phaser.Scene {
 
     // B key for stats logs & toggling
     this.input.keyboard.on("keydown-B", () => {
-      this.summarizePlayerStats(); // console logs
+      this.summarizePlayerStats(); // Console logs
       this.toggleStatsMenu();
     });
   }
@@ -108,7 +111,11 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   handlePlayerDeath() {
     console.log("Player died!");
-    // Implement game-over or respawn logic
+    // Implement game-over or respawn logic here
+    // For example, restart the scene after a delay
+    this.time.delayedCall(2000, () => {
+      this.scene.restart();
+    });
   }
 
   // --------------------------------------------------------------
@@ -121,7 +128,7 @@ export default class MainScene extends Phaser.Scene {
       maxHealth: this.maxHealth,
       currentMana: this.currentMana,
       maxMana: this.maxMana,
-      level: 5, // or read from your data
+      level: 5, // Replace with dynamic level if available
       xp: playerProfile.totalExp,
     });
   }
@@ -156,7 +163,7 @@ export default class MainScene extends Phaser.Scene {
 
     // Assuming you want to include base stats and derived stats
     const baseStats = {
-      health: 100, // or dynamic
+      health: 100, // Replace with dynamic base stats if available
       mana: 150,
       intellect: 3,
       strength: 3,
@@ -169,10 +176,10 @@ export default class MainScene extends Phaser.Scene {
 
     return `
       <h3>Player Info</h3>
-      <p>Name: ${name}</p>
-      <p>Class: ${cls}</p>
-      <p>Level: ${level || "N/A"}</p>
-      <p>Experience: ${totalExp}</p>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Class:</strong> ${cls}</p>
+      <p><strong>Level:</strong> ${level || "N/A"}</p>
+      <p><strong>Experience:</strong> ${totalExp}</p>
 
       ${baseStatsHTML}
       ${derivedStatsHTML}
@@ -212,7 +219,7 @@ export default class MainScene extends Phaser.Scene {
   //  Summarize Stats in Console
   // --------------------------------------------------------------
   summarizePlayerStats() {
-    // your existing console logs or just keep it simpler
+    // Your existing console logs or just keep it simpler
     console.log("=== Player Stats Summary ===");
     console.table(this.getPlayerStats());
     console.log("============================");
@@ -222,7 +229,7 @@ export default class MainScene extends Phaser.Scene {
   //  Skills
   // --------------------------------------------------------------
   useSkill(skill) {
-    // We call skillManager
+    // Call SkillManager to use the skill
     const { success, damage } = this.skillManager.useSkill(
       skill,
       this.currentMana,
@@ -424,5 +431,39 @@ export default class MainScene extends Phaser.Scene {
     });
 
     // Numeric keys are handled in UIManager setup if needed
+  }
+
+  // --------------------------------------------------------------
+  //  Player Movement Handling
+  // --------------------------------------------------------------
+  handlePlayerMovement() {
+    if (!this.player || !this.player.body) return;
+
+    this.player.body.setVelocity(0);
+
+    if (this.cursors.up.isDown) {
+      this.player.body.setVelocityY(-this.playerSpeed);
+      this.player.anims.play("walk-up", true);
+    } else if (this.cursors.down.isDown) {
+      this.player.body.setVelocityY(this.playerSpeed);
+      this.player.anims.play("walk-down", true);
+    }
+
+    if (this.cursors.left.isDown) {
+      this.player.body.setVelocityX(-this.playerSpeed);
+      this.player.anims.play("walk-left", true);
+    } else if (this.cursors.right.isDown) {
+      this.player.body.setVelocityX(this.playerSpeed);
+      this.player.anims.play("walk-right", true);
+    }
+
+    if (
+      !this.cursors.up.isDown &&
+      !this.cursors.down.isDown &&
+      !this.cursors.left.isDown &&
+      !this.cursors.right.isDown
+    ) {
+      this.player.anims.stop();
+    }
   }
 }
