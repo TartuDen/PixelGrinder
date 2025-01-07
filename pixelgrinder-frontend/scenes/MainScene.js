@@ -57,7 +57,10 @@ export default class MainScene extends Phaser.Scene {
 
     // Initialize Managers
     this.uiManager = new UIManager();
-    this.uiManager.init();
+    // Pass a callback to handle closing the stats menu
+    this.uiManager.init(() => {
+      this.hideStatsMenu();
+    });
 
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
@@ -134,7 +137,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   toggleStatsMenu() {
-    if (!this.uiManager.statsMenu) return;
     if (this.uiManager.statsMenu.style.display === "block") {
       this.hideStatsMenu();
     } else {
