@@ -102,9 +102,9 @@ export default class MainScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    this.updateUI();
     this.handlePlayerMovement();
     this.mobManager.updateMobs(this.player);
+    this.updateUI(); // Ensure UI is updated every frame or as needed
   }
 
   // --------------------------------------------------------------
@@ -122,6 +122,8 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   //  UI
   // --------------------------------------------------------------
+  // Inside MainScene.js
+
   updateUI() {
     const playerStats = {
       name: playerProfile.name,
@@ -133,16 +135,57 @@ export default class MainScene extends Phaser.Scene {
       xp: playerProfile.totalExp,
     };
 
+    // Update the UI via UIManager
     this.uiManager.updateUI(playerStats);
 
-    // Update Health Bar Width
+    // Calculate percentages
     const healthPercent =
       (playerStats.currentHealth / playerStats.maxHealth) * 100;
-    document.getElementById("health-fill").style.width = `${healthPercent}%`;
+    const manaPercent = (playerStats.currentMana / playerStats.maxMana) * 100;
+
+    // Ensure maxHealth and maxMana are not zero to prevent NaN
+    const validHealthPercent = isFinite(healthPercent) ? healthPercent : 0;
+    const validManaPercent = isFinite(manaPercent) ? manaPercent : 0;
+
+    // Debugging Logs
+    console.log(
+      `Health: ${this.currentHealth}/${
+        this.maxHealth
+      } (${validHealthPercent.toFixed(1)}%)`
+    );
+    console.log(
+      `Mana: ${this.currentMana}/${this.maxMana} (${validManaPercent.toFixed(
+        1
+      )}%)`
+    );
+
+    // Update Health Bar Width
+    document.getElementById(
+      "health-fill"
+    ).style.width = `${validHealthPercent}%`;
 
     // Update Mana Bar Width
-    const manaPercent = (playerStats.currentMana / playerStats.maxMana) * 100;
-    document.getElementById("mana-fill").style.width = `${manaPercent}%`;
+    document.getElementById("mana-fill").style.width = `${validManaPercent}%`;
+
+    // Update Health and Mana Text with Percentages
+    const healthTextElement = document.getElementById("health-text");
+    const manaTextElement = document.getElementById("mana-text");
+
+    if (healthTextElement) {
+      healthTextElement.textContent = `HP: ${this.currentHealth}/${
+        this.maxHealth
+      } (${validHealthPercent.toFixed(1)}%)`;
+    } else {
+      console.warn("Health text element not found!");
+    }
+
+    if (manaTextElement) {
+      manaTextElement.textContent = `Mana: ${this.currentMana}/${
+        this.maxMana
+      } (${validManaPercent.toFixed(1)}%)`;
+    } else {
+      console.warn("Mana text element not found!");
+    }
   }
 
   toggleStatsMenu() {

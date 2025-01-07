@@ -71,6 +71,9 @@ body {
   font-size: 12px;
   line-height: 25px;
   pointer-events: none; /* Allow clicks to pass through to underlying elements */
+  /* Ensure text is visible */
+  white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
 }
 
 .level-info p {
@@ -168,3 +171,27 @@ table th {
 canvas {
   display: block; /* Removes any default inline spacing */
 }
+.health-fill,
+.mana-fill {
+  height: 100%;
+  transition: width 0.5s ease-in-out; /* Enhanced transition timing */
+}
+
+/* Add to ui.css */
+@media (max-width: 600px) {
+  #player-ui {
+    width: 180px;
+    padding: 10px;
+  }
+
+  .casting-slot {
+    width: 40px;
+    height: 40px;
+  }
+
+  .casting-slot img {
+    width: 24px;
+    height: 24px;
+  }
+}
+
