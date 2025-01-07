@@ -1,12 +1,5 @@
 // managers/SkillManager.js
 
-/**
- * SkillManager
- * 
- * Handles the usage of player skills, including casting times and cooldowns.
- * Integrates with UIManager for visual feedback.
- */
-
 export default class SkillManager {
   /**
    * @param {Phaser.Scene} scene - The Phaser scene instance.
@@ -36,7 +29,8 @@ export default class SkillManager {
    * Placeholder for future animation integrations.
    */
   createSkillAnimations() {
-    // Implement skill-specific animations here if needed.
+    // Animations are already defined in MainScene.js
+    // No additional setup required here
   }
 
   /**
@@ -87,8 +81,7 @@ export default class SkillManager {
 
     console.log(`Casting ${skill.name}...`);
 
-    // Display the casting indicator in the UI.
-    // Removed: No casting indicator modal.
+    // Optionally, you can display a casting animation here if desired
 
     // Schedule the execution of the skill after the casting time.
     this.scene.time.delayedCall(
@@ -97,11 +90,6 @@ export default class SkillManager {
         this.executeSkill(skill);
         this.isCasting = false;
         this.currentCastingSkill = null;
-
-        // Hide the casting indicator from the UI.
-        // Removed: No casting indicator modal.
-
-        // Removed: No audio
       },
       [],
       this
@@ -111,6 +99,7 @@ export default class SkillManager {
   /**
    * Executes the effects of a skill, such as dealing damage or healing.
    * Initiates the skill's cooldown.
+   * Also triggers the skill animation.
    * 
    * @param {Object} skill - The skill object to execute.
    */
@@ -125,6 +114,9 @@ export default class SkillManager {
     if (skill.magicAttack > 0 && targetedMob) {
       this.scene.mobManager.applyDamageToMob(targetedMob, skill.magicAttack);
       console.log(`${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${skill.magicAttack} magic damage.`);
+
+      // Trigger skill animation at the player's position moving towards the mob
+      this.triggerSkillAnimation(skill, player, targetedMob);
     }
 
     // Apply healing to the player if the skill heals.
@@ -154,6 +146,46 @@ export default class SkillManager {
 
     // Refresh the UI to reflect changes in mana and health.
     this.scene.updateUI();
+  }
+
+  /**
+   * Triggers the skill animation.
+   * 
+   * @param {Object} skill - The skill object being used.
+   * @param {Phaser.GameObjects.Sprite} player - The player sprite.
+   * @param {Phaser.GameObjects.Sprite} target - The targeted mob sprite.
+   */
+  triggerSkillAnimation(skill, player, target) {
+    const scene = this.scene;
+
+    // Create a sprite at the player's position
+    const skillSprite = scene.add.sprite(player.x, player.y, `${skill.name}_anim`);
+    skillSprite.setScale(1); // Adjust scale as needed
+
+    // Play the animation
+    skillSprite.play(`${skill.name}_anim`);
+
+    // Calculate direction towards the target
+    const angle = Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y);
+    const distance = Phaser.Math.Distance.Between(player.x, player.y, target.x, target.y);
+    const speed = 300; // Pixels per second
+
+    // Set velocity based on angle
+    scene.physics.velocityFromRotation(angle, speed, skillSprite.body.velocity);
+
+    // Enable physics for the skill sprite
+    scene.physics.world.enable(skillSprite);
+    skillSprite.body.setCollideWorldBounds(false);
+    skillSprite.body.setAllowGravity(false);
+
+    // Destroy the skill sprite after it reaches the target or goes out of bounds
+    scene.time.addEvent({
+      delay: (distance / speed) * 1000 + 500, // Extra time to ensure it reaches the target
+      callback: () => {
+        skillSprite.destroy();
+      },
+      callbackScope: this,
+    });
   }
 
   /**

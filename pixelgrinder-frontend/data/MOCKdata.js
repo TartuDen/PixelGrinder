@@ -162,8 +162,8 @@ const playerSkills = [
     range: 20,
     magicAttack: 2,
     meleeAttack: 0,
-    castingTime: 0, // Instant skill
-    cooldown: 5, // 5 seconds cooldown
+    castingTime: 0,
+    cooldown: 2,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
@@ -176,8 +176,8 @@ const playerSkills = [
     range: 20,
     magicAttack: 3,
     meleeAttack: 0,
-    castingTime: 2, // 2 seconds casting
-    cooldown: 10, // 10 seconds cooldown
+    castingTime: 0,
+    cooldown: 2,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
@@ -190,8 +190,8 @@ const playerSkills = [
     range: 20,
     magicAttack: 5,
     meleeAttack: 0,
-    castingTime: 1.5, // 1.5 seconds casting
-    cooldown: 8, // 8 seconds cooldown
+    castingTime: 0,
+    cooldown: 2, 
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",

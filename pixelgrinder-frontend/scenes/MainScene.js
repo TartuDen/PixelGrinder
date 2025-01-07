@@ -12,9 +12,7 @@ import {
   TAB_TARGET_RANGE, // Import TAB_TARGET_RANGE here
 } from "../data/MOCKdata.js";
 
-import {
-  calculatePlayerStats,
-} from "../helpers/calculatePlayerStats.js";
+import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -99,8 +97,10 @@ export default class MainScene extends Phaser.Scene {
     });
 
     // TAB key for cycling targets
-    const tabKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
-    tabKey.on('down', (event) => {
+    const tabKey = this.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.TAB
+    );
+    tabKey.on("down", (event) => {
       event.preventDefault(); // Prevent default browser behavior
       this.cycleTarget();
       this.updateUI();
@@ -178,7 +178,8 @@ export default class MainScene extends Phaser.Scene {
     const { name, class: cls, level, totalExp } = playerProfile;
 
     // Use imported playerBaseStats instead of hardcoding
-    const { health, mana, intellect, strength, dexterity, constitution } = playerBaseStats;
+    const { health, mana, intellect, strength, dexterity, constitution } =
+      playerBaseStats;
 
     const dynamicBaseStats = {
       health,
@@ -189,8 +190,14 @@ export default class MainScene extends Phaser.Scene {
       constitution,
     };
 
-    const baseStatsHTML = this.generateStatsTable("Base Stats", dynamicBaseStats);
-    const derivedStatsHTML = this.generateStatsTable("Derived Stats", derivedStats);
+    const baseStatsHTML = this.generateStatsTable(
+      "Base Stats",
+      dynamicBaseStats
+    );
+    const derivedStatsHTML = this.generateStatsTable(
+      "Derived Stats",
+      derivedStats
+    );
 
     return `
       <h3>Player Info</h3>
@@ -266,11 +273,13 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   cycleTarget() {
     // Get all mobs that are alive and within the TAB_TARGET_RANGE
-    const mobsInRange = this.mobManager.mobs.getChildren().filter(mob => {
+    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
       if (mob.customData.isDead) return false; // Exclude dead mobs
       const distance = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        mob.x, mob.y
+        this.player.x,
+        this.player.y,
+        mob.x,
+        mob.y
       );
       return distance <= TAB_TARGET_RANGE;
     });
@@ -283,18 +292,23 @@ export default class MainScene extends Phaser.Scene {
     // Sort mobs by distance from the player (closest first)
     mobsInRange.sort((a, b) => {
       const distanceA = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        a.x, a.y
+        this.player.x,
+        this.player.y,
+        a.x,
+        a.y
       );
       const distanceB = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        b.x, b.y
+        this.player.x,
+        this.player.y,
+        b.x,
+        b.y
       );
       return distanceA - distanceB;
     });
 
     // Cycle to the next target
-    this.currentTargetIndex = (this.currentTargetIndex + 1) % mobsInRange.length;
+    this.currentTargetIndex =
+      (this.currentTargetIndex + 1) % mobsInRange.length;
 
     // Set the new targeted mob
     const mob = mobsInRange[this.currentTargetIndex];
@@ -327,11 +341,13 @@ export default class MainScene extends Phaser.Scene {
     this.targetedMob = mob;
 
     // Find the index of the clicked mob within mobsInRange
-    const mobsInRange = this.mobManager.mobs.getChildren().filter(mob => {
+    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
       if (mob.customData.isDead) return false;
       const distance = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        mob.x, mob.y
+        this.player.x,
+        this.player.y,
+        mob.x,
+        mob.y
       );
       return distance <= TAB_TARGET_RANGE;
     });
@@ -339,12 +355,16 @@ export default class MainScene extends Phaser.Scene {
     // Sort mobs by distance
     mobsInRange.sort((a, b) => {
       const distanceA = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        a.x, a.y
+        this.player.x,
+        this.player.y,
+        a.x,
+        a.y
       );
       const distanceB = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        b.x, b.y
+        this.player.x,
+        this.player.y,
+        b.x,
+        b.y
       );
       return distanceA - distanceB;
     });
@@ -360,13 +380,21 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   regenerateStats() {
     const beforeMana = this.currentMana;
-    this.currentMana = Math.min(this.maxMana, this.currentMana + naturalRegeneration.manaRegen);
+    this.currentMana = Math.min(
+      this.maxMana,
+      this.currentMana + naturalRegeneration.manaRegen
+    );
 
     const beforeHealth = this.currentHealth;
-    this.currentHealth = Math.min(this.maxHealth, this.currentHealth + naturalRegeneration.hpRegen);
+    this.currentHealth = Math.min(
+      this.maxHealth,
+      this.currentHealth + naturalRegeneration.hpRegen
+    );
 
     console.log(
-      `Regenerated +${this.currentMana - beforeMana} mana, +${this.currentHealth - beforeHealth} HP`
+      `Regenerated +${this.currentMana - beforeMana} mana, +${
+        this.currentHealth - beforeHealth
+      } HP`
     );
 
     // Update the UI to reflect regeneration
@@ -376,6 +404,8 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   //  Asset Loading & World Setup
   // --------------------------------------------------------------
+  // scenes/MainScene.js
+
   loadAssets() {
     // Tilemap JSON
     this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
@@ -396,6 +426,18 @@ export default class MainScene extends Phaser.Scene {
     this.load.spritesheet("$dead", "assets/$dead.png", {
       frameWidth: 32,
       frameHeight: 32,
+    });
+
+    // Load skill animation spritesheets
+    playerSkills.forEach((skill) => {
+      this.load.spritesheet(
+        `${skill.name}_anim`,
+        `assets/skills/animations/${skill.name}.png`,
+        {
+          frameWidth: 32, // Adjust based on your spritesheet
+          frameHeight: 32, // Adjust based on your spritesheet
+        }
+      );
     });
   }
 
@@ -420,25 +462,37 @@ export default class MainScene extends Phaser.Scene {
     // Player animations
     this.anims.create({
       key: "walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 0, end: 2 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 0,
+        end: 2,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 12, end: 14 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 12,
+        end: 14,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 24, end: 26 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 24,
+        end: 26,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 36, end: 38 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 36,
+        end: 38,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -446,25 +500,37 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 48,
+        end: 50,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 60,
+        end: 62,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 72,
+        end: 74,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 84,
+        end: 86,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -476,6 +542,19 @@ export default class MainScene extends Phaser.Scene {
       frameRate: 0,
       repeat: 0,
     });
+
+    // Skill Animations
+    playerSkills.forEach((skill) => {
+      this.anims.create({
+        key: `${skill.name}_anim`,
+        frames: this.anims.generateFrameNumbers(`${skill.name}_anim`, {
+          start: 0,
+          end: skill.animationSeq[1],
+        }),
+        frameRate: 15, // Adjust frame rate as needed
+        repeat: 0, // Play once
+      });
+    });
   }
 
   createPlayer() {
@@ -483,7 +562,11 @@ export default class MainScene extends Phaser.Scene {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
+    this.player = this.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -496,8 +579,18 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
+    this.physics.world.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
     this.cameras.main.startFollow(this.player);
   }
 

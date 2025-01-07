@@ -25,10 +25,6 @@ export default class UIManager {
     this.castingBarSlots = document.querySelectorAll(
       "#casting-bar .casting-slot"
     );
-
-    // Removed casting indicator references
-    // this.castingIndicator = document.getElementById("casting-indicator");
-    // this.castingText = document.getElementById("casting-text");
   }
 
   /**
@@ -159,7 +155,7 @@ export default class UIManager {
   }
 
   /**
-   * Setup skill slots with event listeners if needed.
+   * Setup skill slots with event listeners and dynamic icons.
    * Also, set the skill icons dynamically based on skill data.
    * @param {Array} skills - Array of skill objects
    */
