@@ -8,6 +8,7 @@ import {
   playerProfile,
   playerSkills,
   playerBaseStats,
+  TAB_TARGET_RANGE,
 } from "../data/MOCKdata.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
@@ -15,7 +16,7 @@ export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
 
-    this.currentTargetIndex = null;
+    this.currentTargetIndex = -1; // Initialize to -1 to start from the first mob
     this.targetedMob = null;
 
     // Player stats
@@ -314,21 +315,52 @@ export default class MainScene extends Phaser.Scene {
   //  Targeting
   // --------------------------------------------------------------
   cycleTarget() {
-    const mobArray = this.mobManager.mobs
-      .getChildren()
-      .filter((mob) => !mob.customData.isDead);
-    if (!mobArray.length) return;
+    // Get all mobs that are alive and within the TAB_TARGET_RANGE
+    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
+      if (mob.customData.isDead) return false; // Exclude dead mobs
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        mob.x,
+        mob.y
+      );
+      return distance <= TAB_TARGET_RANGE;
+    });
 
-    if (
-      this.currentTargetIndex === null ||
-      this.currentTargetIndex >= mobArray.length - 1
-    ) {
-      this.currentTargetIndex = 0;
-    } else {
-      this.currentTargetIndex += 1;
+    if (mobsInRange.length === 0) {
+      console.log("No mobs within TAB targeting range.");
+      return; // No mobs to target
     }
-    this.targetedMob = mobArray[this.currentTargetIndex];
-    this.highlightMob(this.targetedMob);
+
+    // Sort mobs by distance from the player (closest first)
+    mobsInRange.sort((a, b) => {
+      const distanceA = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        b.x,
+        b.y
+      );
+      return distanceA - distanceB;
+    });
+
+    // Cycle to the next target
+    this.currentTargetIndex =
+      (this.currentTargetIndex + 1) % mobsInRange.length;
+
+    // Set the new targeted mob
+    const mob = mobsInRange[this.currentTargetIndex];
+    this.targetedMob = mob;
+
+    // Highlight the targeted mob
+    this.highlightMob(mob);
+
+    console.log(`Targeted Mob: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
   }
 
   highlightMob(mob) {
@@ -336,16 +368,53 @@ export default class MainScene extends Phaser.Scene {
     mob.setTint(0xff0000);
   }
 
+  // Inside MainScene.js
+
   onMobClicked(mob) {
     if (!mob.active) return;
 
+    // Clear previous tints
     this.mobManager.mobs.getChildren().forEach((m) => m.clearTint());
+
+    // Highlight the clicked mob
     mob.setTint(0xff0000);
 
+    // Set as targeted mob
     this.targetedMob = mob;
-    const mobArray = this.mobManager.mobs.getChildren();
-    this.currentTargetIndex = mobArray.indexOf(mob);
-    console.log("Mob clicked:", mob.customData.id, "HP:", mob.customData.hp);
+
+    // Find the index of the clicked mob within mobsInRange
+    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
+      if (mob.customData.isDead) return false;
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        mob.x,
+        mob.y
+      );
+      return distance <= TAB_TARGET_RANGE;
+    });
+
+    // Sort mobs by distance
+    mobsInRange.sort((a, b) => {
+      const distanceA = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        b.x,
+        b.y
+      );
+      return distanceA - distanceB;
+    });
+
+    // Update currentTargetIndex based on clicked mob's position in the sorted list
+    this.currentTargetIndex = mobsInRange.indexOf(mob);
+
+    console.log(`Mob clicked: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
   }
 
   // --------------------------------------------------------------

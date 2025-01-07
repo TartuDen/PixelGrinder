@@ -229,6 +229,10 @@ const naturalRegeneration = {
   regenerationTime: 5000, // Time in ms (5s)
 };
 
+
+// Define TAB targeting range (in pixels)
+const TAB_TARGET_RANGE = 400; // Adjust this value as needed
+
 // Export everything
 export {
   playerProfile,
@@ -241,4 +245,5 @@ export {
   playerSkills,
   mobsData,
   naturalRegeneration,
+  TAB_TARGET_RANGE
 };
