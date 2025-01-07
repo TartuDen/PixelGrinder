@@ -7,6 +7,7 @@ import {
   naturalRegeneration,
   playerProfile,
   playerSkills,
+  playerBaseStats,
 } from "../data/MOCKdata.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
@@ -215,17 +216,23 @@ export default class MainScene extends Phaser.Scene {
     const derivedStats = this.getPlayerStats();
     const { name, class: cls, level, totalExp } = playerProfile;
 
-    // Assuming you want to include base stats and derived stats
-    const baseStats = {
-      health: 100, // Replace with dynamic base stats if available
-      mana: 150,
-      intellect: 3,
-      strength: 3,
-      dexterity: 3,
-      constitution: 4,
+    // Use imported baseStats instead of hardcoding
+    const { health, mana, intellect, strength, dexterity, constitution } =
+      playerBaseStats;
+
+    const dynamicBaseStats = {
+      health,
+      mana,
+      intellect,
+      strength,
+      dexterity,
+      constitution,
     };
 
-    const baseStatsHTML = this.generateStatsTable("Base Stats", baseStats);
+    const baseStatsHTML = this.generateStatsTable(
+      "Base Stats",
+      dynamicBaseStats
+    );
     const derivedStatsHTML = this.generateStatsTable(
       "Derived Stats",
       derivedStats
@@ -237,7 +244,7 @@ export default class MainScene extends Phaser.Scene {
       <p><strong>Class:</strong> ${cls}</p>
       <p><strong>Level:</strong> ${level || "N/A"}</p>
       <p><strong>Experience:</strong> ${totalExp}</p>
-
+  
       ${baseStatsHTML}
       ${derivedStatsHTML}
     `;
