@@ -250,13 +250,13 @@ export default class MainScene extends Phaser.Scene {
   //  Targeting
   // --------------------------------------------------------------
   cycleTarget() {
-    const mobArray = this.mobManager.mobs.getChildren();
+    const mobArray = this.mobManager.mobs.getChildren().filter(mob => !mob.customData.isDead);
     if (!mobArray.length) return;
 
-    if (this.currentTargetIndex === null) {
+    if (this.currentTargetIndex === null || this.currentTargetIndex >= mobArray.length - 1) {
       this.currentTargetIndex = 0;
     } else {
-      this.currentTargetIndex = (this.currentTargetIndex + 1) % mobArray.length;
+      this.currentTargetIndex += 1;
     }
     this.targetedMob = mobArray[this.currentTargetIndex];
     this.highlightMob(this.targetedMob);
@@ -430,7 +430,29 @@ export default class MainScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
 
-    // Numeric keys are handled in UIManager setup if needed
+    // Numeric keys 1-10 for skills
+    const skillKeys = [
+      Phaser.Input.Keyboard.KeyCodes.ONE,
+      Phaser.Input.Keyboard.KeyCodes.TWO,
+      Phaser.Input.Keyboard.KeyCodes.THREE,
+      Phaser.Input.Keyboard.KeyCodes.FOUR,
+      Phaser.Input.Keyboard.KeyCodes.FIVE,
+      Phaser.Input.Keyboard.KeyCodes.SIX,
+      Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      Phaser.Input.Keyboard.KeyCodes.NINE,
+      Phaser.Input.Keyboard.KeyCodes.ZERO, // Assuming 0 is mapped to key 10
+    ];
+
+    playerSkills.forEach((skill, index) => {
+      if (index < skillKeys.length) {
+        const key = this.input.keyboard.addKey(skillKeys[index]);
+        key.on("down", () => {
+          console.log(`Skill triggered: ${skill.name}`);
+          this.useSkill(skill);
+        });
+      }
+    });
   }
 
   // --------------------------------------------------------------
