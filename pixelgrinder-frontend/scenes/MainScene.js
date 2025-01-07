@@ -147,17 +147,17 @@ export default class MainScene extends Phaser.Scene {
     const validHealthPercent = isFinite(healthPercent) ? healthPercent : 0;
     const validManaPercent = isFinite(manaPercent) ? manaPercent : 0;
 
-    // Debugging Logs
-    console.log(
-      `Health: ${this.currentHealth}/${
-        this.maxHealth
-      } (${validHealthPercent.toFixed(1)}%)`
-    );
-    console.log(
-      `Mana: ${this.currentMana}/${this.maxMana} (${validManaPercent.toFixed(
-        1
-      )}%)`
-    );
+    // // Debugging Logs
+    // console.log(
+    //   `Health: ${this.currentHealth}/${
+    //     this.maxHealth
+    //   } (${validHealthPercent.toFixed(1)}%)`
+    // );
+    // console.log(
+    //   `Mana: ${this.currentMana}/${this.maxMana} (${validManaPercent.toFixed(
+    //     1
+    //   )}%)`
+    // );
 
     // Update Health Bar Width
     document.getElementById(
@@ -357,11 +357,11 @@ export default class MainScene extends Phaser.Scene {
       this.currentHealth + naturalRegeneration.hpRegen
     );
 
-    console.log(
-      `Regenerated +${this.currentMana - beforeMana} mana, +${
-        this.currentHealth - beforeHealth
-      } HP`
-    );
+    // console.log(
+    //   `Regenerated +${this.currentMana - beforeMana} mana, +${
+    //     this.currentHealth - beforeHealth
+    //   } HP`
+    // );
   }
 
   // --------------------------------------------------------------
