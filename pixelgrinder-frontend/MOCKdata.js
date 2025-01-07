@@ -1,4 +1,4 @@
-// MOCKdata.js
+// pixelgrinder-frontend\MOCKdata.js
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
@@ -176,7 +176,7 @@ const playerSkills = [
     animationSeq: [0, 7],
   },
   {
-    name: "earch_root",
+    name: "earth_root",
     manaCost: 20,
     range: 20,
     magicAttack: 5,
