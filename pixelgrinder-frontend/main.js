@@ -1,9 +1,9 @@
-// pixelgrinder-frontend\main.js
+// main.js
 import { gameConfig } from "./config.js";
 import MainScene from "./scenes/MainScene.js";
 
-// Merge scenes into gameConfig
+// Add your main scene to the config
 gameConfig.scene = [MainScene];
 
-// Launch Phaser game
+// Launch Phaser
 const game = new Phaser.Game(gameConfig);

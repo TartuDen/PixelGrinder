@@ -1,4 +1,4 @@
-// pixelgrinder-frontend\MOCKdata.js
+// pixelgrinder-frontend\data/MOCKdata.js
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
@@ -12,7 +12,7 @@ const playerBaseStats = {
   health: 100,
   mana: 150,
   intellect: 3, // formerly int_stat
-  strength: 3, // formerly str_stat
+  strength: 3,  // formerly str_stat
   dexterity: 3, // formerly dex_stat
   constitution: 4, // formerly con_stat
 };
@@ -151,6 +151,7 @@ const playerBackpack = {
   cell_5_3: null,
   cell_5_4: null,
 };
+
 // --- Skills / Attacks ---
 const playerSkills = [
   {
@@ -189,45 +190,43 @@ const playerSkills = [
 ];
 
 // --- Mobs Data ---
-
 const mobsData = {
-    slime: {
-      name: "Slime",
-      attackRange: 40,
-      health: 50,
-      mana: 0,
-      magicAttack: 0,
-      meleeAttack: 20,
-      magicDefense: 2,
-      meleeDefense: 30,
-      magicEvasion: 1,
-      meleeEvasion: 1,
-      mobType: "friend",
-      mobAgroRange: 300,
-      attackCooldown: 2000, // milliseconds between attacks
-    },
-    goblin: {
-      name: "Goblin",
-      attackRange: 40,
-      health: 40,
-      mana: 0,
-      magicAttack: 3,
-      meleeAttack: 4,
-      magicDefense: 2,
-      meleeDefense: 5,
-      magicEvasion: 2,
-      meleeEvasion: 2,
-      mobType: "enemy",
-      mobAgroRange: 300,
-      attackCooldown: 1500,
-    },
-  };
-  
+  slime: {
+    name: "Slime",
+    attackRange: 40,
+    health: 50,
+    mana: 0,
+    magicAttack: 0,
+    meleeAttack: 20,
+    magicDefense: 2,
+    meleeDefense: 30,
+    magicEvasion: 1,
+    meleeEvasion: 1,
+    mobType: "friend",
+    mobAgroRange: 300,
+    attackCooldown: 2000, // milliseconds between attacks
+  },
+  goblin: {
+    name: "Goblin",
+    attackRange: 40,
+    health: 40,
+    mana: 0,
+    magicAttack: 3,
+    meleeAttack: 4,
+    magicDefense: 2,
+    meleeDefense: 5,
+    magicEvasion: 2,
+    meleeEvasion: 2,
+    mobType: "enemy",
+    mobAgroRange: 300,
+    attackCooldown: 1500,
+  },
+};
 
 const naturalRegeneration = {
   manaRegen: 3, // Regenerates 3 mana per regenerationTime
-  hpRegen: 4, // Regenerates 4 health per regenerationTime
-  regenerationTime: 5000, // Time in milliseconds (e.g., 5000ms = 5 seconds)
+  hpRegen: 4,   // Regenerates 4 health per regenerationTime
+  regenerationTime: 5000, // Time in ms (5s)
 };
 
 // Export everything
