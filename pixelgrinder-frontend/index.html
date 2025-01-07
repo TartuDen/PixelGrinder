@@ -17,52 +17,57 @@
     </style>
   </head>
   <body>
-    <!-- UI Panel in the top-left corner -->
-    <div id="player-ui">
-      <h3 id="player-name">???</h3>
-
-      <div class="stats-container">
-        <div class="health-bar">
-          <div class="health-fill" id="health-fill"></div>
-          <span class="stat-text" id="health-text">HP: 0/0 (0.0%)</span>
-        </div>
-
-        <div class="mana-bar">
-          <div class="mana-fill" id="mana-fill"></div>
-          <span class="stat-text" id="mana-text">Mana: 0/0 (0.0%)</span>
-        </div>
+    <!-- Player Info Display -->
+    <div id="player-info">
+      <div id="player-name">Omigod</div>
+      <div id="health-bar" class="health-bar">
+        <div id="health-fill"></div>
+        <span id="health-text">HP: 100/100 (100%)</span>
       </div>
-
-      <div class="level-info">
-        <p id="player-level">Level: ???</p>
-        <p id="player-xp">XP: ???</p>
+      <div id="mana-bar" class="mana-bar">
+        <div id="mana-fill"></div>
+        <span id="mana-text">Mana: 150/150 (100%)</span>
       </div>
+      <div id="player-level">Level: 1</div>
+      <div id="player-xp">XP: 0</div>
     </div>
 
-    <!-- Casting Bar UI -->
+    <!-- Casting Bar -->
     <div id="casting-bar">
-      <!-- 10 Slots -->
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-      <div class="casting-slot"></div>
-    </div>
-
-    <!-- New Stats Menu Modal -->
-    <div id="stats-menu" class="modal">
-      <div class="modal-content">
-        <span class="close-button" id="close-stats">&times;</span>
-        <h2>Player Stats</h2>
-        <div id="stats-content">
-          <!-- Stats will be dynamically inserted here -->
+      <div class="casting-slot" data-skill-id="1">
+        <img src="" alt="Skill 1 Icon" />
+        <!-- Image source will be set dynamically -->
+        <div class="mana-cost">5</div>
+        <div class="cooldown-overlay" style="display: none">
+          <span class="cooldown-timer">5.0</span>
         </div>
       </div>
+
+      <div class="casting-slot" data-skill-id="2">
+        <img src="" alt="Skill 2 Icon" />
+        <!-- Image source will be set dynamically -->
+        <div class="mana-cost">10</div>
+        <div class="cooldown-overlay" style="display: none">
+          <span class="cooldown-timer">10.0</span>
+        </div>
+      </div>
+
+      <div class="casting-slot" data-skill-id="3">
+        <img src="" alt="Skill 3 Icon" />
+        <!-- Image source will be set dynamically -->
+        <div class="mana-cost">20</div>
+        <div class="cooldown-overlay" style="display: none">
+          <span class="cooldown-timer">8.0</span>
+        </div>
+      </div>
+
+      <!-- Add more casting slots as needed -->
+    </div>
+
+    <!-- Stats Menu -->
+    <div id="stats-menu" class="stats-menu" style="display: none">
+      <button id="close-stats">Close</button>
+      <div id="stats-content"></div>
     </div>
 
     <!-- Put your main.js script at the bottom of body -->

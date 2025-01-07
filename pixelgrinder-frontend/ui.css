@@ -1,197 +1,149 @@
-/* ui.css */
-body {
-  margin: 0;
-  padding: 0;
-  font-family: sans-serif;
-  background: #333;
-  color: #fff;
-  overflow: hidden; /* Prevent scrolling */
-}
-
-#player-ui {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1; /* Ensure it's above the game canvas */
-  background: rgba(0, 0, 0, 0.8); /* Semi-transparent dark background */
-  padding: 15px;
-  border: 2px solid #fff; /* White border for visibility */
-  border-radius: 8px;
-  width: 220px; /* Adjust width as needed */
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Optional: Add shadow for depth */
-}
-
-#player-ui h3 {
-  margin: 0 0 15px 0;
-  text-align: center;
-  font-size: 18px;
-  color: #fff;
-}
-
-.stats-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.health-bar,
-.mana-bar {
-  position: relative;
-  width: 100%;
-  height: 25px;
-  background: #555; /* Dark grey background for the bar */
-  border: 1px solid #fff; /* White border to define the bar */
-  border-radius: 5px;
-  overflow: hidden; /* Hide overflow to maintain border radius */
-}
-
-.health-fill,
-.mana-fill {
-  height: 100%;
-  transition: width 0.3s ease; /* Smooth transition for dynamic width changes */
-}
-
-.health-fill {
-  background: #ff4c4c; /* Bright red for Health */
-  width: 100%; /* Initial width; will be updated via JavaScript */
-}
-
-.mana-fill {
-  background: #4c4cff; /* Bright blue for Mana */
-  width: 100%; /* Initial width; will be updated via JavaScript */
-}
-
-.stat-text {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #fff;
-  font-size: 12px;
-  line-height: 25px;
-  pointer-events: none; /* Allow clicks to pass through to underlying elements */
-  /* Ensure text is visible */
-  white-space: nowrap;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
-}
-
-.level-info p {
-  margin: 5px 0;
-  text-align: center;
-  font-size: 14px;
-}
-
-#casting-bar {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  display: flex;
-  z-index: 1; /* Ensure it's above the game canvas */
-}
-
-.casting-slot {
-  width: 50px;
-  height: 50px;
-  background: #222; /* Dark background for casting slots */
-  margin-right: 5px;
-  border: 1px solid #555; /* Slightly lighter border for visibility */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  border-radius: 5px; /* Rounded corners for aesthetics */
-}
-
-.casting-slot img {
-  width: 32px;
-  height: 32px;
-}
-
-.casting-slot .mana-cost {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  font-size: 10px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.6); /* Semi-transparent background for readability */
-  padding: 1px 3px;
-  border-radius: 3px;
-}
-
-/* Modal Styling (unchanged) */
-.modal {
-  display: none;
+/* Player Info Display */
+#player-info {
   position: fixed;
-  z-index: 999;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto; /* Allow scrolling within the modal if needed */
-  background-color: rgba(0,0,0,0.7);
+  top: 20px;
+  left: 20px;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  z-index: 100;
 }
 
-.modal-content {
-  background-color: #1a1a1a;
-  margin: 5% auto;
-  padding: 20px;
-  width: 500px;
-  border: 2px solid #444;
+.health-bar, .mana-bar {
+  position: relative;
+  width: 200px;
+  height: 20px;
+  background-color: #555;
   border-radius: 5px;
-}
-
-.close-button {
-  float: right;
-  font-size: 28px;
-  cursor: pointer;
-}
-
-.close-button:hover {
-  color: #aaa;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
   margin-bottom: 10px;
 }
 
-table th,
-table td {
-  border: 1px solid #444;
-  padding: 8px;
+#health-fill, #mana-fill {
+  height: 100%;
+  background-color: #f00; /* Red for health */
+  width: 100%;
+  border-radius: 5px;
+  transition: width 0.5s ease;
 }
 
-table th {
-  background: #444;
+#mana-fill {
+  background-color: #00f; /* Blue for mana */
+}
+
+.health-bar span, .mana-bar span {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  top: 0;
+  left: 0;
+  color: #fff;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Casting Bar */
+#casting-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+}
+
+.casting-slot {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.casting-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mana-cost {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* Cooldown Overlay */
+.cooldown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.cooldown-timer {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  font-size: 14px;
   font-weight: bold;
 }
 
-canvas {
-  display: block; /* Removes any default inline spacing */
-}
-.health-fill,
-.mana-fill {
-  height: 100%;
-  transition: width 0.5s ease-in-out; /* Enhanced transition timing */
-}
-
-/* Add to ui.css */
-@media (max-width: 600px) {
-  #player-ui {
-    width: 180px;
-    padding: 10px;
-  }
-
-  .casting-slot {
-    width: 40px;
-    height: 40px;
-  }
-
-  .casting-slot img {
-    width: 24px;
-    height: 24px;
-  }
+/* Stats Menu */
+.stats-menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0,0,0,0.8);
+  padding: 20px;
+  border-radius: 8px;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  z-index: 200; /* Above other UI elements */
 }
 
+.stats-menu table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.stats-menu th, .stats-menu td {
+  border: 1px solid #fff;
+  padding: 8px;
+  text-align: left;
+}
+
+.stats-menu th {
+  background-color: #444;
+}
+
+#close-stats {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #f00;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+#close-stats:hover {
+  background-color: #c00;
+}

@@ -1,4 +1,5 @@
 // scenes/MainScene.js
+
 import UIManager from "../managers/UIManager.js";
 import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
@@ -8,9 +9,12 @@ import {
   playerProfile,
   playerSkills,
   playerBaseStats,
-  TAB_TARGET_RANGE,
+  TAB_TARGET_RANGE, // Import TAB_TARGET_RANGE here
 } from "../data/MOCKdata.js";
-import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
+
+import {
+  calculatePlayerStats,
+} from "../helpers/calculatePlayerStats.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -43,6 +47,12 @@ export default class MainScene extends Phaser.Scene {
     // Load default assets (tilemap, etc.)
     this.loadAssets();
 
+    // Load audio assets for SkillManager (Removed since no audio is used)
+    // this.load.audio('cast-start', 'assets/sounds/cast-start.mp3');
+    // this.load.audio('cast-end', 'assets/sounds/cast-end.mp3');
+    // this.load.audio('cooldown-start', 'assets/sounds/cooldown-start.mp3');
+    // this.load.audio('cooldown-end', 'assets/sounds/cooldown-end.mp3');
+
     // Prepare skill manager
     this.skillManager = new SkillManager(this, () => this.getPlayerStats());
     this.skillManager.preloadSkills();
@@ -56,7 +66,7 @@ export default class MainScene extends Phaser.Scene {
     this.setupControls();
 
     // Initialize Managers
-    this.uiManager = new UIManager();
+    this.uiManager = new UIManager(this); // Pass the scene reference
     // Pass a callback to handle closing the stats menu
     this.uiManager.init(() => {
       this.hideStatsMenu();
@@ -68,12 +78,11 @@ export default class MainScene extends Phaser.Scene {
     // Setup UI
     this.uiManager.setupSkills(playerSkills);
 
-    // Initialize player stats
-    const pStats = this.getPlayerStats();
-    this.maxHealth = pStats.health;
-    this.currentHealth = pStats.health;
-    this.maxMana = pStats.mana;
-    this.currentMana = pStats.mana;
+    // Initialize player stats from playerBaseStats
+    this.maxHealth = playerBaseStats.health;
+    this.currentHealth = playerBaseStats.health;
+    this.maxMana = playerBaseStats.mana;
+    this.currentMana = playerBaseStats.mana;
 
     // Update the UI once at the start
     this.updateUI();
@@ -83,15 +92,16 @@ export default class MainScene extends Phaser.Scene {
 
     // Natural regeneration
     this.time.addEvent({
-      delay: naturalRegeneration.regenerationTime,
+      delay: naturalRegeneration.regenerationTime, // Already in ms
       callback: this.regenerateStats,
       callbackScope: this,
       loop: true,
     });
 
     // TAB key for cycling targets
-    this.input.keyboard.on("keydown-TAB", (event) => {
-      event.preventDefault();
+    const tabKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+    tabKey.on('down', (event) => {
+      event.preventDefault(); // Prevent default browser behavior
       this.cycleTarget();
       this.updateUI();
     });
@@ -106,7 +116,8 @@ export default class MainScene extends Phaser.Scene {
   update(time, delta) {
     this.handlePlayerMovement();
     this.mobManager.updateMobs(this.player);
-    this.updateUI(); // Ensure UI is updated every frame or as needed
+    // UI is managed by UIManager, no need to update UI every frame
+    // this.updateUI();
   }
 
   // --------------------------------------------------------------
@@ -124,8 +135,6 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   //  UI
   // --------------------------------------------------------------
-  // Inside MainScene.js
-
   updateUI() {
     const playerStats = {
       name: playerProfile.name,
@@ -133,61 +142,12 @@ export default class MainScene extends Phaser.Scene {
       maxHealth: this.maxHealth,
       currentMana: this.currentMana,
       maxMana: this.maxMana,
-      level: 5, // Replace with dynamic level if available
+      level: playerProfile.level, // Use dynamic level if available
       xp: playerProfile.totalExp,
     };
 
     // Update the UI via UIManager
     this.uiManager.updateUI(playerStats);
-
-    // Calculate percentages
-    const healthPercent =
-      (playerStats.currentHealth / playerStats.maxHealth) * 100;
-    const manaPercent = (playerStats.currentMana / playerStats.maxMana) * 100;
-
-    // Ensure maxHealth and maxMana are not zero to prevent NaN
-    const validHealthPercent = isFinite(healthPercent) ? healthPercent : 0;
-    const validManaPercent = isFinite(manaPercent) ? manaPercent : 0;
-
-    // // Debugging Logs
-    // console.log(
-    //   `Health: ${this.currentHealth}/${
-    //     this.maxHealth
-    //   } (${validHealthPercent.toFixed(1)}%)`
-    // );
-    // console.log(
-    //   `Mana: ${this.currentMana}/${this.maxMana} (${validManaPercent.toFixed(
-    //     1
-    //   )}%)`
-    // );
-
-    // Update Health Bar Width
-    document.getElementById(
-      "health-fill"
-    ).style.width = `${validHealthPercent}%`;
-
-    // Update Mana Bar Width
-    document.getElementById("mana-fill").style.width = `${validManaPercent}%`;
-
-    // Update Health and Mana Text with Percentages
-    const healthTextElement = document.getElementById("health-text");
-    const manaTextElement = document.getElementById("mana-text");
-
-    if (healthTextElement) {
-      healthTextElement.textContent = `HP: ${this.currentHealth}/${
-        this.maxHealth
-      } (${validHealthPercent.toFixed(1)}%)`;
-    } else {
-      console.warn("Health text element not found!");
-    }
-
-    if (manaTextElement) {
-      manaTextElement.textContent = `Mana: ${this.currentMana}/${
-        this.maxMana
-      } (${validManaPercent.toFixed(1)}%)`;
-    } else {
-      console.warn("Mana text element not found!");
-    }
   }
 
   toggleStatsMenu() {
@@ -217,9 +177,8 @@ export default class MainScene extends Phaser.Scene {
     const derivedStats = this.getPlayerStats();
     const { name, class: cls, level, totalExp } = playerProfile;
 
-    // Use imported baseStats instead of hardcoding
-    const { health, mana, intellect, strength, dexterity, constitution } =
-      playerBaseStats;
+    // Use imported playerBaseStats instead of hardcoding
+    const { health, mana, intellect, strength, dexterity, constitution } = playerBaseStats;
 
     const dynamicBaseStats = {
       health,
@@ -230,14 +189,8 @@ export default class MainScene extends Phaser.Scene {
       constitution,
     };
 
-    const baseStatsHTML = this.generateStatsTable(
-      "Base Stats",
-      dynamicBaseStats
-    );
-    const derivedStatsHTML = this.generateStatsTable(
-      "Derived Stats",
-      derivedStats
-    );
+    const baseStatsHTML = this.generateStatsTable("Base Stats", dynamicBaseStats);
+    const derivedStatsHTML = this.generateStatsTable("Derived Stats", derivedStats);
 
     return `
       <h3>Player Info</h3>
@@ -245,7 +198,7 @@ export default class MainScene extends Phaser.Scene {
       <p><strong>Class:</strong> ${cls}</p>
       <p><strong>Level:</strong> ${level || "N/A"}</p>
       <p><strong>Experience:</strong> ${totalExp}</p>
-  
+
       ${baseStatsHTML}
       ${derivedStatsHTML}
     `;
@@ -294,21 +247,18 @@ export default class MainScene extends Phaser.Scene {
   //  Skills
   // --------------------------------------------------------------
   useSkill(skill) {
-    // Call SkillManager to use the skill
-    const { success, damage } = this.skillManager.useSkill(
-      skill,
-      this.currentMana,
-      this.targetedMob
-    );
-    if (success) {
-      this.deductMana(skill.manaCost);
-      this.mobManager.applyDamageToMob(this.targetedMob, damage);
-      this.updateUI();
+    // Delegate skill usage to SkillManager
+    const result = this.skillManager.useSkill(skill);
+
+    if (result.success) {
+      // Additional logic if needed after successfully using a skill
     }
   }
 
   deductMana(amount) {
     this.currentMana = Math.max(0, this.currentMana - amount);
+    // Update the UI to reflect mana deduction
+    this.updateUI();
   }
 
   // --------------------------------------------------------------
@@ -316,13 +266,11 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   cycleTarget() {
     // Get all mobs that are alive and within the TAB_TARGET_RANGE
-    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
+    const mobsInRange = this.mobManager.mobs.getChildren().filter(mob => {
       if (mob.customData.isDead) return false; // Exclude dead mobs
       const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        mob.x,
-        mob.y
+        this.player.x, this.player.y,
+        mob.x, mob.y
       );
       return distance <= TAB_TARGET_RANGE;
     });
@@ -335,23 +283,18 @@ export default class MainScene extends Phaser.Scene {
     // Sort mobs by distance from the player (closest first)
     mobsInRange.sort((a, b) => {
       const distanceA = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        a.x,
-        a.y
+        this.player.x, this.player.y,
+        a.x, a.y
       );
       const distanceB = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        b.x,
-        b.y
+        this.player.x, this.player.y,
+        b.x, b.y
       );
       return distanceA - distanceB;
     });
 
     // Cycle to the next target
-    this.currentTargetIndex =
-      (this.currentTargetIndex + 1) % mobsInRange.length;
+    this.currentTargetIndex = (this.currentTargetIndex + 1) % mobsInRange.length;
 
     // Set the new targeted mob
     const mob = mobsInRange[this.currentTargetIndex];
@@ -364,11 +307,12 @@ export default class MainScene extends Phaser.Scene {
   }
 
   highlightMob(mob) {
+    // Clear previous tints
     this.mobManager.mobs.getChildren().forEach((m) => m.clearTint());
-    mob.setTint(0xff0000);
-  }
 
-  // Inside MainScene.js
+    // Apply a tint to the targeted mob
+    mob.setTint(0xff0000); // Red tint for highlighting
+  }
 
   onMobClicked(mob) {
     if (!mob.active) return;
@@ -383,13 +327,11 @@ export default class MainScene extends Phaser.Scene {
     this.targetedMob = mob;
 
     // Find the index of the clicked mob within mobsInRange
-    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
+    const mobsInRange = this.mobManager.mobs.getChildren().filter(mob => {
       if (mob.customData.isDead) return false;
       const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        mob.x,
-        mob.y
+        this.player.x, this.player.y,
+        mob.x, mob.y
       );
       return distance <= TAB_TARGET_RANGE;
     });
@@ -397,16 +339,12 @@ export default class MainScene extends Phaser.Scene {
     // Sort mobs by distance
     mobsInRange.sort((a, b) => {
       const distanceA = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        a.x,
-        a.y
+        this.player.x, this.player.y,
+        a.x, a.y
       );
       const distanceB = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        b.x,
-        b.y
+        this.player.x, this.player.y,
+        b.x, b.y
       );
       return distanceA - distanceB;
     });
@@ -422,22 +360,17 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   regenerateStats() {
     const beforeMana = this.currentMana;
-    this.currentMana = Math.min(
-      this.maxMana,
-      this.currentMana + naturalRegeneration.manaRegen
-    );
+    this.currentMana = Math.min(this.maxMana, this.currentMana + naturalRegeneration.manaRegen);
 
     const beforeHealth = this.currentHealth;
-    this.currentHealth = Math.min(
-      this.maxHealth,
-      this.currentHealth + naturalRegeneration.hpRegen
+    this.currentHealth = Math.min(this.maxHealth, this.currentHealth + naturalRegeneration.hpRegen);
+
+    console.log(
+      `Regenerated +${this.currentMana - beforeMana} mana, +${this.currentHealth - beforeHealth} HP`
     );
 
-    // console.log(
-    //   `Regenerated +${this.currentMana - beforeMana} mana, +${
-    //     this.currentHealth - beforeHealth
-    //   } HP`
-    // );
+    // Update the UI to reflect regeneration
+    this.updateUI();
   }
 
   // --------------------------------------------------------------
@@ -487,37 +420,25 @@ export default class MainScene extends Phaser.Scene {
     // Player animations
     this.anims.create({
       key: "walk-down",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 0,
-        end: 2,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 0, end: 2 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-left",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 12,
-        end: 14,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 12, end: 14 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-right",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 24,
-        end: 26,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 24, end: 26 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "walk-up",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 36,
-        end: 38,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 36, end: 38 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -525,37 +446,25 @@ export default class MainScene extends Phaser.Scene {
     // Mob animations
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 48,
-        end: 50,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 60,
-        end: 62,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 72,
-        end: 74,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", {
-        start: 84,
-        end: 86,
-      }),
+      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -574,11 +483,7 @@ export default class MainScene extends Phaser.Scene {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
-    this.player = this.physics.add.sprite(
-      heroStart.x,
-      heroStart.y,
-      "characters"
-    );
+    this.player = this.physics.add.sprite(heroStart.x, heroStart.y, "characters");
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -591,18 +496,8 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
-    this.cameras.main.setBounds(
-      0,
-      0,
-      this.map.widthInPixels,
-      this.map.heightInPixels
-    );
-    this.physics.world.setBounds(
-      0,
-      0,
-      this.map.widthInPixels,
-      this.map.heightInPixels
-    );
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
     this.cameras.main.startFollow(this.player);
   }
 
@@ -614,18 +509,11 @@ export default class MainScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
 
-    // Numeric keys 1-10 for skills
+    // Numeric keys 1-3 for skills (since there are only 3 skills)
     const skillKeys = [
       Phaser.Input.Keyboard.KeyCodes.ONE,
       Phaser.Input.Keyboard.KeyCodes.TWO,
       Phaser.Input.Keyboard.KeyCodes.THREE,
-      Phaser.Input.Keyboard.KeyCodes.FOUR,
-      Phaser.Input.Keyboard.KeyCodes.FIVE,
-      Phaser.Input.Keyboard.KeyCodes.SIX,
-      Phaser.Input.Keyboard.KeyCodes.SEVEN,
-      Phaser.Input.Keyboard.KeyCodes.EIGHT,
-      Phaser.Input.Keyboard.KeyCodes.NINE,
-      Phaser.Input.Keyboard.KeyCodes.ZERO, // Assuming 0 is mapped to key 10
     ];
 
     playerSkills.forEach((skill, index) => {
@@ -644,6 +532,13 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   handlePlayerMovement() {
     if (!this.player || !this.player.body) return;
+
+    // Prevent movement if casting
+    if (this.skillManager.isCasting) {
+      this.player.body.setVelocity(0);
+      this.player.anims.stop();
+      return;
+    }
 
     this.player.body.setVelocity(0);
 

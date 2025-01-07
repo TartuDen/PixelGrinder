@@ -1,8 +1,13 @@
 // managers/UIManager.js
 
 export default class UIManager {
-  constructor() {
-    // Grab references
+  /**
+   * @param {Phaser.Scene} scene - The Phaser scene instance.
+   */
+  constructor(scene) {
+    this.scene = scene; // Store the scene reference
+
+    // Existing UI element references
     this.uiName = document.getElementById("player-name");
     this.uiHealthFill = document.getElementById("health-fill");
     this.uiManaFill = document.getElementById("mana-fill");
@@ -20,6 +25,10 @@ export default class UIManager {
     this.castingBarSlots = document.querySelectorAll(
       "#casting-bar .casting-slot"
     );
+
+    // Removed casting indicator references
+    // this.castingIndicator = document.getElementById("casting-indicator");
+    // this.castingText = document.getElementById("casting-text");
   }
 
   /**
@@ -41,16 +50,28 @@ export default class UIManager {
   /**
    * Update the top-left UI bars and text.
    */
-  updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp }) {
+  updateUI({
+    name,
+    currentHealth,
+    maxHealth,
+    currentMana,
+    maxMana,
+    level,
+    xp,
+  }) {
     // Update health
     const healthPercent = (currentHealth / maxHealth) * 100;
     this.uiHealthFill.style.width = `${healthPercent}%`;
-    this.healthText.textContent = `HP: ${currentHealth}/${maxHealth}`;
+    this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${healthPercent.toFixed(
+      1
+    )}%)`;
 
     // Update mana
     const manaPercent = (currentMana / maxMana) * 100;
     this.uiManaFill.style.width = `${manaPercent}%`;
-    this.manaText.textContent = `Mana: ${currentMana}/${maxMana}`;
+    this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${manaPercent.toFixed(
+      1
+    )}%)`;
 
     // Update basic info
     this.uiName.textContent = name;
@@ -59,24 +80,69 @@ export default class UIManager {
   }
 
   /**
-   * Populate the 10 skill slots with icons & mana costs.
-   * @param {Array} skills - array of skill data
+   * Update skill cooldown overlay.
+   * @param {number} skillId - ID of the skill
+   * @param {number} cooldownTime - Remaining cooldown time in seconds
    */
-  setupSkills(skills) {
-    const maxSlots = 10;
-    skills.forEach((skill, index) => {
-      if (index >= maxSlots) return;
+  updateSkillCooldown(skillId, cooldownTime) {
+    const castingSlot = document.querySelector(
+      `.casting-slot[data-skill-id="${skillId}"]`
+    );
+    if (!castingSlot) return;
 
-      const slotEl = this.castingBarSlots[index];
-      slotEl.innerHTML = `
-        <img src="${skill.icon}" alt="${skill.name}" class="skill-icon" />
-        <span class="mana-cost">${skill.manaCost}</span>
-      `;
+    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
+    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
+
+    if (cooldownTime > 0) {
+      cooldownOverlay.style.display = "flex";
+      cooldownTimer.textContent = cooldownTime.toFixed(1);
+      // Start countdown
+      this.startCooldownCountdown(cooldownTime, castingSlot);
+    } else {
+      cooldownOverlay.style.display = "none";
+      cooldownTimer.textContent = "";
+    }
+  }
+
+  /**
+   * Start cooldown countdown for a skill.
+   * @param {number} cooldownTime - Total cooldown time in seconds
+   * @param {HTMLElement} castingSlot - The casting slot element
+   */
+  startCooldownCountdown(cooldownTime, castingSlot) {
+    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
+    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay"); // Defined within scope
+    if (!cooldownTimer || !cooldownOverlay) return;
+
+    let remainingTime = cooldownTime;
+
+    // Clear any existing timers
+    if (castingSlot.cooldownTimerEvent) {
+      this.scene.time.removeEvent(castingSlot.cooldownTimerEvent);
+    }
+
+    // Update the timer every 0.1 seconds
+    castingSlot.cooldownTimerEvent = this.scene.time.addEvent({
+      delay: 100, // 0.1 seconds
+      callback: () => {
+        remainingTime -= 0.1;
+        if (remainingTime <= 0) {
+          remainingTime = 0;
+          cooldownOverlay.style.display = "none";
+          cooldownTimer.textContent = "";
+          castingSlot.cooldownTimerEvent.remove(false);
+        } else {
+          cooldownTimer.textContent = remainingTime.toFixed(1);
+        }
+      },
+      callbackScope: this,
+      loop: true,
     });
   }
 
   /**
-   * Show stats menu with provided HTML content
+   * Show the stats menu with the provided HTML content.
+   * @param {string} htmlContent - HTML string to inject into the stats menu
    */
   showStatsMenu(htmlContent) {
     if (!this.statsMenu) return;
@@ -85,10 +151,34 @@ export default class UIManager {
   }
 
   /**
-   * Hide stats menu
+   * Hide the stats menu.
    */
   hideStatsMenu() {
     if (!this.statsMenu) return;
     this.statsMenu.style.display = "none";
+  }
+
+  /**
+   * Setup skill slots with event listeners if needed.
+   * Also, set the skill icons dynamically based on skill data.
+   * @param {Array} skills - Array of skill objects
+   */
+  setupSkills(skills) {
+    skills.forEach((skill) => {
+      const castingSlot = document.querySelector(
+        `.casting-slot[data-skill-id="${skill.id}"]`
+      );
+      if (castingSlot) {
+        const img = castingSlot.querySelector('img');
+        if (img) {
+          img.src = skill.icon;
+          img.alt = skill.name;
+        }
+        castingSlot.addEventListener("click", () => {
+          // Trigger skill usage in the MainScene
+          this.scene.useSkill(skill);
+        });
+      }
+    });
   }
 }

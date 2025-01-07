@@ -1,129 +1,172 @@
 // managers/SkillManager.js
-import { playerSkills, mobsData } from "../data/MOCKdata.js";
-import {
-  calculateMagicDamage,
-  calculateMeleeDamage,
-} from "../helpers/calculatePlayerStats.js";
+
+/**
+ * SkillManager
+ * 
+ * Handles the usage of player skills, including casting times and cooldowns.
+ * Integrates with UIManager for visual feedback.
+ */
 
 export default class SkillManager {
   /**
-   * @param {Phaser.Scene} scene 
-   * @param {Function} getPlayerStats - a function that returns current player stats
+   * @param {Phaser.Scene} scene - The Phaser scene instance.
+   * @param {Function} getPlayerStatsCallback - Callback to retrieve current player stats.
    */
-  constructor(scene, getPlayerStats) {
+  constructor(scene, getPlayerStatsCallback) {
     this.scene = scene;
-    this.getPlayerStats = getPlayerStats;
+    this.getPlayerStats = getPlayerStatsCallback;
+
+    this.skills = []; // Array to store all available skills.
+    this.cooldowns = {}; // Object to track cooldown timers for each skill.
+    this.isCasting = false; // Flag to indicate if a skill is currently being cast.
+    this.currentCastingSkill = null; // Reference to the skill being cast.
   }
 
   /**
-   * Preload skill icons & sprites
+   * Preloads skills from the player's skill list.
+   * Assumes that `playerSkills` is available in MainScene.js and passed correctly.
    */
   preloadSkills() {
-    playerSkills.forEach((skill, index) => {
-      this.scene.load.image(`skill-icon-${index}`, skill.icon);
-      this.scene.load.spritesheet(`skill-sprite-${index}`, skill.skillImage, {
-        frameWidth: 72,
-        frameHeight: 72,
-      });
-    });
+    // Assuming skills are accessible via `playerSkills` in the MainScene.
+    this.skills = this.scene.playerSkills;
   }
 
   /**
-   * Create skill animations
+   * Creates any necessary skill-specific animations.
+   * Placeholder for future animation integrations.
    */
   createSkillAnimations() {
-    playerSkills.forEach((skill, index) => {
-      const animKey = `skill-anim-${index}`;
-      this.scene.anims.create({
-        key: animKey,
-        frames: this.scene.anims.generateFrameNumbers(`skill-sprite-${index}`, {
-          start: skill.animationSeq[0],
-          end: skill.animationSeq[1],
-        }),
-        frameRate: 10,
-        repeat: 0,
-      });
-    });
+    // Implement skill-specific animations here if needed.
   }
 
   /**
-   * Use a skill on a target
-   * @param {*} skill - skill data object
-   * @param {Number} playerCurrentMana
-   * @param {*} target - mob sprite
+   * Attempts to use a specified skill.
+   * Handles casting time and cooldowns based on skill attributes.
+   * 
+   * @param {Object} skill - The skill object to be used.
+   * @returns {Object} - Result of the skill usage attempt.
    */
-  useSkill(skill, playerCurrentMana, target) {
-    if (playerCurrentMana < skill.manaCost) {
-      console.log(`Not enough mana for ${skill.name}!`);
-      return { success: false, damage: 0 };
-    }
-    if (!target) {
-      console.log(`No target for skill: ${skill.name}`);
-      return { success: false, damage: 0 };
+  useSkill(skill) {
+    // Prevent using another skill while casting.
+    if (this.isCasting) {
+      console.log("Currently casting another skill. Please wait.");
+      return { success: false };
     }
 
-    let damage = 0;
-    const { magicAttack, meleeAttack } = skill;
+    // Check if the skill is on cooldown.
+    if (this.cooldowns[skill.id] && this.cooldowns[skill.id] > 0) {
+      console.log(`${skill.name} is on cooldown for ${this.cooldowns[skill.id].toFixed(1)} more seconds.`);
+      return { success: false };
+    }
 
-    if (magicAttack > 0) {
-      damage = this.useMagicSkill(skill, target);
-    } else if (meleeAttack > 0) {
-      damage = this.useMeleeSkill(skill, target);
+    // Retrieve current player stats.
+    const playerStats = this.getPlayerStats();
+    if (playerStats.currentMana < skill.manaCost) {
+      console.log("Not enough mana to use this skill.");
+      return { success: false };
+    }
+
+    // If the skill has a casting time, initiate casting; otherwise, execute immediately.
+    if (skill.castingTime > 0) {
+      this.castSkill(skill);
     } else {
-      console.log(`Skill ${skill.name} has no recognized damage type!`);
-      return { success: false, damage: 0 };
+      this.executeSkill(skill);
     }
 
-    return { success: true, damage };
-  }
-
-  useMagicSkill(skill, target) {
-    const mobKey = target.customData.id;
-    const mobStats = mobsData[mobKey];
-    const playerStats = this.getPlayerStats();
-
-    let baseDamage = calculateMagicDamage(playerStats, mobStats);
-    baseDamage += skill.magicAttack;
-
-    // Show animation
-    this.playSkillAnimation(skill, target.x, target.y);
-    return baseDamage;
-  }
-
-  useMeleeSkill(skill, target) {
-    const mobKey = target.customData.id;
-    const mobStats = mobsData[mobKey];
-    const playerStats = this.getPlayerStats();
-
-    let baseDamage = calculateMeleeDamage(playerStats, mobStats);
-    baseDamage += skill.meleeAttack;
-
-    this.playSkillAnimation(skill, target.x, target.y);
-    return baseDamage;
+    return { success: true };
   }
 
   /**
-   * Play skill animation at x,y
+   * Initiates the casting process for a skill with a casting time.
+   * 
+   * @param {Object} skill - The skill object being cast.
    */
-  playSkillAnimation(skill, x, y) {
-    const skillIndex = playerSkills.indexOf(skill);
-    if (skillIndex === -1) {
-      console.log(`Skill not found: ${skill.name}`);
-      return;
+  castSkill(skill) {
+    this.isCasting = true;
+    this.currentCastingSkill = skill;
+
+    console.log(`Casting ${skill.name}...`);
+
+    // Display the casting indicator in the UI.
+    // Removed: No casting indicator modal.
+
+    // Schedule the execution of the skill after the casting time.
+    this.scene.time.delayedCall(
+      skill.castingTime * 1000,
+      () => {
+        this.executeSkill(skill);
+        this.isCasting = false;
+        this.currentCastingSkill = null;
+
+        // Hide the casting indicator from the UI.
+        // Removed: No casting indicator modal.
+
+        // Removed: No audio
+      },
+      [],
+      this
+    );
+  }
+
+  /**
+   * Executes the effects of a skill, such as dealing damage or healing.
+   * Initiates the skill's cooldown.
+   * 
+   * @param {Object} skill - The skill object to execute.
+   */
+  executeSkill(skill) {
+    const player = this.scene.player;
+    const targetedMob = this.scene.targetedMob;
+
+    // Deduct the skill's mana cost from the player.
+    this.scene.deductMana(skill.manaCost);
+
+    // Apply damage to the targeted mob if the skill deals damage.
+    if (skill.magicAttack > 0 && targetedMob) {
+      this.scene.mobManager.applyDamageToMob(targetedMob, skill.magicAttack);
+      console.log(`${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${skill.magicAttack} magic damage.`);
     }
 
-    const animKey = `skill-anim-${skillIndex}`;
-    if (!this.scene.anims.exists(animKey)) {
-      console.log(`Animation does not exist: ${animKey}`);
-      return;
+    // Apply healing to the player if the skill heals.
+    if (skill.heal) {
+      this.scene.currentHealth = Math.min(this.scene.maxHealth, this.scene.currentHealth + skill.heal);
+      console.log(`${skill.name} healed for ${skill.heal} HP.`);
     }
 
-    const sprite = this.scene.add.sprite(x, y, `skill-sprite-${skillIndex}`);
-    sprite.anims.play(animKey);
-    sprite.setScale(1.5);
+    // Start the skill's cooldown if applicable.
+    if (skill.cooldown > 0) {
+      this.cooldowns[skill.id] = skill.cooldown;
 
-    sprite.on("animationcomplete", () => {
-      sprite.destroy();
-    });
+      // Schedule the end of the cooldown.
+      this.scene.time.addEvent({
+        delay: skill.cooldown * 1000,
+        callback: () => {
+          this.cooldowns[skill.id] = 0;
+          console.log(`${skill.name} is now off cooldown.`);
+          this.scene.uiManager.updateSkillCooldown(skill.id, 0);
+        },
+        callbackScope: this,
+      });
+
+      // Update the UI to show the cooldown overlay.
+      this.scene.uiManager.updateSkillCooldown(skill.id, skill.cooldown);
+    }
+
+    // Refresh the UI to reflect changes in mana and health.
+    this.scene.updateUI();
+  }
+
+  /**
+   * Checks if a skill can be used based on casting and cooldown states.
+   * 
+   * @param {Object} skill - The skill object to check.
+   * @returns {boolean} - True if the skill can be used; otherwise, false.
+   */
+  canUseSkill(skill) {
+    if (this.isCasting) return false;
+    if (this.cooldowns[skill.id] && this.cooldowns[skill.id] > 0) return false;
+    const playerStats = this.getPlayerStats();
+    if (playerStats.currentMana < skill.manaCost) return false;
+    return true;
   }
 }

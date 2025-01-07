@@ -1,9 +1,10 @@
-// pixelgrinder-frontend\data/MOCKdata.js
+// data/MOCKdata.js
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
   class: "mage",
   name: "Omigod",
+  level: 1, // Added level for UI
   totalExp: 0,
 };
 
@@ -155,33 +156,42 @@ const playerBackpack = {
 // --- Skills / Attacks ---
 const playerSkills = [
   {
+    id: 1, // Added unique ID
     name: "magic_wip",
     manaCost: 5,
     range: 20,
     magicAttack: 2,
     meleeAttack: 0,
+    castingTime: 0, // Instant skill
+    cooldown: 5, // 5 seconds cooldown
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
     animationSeq: [0, 7],
   },
   {
+    id: 2, // Added unique ID
     name: "fire_ball",
     manaCost: 10,
     range: 20,
     magicAttack: 3,
     meleeAttack: 0,
+    castingTime: 2, // 2 seconds casting
+    cooldown: 10, // 10 seconds cooldown
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
     animationSeq: [0, 7],
   },
   {
+    id: 3, // Added unique ID
     name: "earth_root",
     manaCost: 20,
     range: 20,
     magicAttack: 5,
     meleeAttack: 0,
+    castingTime: 1.5, // 1.5 seconds casting
+    cooldown: 8, // 8 seconds cooldown
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
@@ -228,7 +238,6 @@ const naturalRegeneration = {
   hpRegen: 4,   // Regenerates 4 health per regenerationTime
   regenerationTime: 5000, // Time in ms (5s)
 };
-
 
 // Define TAB targeting range (in pixels)
 const TAB_TARGET_RANGE = 400; // Adjust this value as needed
