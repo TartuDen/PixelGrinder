@@ -432,13 +432,15 @@ export default class MainScene extends Phaser.Scene {
     playerSkills.forEach((skill) => {
       this.load.spritesheet(
         `${skill.name}_anim`,
-        `assets/skills/animations/${skill.name}.png`,
+        skill.skillImage,
         {
-          frameWidth: 32, // Adjust based on your spritesheet
-          frameHeight: 32, // Adjust based on your spritesheet
+          frameWidth: 72,
+          frameHeight: 72
         }
       );
     });
+    
+    
   }
 
   createTilemap() {
