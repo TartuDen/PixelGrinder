@@ -38,18 +38,25 @@ export default class MainScene extends Phaser.Scene {
 
   // A helper to always get up-to-date stats
   getPlayerStats() {
-    return calculatePlayerStats();
+    const derivedStats = calculatePlayerStats(); // { health, mana, magicAttack, ... }
+    return {
+      currentMana: this.currentMana,     // Current mana from MainScene
+      maxMana: derivedStats.mana,         // Derived max mana from stats and equipment
+      currentHealth: this.currentHealth, // Current health
+      maxHealth: derivedStats.health,     // Derived max health from stats and equipment
+      magicAttack: derivedStats.magicAttack,
+      meleeAttack: derivedStats.meleeAttack,
+      magicDefense: derivedStats.magicDefense,
+      meleeDefense: derivedStats.meleeDefense,
+      magicEvasion: derivedStats.magicEvasion,
+      meleeEvasion: derivedStats.meleeEvasion,
+      // Add other stats if necessary
+    };
   }
 
   preload() {
     // Load default assets (tilemap, etc.)
     this.loadAssets();
-
-    // Load audio assets for SkillManager (Removed since no audio is used)
-    // this.load.audio('cast-start', 'assets/sounds/cast-start.mp3');
-    // this.load.audio('cast-end', 'assets/sounds/cast-end.mp3');
-    // this.load.audio('cooldown-start', 'assets/sounds/cooldown-start.mp3');
-    // this.load.audio('cooldown-end', 'assets/sounds/cooldown-end.mp3');
 
     // Prepare skill manager
     this.skillManager = new SkillManager(this, () => this.getPlayerStats());
@@ -96,12 +103,14 @@ export default class MainScene extends Phaser.Scene {
       loop: true,
     });
 
+    // Capture the TAB key to prevent default browser behavior
+    this.input.keyboard.addCapture('TAB');
+
     // TAB key for cycling targets
     const tabKey = this.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.TAB
     );
-    tabKey.on("down", (event) => {
-      event.preventDefault(); // Prevent default browser behavior
+    tabKey.on("down", () => {
       this.cycleTarget();
       this.updateUI();
     });
@@ -263,7 +272,9 @@ export default class MainScene extends Phaser.Scene {
   }
 
   deductMana(amount) {
+    console.log(`Deducting ${amount} mana.`);
     this.currentMana = Math.max(0, this.currentMana - amount);
+    console.log(`Current Mana after deduction: ${this.currentMana}`);
     // Update the UI to reflect mana deduction
     this.updateUI();
   }
@@ -430,17 +441,11 @@ export default class MainScene extends Phaser.Scene {
 
     // Load skill animation spritesheets
     playerSkills.forEach((skill) => {
-      this.load.spritesheet(
-        `${skill.name}_anim`,
-        skill.skillImage,
-        {
-          frameWidth: 72,
-          frameHeight: 72
-        }
-      );
+      this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
+        frameWidth: 72,
+        frameHeight: 72,
+      });
     });
-    
-    
   }
 
   createTilemap() {

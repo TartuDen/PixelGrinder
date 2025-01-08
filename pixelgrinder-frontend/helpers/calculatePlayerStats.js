@@ -1,4 +1,4 @@
-// pixelgrinder-frontend\helpers\calculatePlayerStats.js
+// pixelgrinder-frontend/helpers/calculatePlayerStats.js
 
 import {
   playerBaseStats,
@@ -136,13 +136,16 @@ export function calculateMeleeDamage(attackerStats, defenderStats) {
 }
 
 /**
- * Calculate damage for a magic attack.
+ * Calculate damage for a magic attack, incorporating skill's magicAttack.
  */
-export function calculateMagicDamage(attackerStats, defenderStats) {
+export function calculateMagicDamage(attackerStats, defenderStats, skillMagicAttack = 0) {
   const { magicAttack } = attackerStats;
   const { magicDefense } = defenderStats;
-  const rawDamage = magicAttack - (magicDefense || 0);
 
+  // Combine player's magicAttack with skill's magicAttack
+  const totalMagicAttack = magicAttack + skillMagicAttack;
+
+  const rawDamage = totalMagicAttack - (magicDefense || 0);
   const withVariance = addRandomVariance(rawDamage);
   return Math.max(1, withVariance);
 }

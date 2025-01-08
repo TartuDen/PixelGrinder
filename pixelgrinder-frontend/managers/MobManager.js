@@ -31,6 +31,7 @@ export default class MobManager {
       mob.customData = {
         id: mobTypeID,
         hp: mobInfo.health,
+        magicDefense: mobInfo.magicDefense, // Ensure magicDefense is part of mobInfo
         spawnX: spawnZone.x,
         spawnY: spawnZone.y,
         isDead: false,
@@ -315,5 +316,18 @@ export default class MobManager {
         this.chasePlayer(mob, this.scene.player, mobsData[mob.customData.id]);
       }
     }
+  }
+
+  /**
+   * Retrieve stats of a given mob
+   * @param {Phaser.GameObjects.Sprite} mob 
+   * @returns {Object} mobStats
+   */
+  getStats(mob) {
+    return {
+      magicDefense: mob.customData.magicDefense,
+      meleeDefense: mob.customData.meleeDefense, // Ensure meleeDefense is present
+      // Add other stats if necessary
+    };
   }
 }

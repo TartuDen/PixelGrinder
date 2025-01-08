@@ -1,5 +1,7 @@
 // managers/SkillManager.js
 
+import { calculateMagicDamage } from "../helpers/calculatePlayerStats.js"; // Ensure correct path
+
 export default class SkillManager {
   /**
    * @param {Phaser.Scene} scene - The Phaser scene instance.
@@ -59,6 +61,9 @@ export default class SkillManager {
 
     // Retrieve current player stats.
     const playerStats = this.getPlayerStats();
+    console.log(
+      `Current Mana: ${playerStats.currentMana} / ${playerStats.maxMana}`
+    ); // Debug log
     if (playerStats.currentMana < skill.manaCost) {
       console.log("Not enough mana to use this skill.");
       return { success: false };
@@ -116,9 +121,15 @@ export default class SkillManager {
 
     // Apply damage to the targeted mob if the skill deals damage.
     if (skill.magicAttack > 0 && targetedMob) {
-      this.scene.mobManager.applyDamageToMob(targetedMob, skill.magicAttack);
+      const playerStats = this.getPlayerStats();
+      const mobStats = this.scene.mobManager.getStats(targetedMob); // Corrected retrieval of mob stats
+
+      // Calculate damage using player's magicAttack and skill's magicAttack
+      const damage = calculateMagicDamage(playerStats, mobStats, skill.magicAttack);
+
+      this.scene.mobManager.applyDamageToMob(targetedMob, damage);
       console.log(
-        `${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${skill.magicAttack} magic damage.`
+        `${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${damage} magic damage.`
       );
 
       // Trigger skill animation at the mob's position
