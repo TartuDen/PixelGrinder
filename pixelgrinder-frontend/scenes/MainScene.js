@@ -40,10 +40,10 @@ export default class MainScene extends Phaser.Scene {
   getPlayerStats() {
     const derivedStats = calculatePlayerStats(); // { health, mana, magicAttack, ... }
     return {
-      currentMana: this.currentMana,     // Current mana from MainScene
-      maxMana: derivedStats.mana,         // Derived max mana from stats and equipment
+      currentMana: this.currentMana, // Current mana from MainScene
+      maxMana: derivedStats.mana, // Derived max mana from stats and equipment
       currentHealth: this.currentHealth, // Current health
-      maxHealth: derivedStats.health,     // Derived max health from stats and equipment
+      maxHealth: derivedStats.health, // Derived max health from stats and equipment
       magicAttack: derivedStats.magicAttack,
       meleeAttack: derivedStats.meleeAttack,
       magicDefense: derivedStats.magicDefense,
@@ -104,7 +104,7 @@ export default class MainScene extends Phaser.Scene {
     });
 
     // Capture the TAB key to prevent default browser behavior
-    this.input.keyboard.addCapture('TAB');
+    this.input.keyboard.addCapture("TAB");
 
     // TAB key for cycling targets
     const tabKey = this.input.keyboard.addKey(
@@ -609,16 +609,22 @@ export default class MainScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
 
-    // Numeric keys 1-3 for skills (since there are only 3 skills)
-    const skillKeys = [
+    // Numeric keys 1-9 for skills
+    const skillKeyCodes = [
       Phaser.Input.Keyboard.KeyCodes.ONE,
       Phaser.Input.Keyboard.KeyCodes.TWO,
       Phaser.Input.Keyboard.KeyCodes.THREE,
+      Phaser.Input.Keyboard.KeyCodes.FOUR,
+      Phaser.Input.Keyboard.KeyCodes.FIVE,
+      Phaser.Input.Keyboard.KeyCodes.SIX,
+      Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      Phaser.Input.Keyboard.KeyCodes.NINE,
     ];
 
     playerSkills.forEach((skill, index) => {
-      if (index < skillKeys.length) {
-        const key = this.input.keyboard.addKey(skillKeys[index]);
+      if (index < skillKeyCodes.length) {
+        const key = this.input.keyboard.addKey(skillKeyCodes[index]);
         key.on("down", () => {
           console.log(`Skill triggered: ${skill.name}`);
           this.useSkill(skill);

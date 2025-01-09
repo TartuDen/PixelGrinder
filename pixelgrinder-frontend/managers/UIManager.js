@@ -21,10 +21,9 @@ export default class UIManager {
     this.statsContent = document.getElementById("stats-content");
     this.closeStatsButton = document.getElementById("close-stats");
 
-    // Casting bar
-    this.castingBarSlots = document.querySelectorAll(
-      "#casting-bar .casting-slot"
-    );
+    // Casting bar container
+    this.castingBar = document.getElementById("casting-bar");
+    console.log("castingBar:", this.castingBar);
   }
 
   /**
@@ -44,6 +43,55 @@ export default class UIManager {
   }
 
   /**
+   * Setup skill slots with event listeners and dynamic icons.
+   * Dynamically creates casting slots based on the skills array.
+   * @param {Array} skills - Array of skill objects
+   */
+  setupSkills(skills) {
+    // Clear existing casting slots to prevent duplicates
+    this.castingBar.innerHTML = "";
+
+    skills.forEach((skill) => {
+      // Create casting-slot div
+      const castingSlot = document.createElement("div");
+      castingSlot.classList.add("casting-slot");
+      castingSlot.setAttribute("data-skill-id", skill.id);
+
+      // Create img element for skill icon
+      const img = document.createElement("img");
+      img.src = skill.icon;
+      img.alt = skill.name;
+      castingSlot.appendChild(img);
+
+      // Create mana-cost div
+      const manaCost = document.createElement("div");
+      manaCost.classList.add("mana-cost");
+      manaCost.textContent = skill.manaCost;
+      castingSlot.appendChild(manaCost);
+
+      // Create cooldown-overlay div
+      const cooldownOverlay = document.createElement("div");
+      cooldownOverlay.classList.add("cooldown-overlay");
+      cooldownOverlay.style.display = "none"; // Initially hidden
+
+      // Create cooldown-timer span
+      const cooldownTimer = document.createElement("span");
+      cooldownTimer.classList.add("cooldown-timer");
+      cooldownOverlay.appendChild(cooldownTimer);
+
+      castingSlot.appendChild(cooldownOverlay);
+
+      // Add click event listener to trigger skill usage
+      castingSlot.addEventListener("click", () => {
+        this.scene.useSkill(skill);
+      });
+
+      // Append the castingSlot to the castingBar
+      this.castingBar.appendChild(castingSlot);
+    });
+  }
+
+  /**
    * Update the top-left UI bars and text.
    */
   updateUI({
@@ -56,23 +104,36 @@ export default class UIManager {
     xp,
   }) {
     // Update health
-    const healthPercent = (currentHealth / maxHealth) * 100;
-    this.uiHealthFill.style.width = `${healthPercent}%`;
-    this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${healthPercent.toFixed(
-      1
-    )}%)`;
+    if (this.uiHealthFill && this.healthText) {
+      const healthPercent = (currentHealth / maxHealth) * 100;
+      this.uiHealthFill.style.width = `${healthPercent}%`;
+      this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${healthPercent.toFixed(
+        1
+      )}%)`;
+    } else {
+      console.warn("Health elements not found in the DOM.");
+    }
 
     // Update mana
-    const manaPercent = (currentMana / maxMana) * 100;
-    this.uiManaFill.style.width = `${manaPercent}%`;
-    this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${manaPercent.toFixed(
-      1
-    )}%)`;
+    if (this.uiManaFill && this.manaText) {
+      const manaPercent = (currentMana / maxMana) * 100;
+      this.uiManaFill.style.width = `${manaPercent}%`;
+      this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${manaPercent.toFixed(
+        1
+      )}%)`;
+    } else {
+      console.warn("Mana elements not found in the DOM.");
+    }
 
     // Update basic info
-    this.uiName.textContent = name;
-    this.uiLevel.textContent = `Level: ${level}`;
-    this.uiXP.textContent = `XP: ${xp}`;
+    if (this.uiName) this.uiName.textContent = name;
+    else console.warn("Player name element not found.");
+
+    if (this.uiLevel) this.uiLevel.textContent = `Level: ${level}`;
+    else console.warn("Player level element not found.");
+
+    if (this.uiXP) this.uiXP.textContent = `XP: ${xp}`;
+    else console.warn("Player XP element not found.");
   }
 
   /**
@@ -107,7 +168,7 @@ export default class UIManager {
    */
   startCooldownCountdown(cooldownTime, castingSlot) {
     const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
-    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay"); // Defined within scope
+    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
     if (!cooldownTimer || !cooldownOverlay) return;
 
     let remainingTime = cooldownTime;
@@ -152,29 +213,5 @@ export default class UIManager {
   hideStatsMenu() {
     if (!this.statsMenu) return;
     this.statsMenu.style.display = "none";
-  }
-
-  /**
-   * Setup skill slots with event listeners and dynamic icons.
-   * Also, set the skill icons dynamically based on skill data.
-   * @param {Array} skills - Array of skill objects
-   */
-  setupSkills(skills) {
-    skills.forEach((skill) => {
-      const castingSlot = document.querySelector(
-        `.casting-slot[data-skill-id="${skill.id}"]`
-      );
-      if (castingSlot) {
-        const img = castingSlot.querySelector('img');
-        if (img) {
-          img.src = skill.icon;
-          img.alt = skill.name;
-        }
-        castingSlot.addEventListener("click", () => {
-          // Trigger skill usage in the MainScene
-          this.scene.useSkill(skill);
-        });
-      }
-    });
   }
 }
