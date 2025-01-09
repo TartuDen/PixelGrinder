@@ -163,7 +163,7 @@ const playerSkills = [
     magicAttack: 2,
     meleeAttack: 0,
     castingTime: 0,
-    cooldown: 2,
+    cooldown: 2, //in seconds
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
@@ -177,7 +177,7 @@ const playerSkills = [
     magicAttack: 3,
     meleeAttack: 0,
     castingTime: 0,
-    cooldown: 2,
+    cooldown: 2, //in seconds
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
@@ -190,22 +190,8 @@ const playerSkills = [
     range: 20,
     magicAttack: 5,
     meleeAttack: 0,
-    castingTime: 0,
-    cooldown: 2, 
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
-    skillImage:
-      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
-    animationSeq: [0, 7],
-  },
-  {
-    id: 4, // Added unique ID
-    name: "earth_root2",
-    manaCost: 20,
-    range: 20,
-    magicAttack: 5,
-    meleeAttack: 0,
-    castingTime: 0,
-    cooldown: 2, 
+    castingTime: 5,
+    cooldown: 2, //in seconds
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
     skillImage:
       "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
