@@ -1,7 +1,7 @@
 // managers/SkillManager.js
 
 import { SKILL_RANGE_EXTENDER } from "../data/MOCKdata.js";
-import { calculateMagicDamage } from "../helpers/calculatePlayerStats.js"; // Ensure correct path
+import { calculateMagicDamage, calculateMeleeDamage } from "../helpers/calculatePlayerStats.js"; // Ensure correct path
 
 export default class SkillManager {
   /**
@@ -19,6 +19,7 @@ export default class SkillManager {
 
     this.castingTimer = null; // To track casting progress
     this.rangeCheckTimer = null; // To periodically check if mob is within extended range
+    this.delayedCall = null; // To track the delayedCall for skill execution
   }
 
   /**
@@ -131,7 +132,10 @@ export default class SkillManager {
         this.scene.uiManager.updateCastingProgress(elapsedTime, totalTime);
 
         if (elapsedTime >= totalTime) {
-          this.castingTimer.remove(false);
+          if (this.castingTimer) {
+            this.castingTimer.remove(false);
+            this.castingTimer = null;
+          }
         }
       },
       callbackScope: this,
@@ -139,13 +143,22 @@ export default class SkillManager {
     });
 
     // Schedule skill execution after casting time
-    this.scene.time.delayedCall(
+    this.delayedCall = this.scene.time.delayedCall(
       skill.castingTime * 1000,
       () => {
+        // Before executing, check if casting is still active
+        if (!this.isCasting) {
+          return;
+        }
         this.executeSkill(skill, targetedMob);
         this.isCasting = false;
         this.currentCastingSkill = null;
-        this.castingTimer.remove(false);
+
+        // Remove castingTimer if it still exists
+        if (this.castingTimer) {
+          this.castingTimer.remove(false);
+          this.castingTimer = null;
+        }
 
         // Hide the casting progress bar
         this.scene.uiManager.hideCastingProgress();
@@ -155,6 +168,9 @@ export default class SkillManager {
           this.rangeCheckTimer.remove(false);
           this.rangeCheckTimer = null;
         }
+
+        // Remove delayedCall reference
+        this.delayedCall = null;
       },
       [],
       this
@@ -310,6 +326,10 @@ export default class SkillManager {
 
     console.log(`Casting of ${this.currentCastingSkill.name} has been canceled.`);
 
+    // Reset casting flags first
+    this.isCasting = false;
+    this.currentCastingSkill = null;
+
     // Remove casting timer
     if (this.castingTimer) {
       this.castingTimer.remove(false);
@@ -322,9 +342,11 @@ export default class SkillManager {
       this.rangeCheckTimer = null;
     }
 
-    // Reset casting flags
-    this.isCasting = false;
-    this.currentCastingSkill = null;
+    // Remove delayedCall
+    if (this.delayedCall) {
+      this.delayedCall.remove(false);
+      this.delayedCall = null;
+    }
 
     // Hide the casting progress bar
     this.scene.uiManager.hideCastingProgress();

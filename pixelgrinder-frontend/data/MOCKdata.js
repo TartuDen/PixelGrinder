@@ -279,7 +279,7 @@ const naturalRegeneration = {
 // Define TAB targeting range (in pixels)
 const TAB_TARGET_RANGE = 400; // Adjust this value as needed
 const MOB_CHASE_SPEED_MULT = 2.0 // 10% increase of speed
-const SKILL_RANGE_EXTENDER = 1.3 // 30% increase of casting distance
+const SKILL_RANGE_EXTENDER = 1.1 // 30% increase of casting distance
 
 
 // Export everything
