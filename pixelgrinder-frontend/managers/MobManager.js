@@ -1,6 +1,6 @@
 // managers/MobManager.js
 
-import { mobsData } from "../data/MOCKdata.js";
+import { mobsData, MOB_CHASE_SPEED_MULT } from "../data/MOCKdata.js";
 import { calculateMeleeDamage, calculateMagicDamage } from "../helpers/calculatePlayerStats.js";
 
 export default class MobManager {
@@ -140,8 +140,12 @@ export default class MobManager {
       if (!mob.active || mob.customData.isDead || mob.customData.state !== "idle") {
         return;
       }
+      const mobInfo = mobsData[mob.customData.id];
+      if (!mobInfo) return;
+
+      const speed = mobInfo.speed; // Use speed from mobsData
+
       const randomDirection = Phaser.Math.Between(0, 3);
-      const speed = 50;
 
       switch (randomDirection) {
         case 0: // Right
@@ -179,7 +183,7 @@ export default class MobManager {
     const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y);
     direction.normalize();
 
-    const chaseSpeed = 80;
+    const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT; // Calculate chase speed based on multiplier
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
 
     if (Math.abs(direction.x) > Math.abs(direction.y)) {

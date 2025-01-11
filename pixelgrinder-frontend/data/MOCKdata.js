@@ -249,7 +249,7 @@ const mobsData = {
     mobType: "friend",
     mobAgroRange: 300,
     attackCooldown: 2000, // milliseconds between attacks
-    speed: 50, // Added speed
+    speed: 20, // Added speed
   },
   goblin: {
     name: "Goblin",
@@ -278,6 +278,8 @@ const naturalRegeneration = {
 
 // Define TAB targeting range (in pixels)
 const TAB_TARGET_RANGE = 400; // Adjust this value as needed
+const MOB_CHASE_SPEED_MULT = 2.0 // 10% increase of speed
+
 
 // Export everything
 export {
@@ -292,4 +294,5 @@ export {
   mobsData,
   naturalRegeneration,
   TAB_TARGET_RANGE,
+  MOB_CHASE_SPEED_MULT,
 };
