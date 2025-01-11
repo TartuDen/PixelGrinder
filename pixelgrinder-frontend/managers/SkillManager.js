@@ -1,5 +1,6 @@
 // managers/SkillManager.js
 
+import { SKILL_RANGE_EXTENDER } from "../data/MOCKdata.js";
 import { calculateMagicDamage } from "../helpers/calculatePlayerStats.js"; // Ensure correct path
 
 export default class SkillManager {
@@ -17,6 +18,7 @@ export default class SkillManager {
     this.currentCastingSkill = null; // Reference to the skill being cast.
 
     this.castingTimer = null; // To track casting progress
+    this.rangeCheckTimer = null; // To periodically check if mob is within extended range
   }
 
   /**
@@ -71,11 +73,33 @@ export default class SkillManager {
       return { success: false };
     }
 
+    // Get the targeted mob
+    const targetedMob = this.scene.targetedMob;
+    if (!targetedMob) {
+      console.log("No target selected for skill casting.");
+      return { success: false };
+    }
+
+    // Calculate distance to the targeted mob
+    const distance = Phaser.Math.Distance.Between(
+      this.scene.player.x,
+      this.scene.player.y,
+      targetedMob.x,
+      targetedMob.y
+    );
+
+    if (distance > skill.range) {
+      console.log(
+        `Target is out of range for ${skill.name}. Current distance: ${distance}, Required range: ${skill.range}`
+      );
+      return { success: false };
+    }
+
     // If the skill has a casting time, initiate casting; otherwise, execute immediately.
     if (skill.castingTime > 0) {
-      this.castSkill(skill);
+      this.castSkill(skill, targetedMob);
     } else {
-      this.executeSkill(skill);
+      this.executeSkill(skill, targetedMob);
     }
 
     return { success: true };
@@ -85,8 +109,9 @@ export default class SkillManager {
    * Initiates the casting process for a skill with a casting time.
    *
    * @param {Object} skill - The skill object being cast.
+   * @param {Phaser.GameObjects.Sprite} targetedMob - The mob being targeted.
    */
-  castSkill(skill) {
+  castSkill(skill, targetedMob) {
     this.isCasting = true;
     this.currentCastingSkill = skill;
 
@@ -117,17 +142,58 @@ export default class SkillManager {
     this.scene.time.delayedCall(
       skill.castingTime * 1000,
       () => {
-        this.executeSkill(skill);
+        this.executeSkill(skill, targetedMob);
         this.isCasting = false;
         this.currentCastingSkill = null;
         this.castingTimer.remove(false);
 
         // Hide the casting progress bar
         this.scene.uiManager.hideCastingProgress();
+
+        // Remove range check timer if still active
+        if (this.rangeCheckTimer) {
+          this.rangeCheckTimer.remove(false);
+          this.rangeCheckTimer = null;
+        }
       },
       [],
       this
     );
+
+    // Start range checking
+    this.rangeCheckTimer = this.scene.time.addEvent({
+      delay: 100, // Check every 100ms
+      callback: () => {
+        if (!this.isCasting || !targetedMob.active) {
+          // If casting has ended or mob is inactive, stop checking
+          if (this.rangeCheckTimer) {
+            this.rangeCheckTimer.remove(false);
+            this.rangeCheckTimer = null;
+          }
+          return;
+        }
+
+        // Calculate current distance
+        const currentDistance = Phaser.Math.Distance.Between(
+          this.scene.player.x,
+          this.scene.player.y,
+          targetedMob.x,
+          targetedMob.y
+        );
+
+        // Calculate extended range
+        const extendedRange = skill.range * SKILL_RANGE_EXTENDER;
+
+        if (currentDistance > extendedRange) {
+          console.log(
+            `Casting of ${skill.name} canceled. Target moved out of extended range.`
+          );
+          this.cancelCasting();
+        }
+      },
+      callbackScope: this,
+      loop: true,
+    });
   }
 
   /**
@@ -136,10 +202,10 @@ export default class SkillManager {
    * Also triggers the skill animation.
    *
    * @param {Object} skill - The skill object to execute.
+   * @param {Phaser.GameObjects.Sprite} targetedMob - The mob being targeted.
    */
-  executeSkill(skill) {
+  executeSkill(skill, targetedMob) {
     const player = this.scene.player;
-    const targetedMob = this.scene.targetedMob;
 
     // Deduct mana
     this.scene.deductMana(skill.manaCost);
@@ -234,6 +300,34 @@ export default class SkillManager {
         },
       });
     });
+  }
+
+  /**
+   * Cancels the current casting process.
+   */
+  cancelCasting() {
+    if (!this.isCasting) return;
+
+    console.log(`Casting of ${this.currentCastingSkill.name} has been canceled.`);
+
+    // Remove casting timer
+    if (this.castingTimer) {
+      this.castingTimer.remove(false);
+      this.castingTimer = null;
+    }
+
+    // Remove range check timer
+    if (this.rangeCheckTimer) {
+      this.rangeCheckTimer.remove(false);
+      this.rangeCheckTimer = null;
+    }
+
+    // Reset casting flags
+    this.isCasting = false;
+    this.currentCastingSkill = null;
+
+    // Hide the casting progress bar
+    this.scene.uiManager.hideCastingProgress();
   }
 
   /**

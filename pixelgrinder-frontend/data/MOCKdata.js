@@ -193,7 +193,7 @@ const playerSkills = [
     id: 1, // Added unique ID
     name: "magic_wip",
     manaCost: 5,
-    range: 20,
+    range: 150,
     magicAttack: 2,
     meleeAttack: 0,
     castingTime: 0,
@@ -207,7 +207,7 @@ const playerSkills = [
     id: 2, // Added unique ID
     name: "fire_ball",
     manaCost: 10,
-    range: 20,
+    range: 150,
     magicAttack: 3,
     meleeAttack: 0,
     castingTime: 1,
@@ -221,7 +221,7 @@ const playerSkills = [
     id: 3, // Added unique ID
     name: "earth_root",
     manaCost: 20,
-    range: 20,
+    range: 150,
     magicAttack: 5,
     meleeAttack: 0,
     castingTime: 5,
@@ -279,6 +279,7 @@ const naturalRegeneration = {
 // Define TAB targeting range (in pixels)
 const TAB_TARGET_RANGE = 400; // Adjust this value as needed
 const MOB_CHASE_SPEED_MULT = 2.0 // 10% increase of speed
+const SKILL_RANGE_EXTENDER = 1.3 // 30% increase of casting distance
 
 
 // Export everything
@@ -295,4 +296,5 @@ export {
   naturalRegeneration,
   TAB_TARGET_RANGE,
   MOB_CHASE_SPEED_MULT,
+  SKILL_RANGE_EXTENDER
 };
