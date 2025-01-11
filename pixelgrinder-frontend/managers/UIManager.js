@@ -24,6 +24,32 @@ export default class UIManager {
     // Casting bar container
     this.castingBar = document.getElementById("casting-bar");
     console.log("castingBar:", this.castingBar);
+
+    // Casting Progress Elements
+    this.castingProgressContainer = document.getElementById(
+      "casting-progress-container"
+    );
+    this.castingProgressFill = document.getElementById("casting-progress-fill");
+    this.castingSkillName = document.getElementById("casting-skill-name");
+
+    if (!document.getElementById("casting-progress-container")) {
+      // Create container
+      this.castingProgressContainer = document.createElement("div");
+      this.castingProgressContainer.id = "casting-progress-container";
+
+      // Create skill name display
+      this.castingSkillName = document.createElement("div");
+      this.castingSkillName.id = "casting-skill-name";
+      this.castingProgressContainer.appendChild(this.castingSkillName);
+
+      // Create progress fill
+      this.castingProgressFill = document.createElement("div");
+      this.castingProgressFill.id = "casting-progress-fill";
+      this.castingProgressContainer.appendChild(this.castingProgressFill);
+
+      // Append to body or a specific UI container
+      document.body.appendChild(this.castingProgressContainer);
+    }
   }
 
   /**
@@ -39,6 +65,42 @@ export default class UIManager {
           onCloseStatsCallback();
         }
       });
+    }
+  }
+
+  /**
+   * Show the casting progress bar.
+   * @param {string} skillName - Name of the skill being cast.
+   * @param {number} totalTime - Total casting time in seconds.
+   */
+  showCastingProgress(skillName, totalTime) {
+    if (this.castingProgressContainer) {
+      this.castingSkillName.textContent = `Casting: ${skillName}`;
+      this.castingProgressFill.style.width = "0%";
+      this.castingProgressContainer.style.display = "block";
+    }
+  }
+
+  /**
+   * Update the casting progress bar.
+   * @param {number} elapsedTime - Elapsed casting time in seconds.
+   * @param {number} totalTime - Total casting time in seconds.
+   */
+  updateCastingProgress(elapsedTime, totalTime) {
+    if (this.castingProgressFill) {
+      const progressPercent = (elapsedTime / totalTime) * 100;
+      this.castingProgressFill.style.width = `${progressPercent}%`;
+    }
+  }
+
+  /**
+   * Hide the casting progress bar.
+   */
+  hideCastingProgress() {
+    if (this.castingProgressContainer) {
+      this.castingProgressContainer.style.display = "none";
+      this.castingProgressFill.style.width = "0%";
+      this.castingSkillName.textContent = "";
     }
   }
 

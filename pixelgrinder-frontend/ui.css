@@ -159,3 +159,39 @@
 #close-stats:hover {
   background-color: #c00;
 }
+
+
+/* Casting Progress Bar Container */
+#casting-progress-container {
+  position: fixed;
+  bottom: 100px; /* Positioned above the casting bar */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px; /* Adjust width as needed */
+  height: 20px;
+  background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+  border: 2px solid #fff;
+  border-radius: 10px;
+  display: none; /* Hidden by default */
+  z-index: 1001; /* Ensures it appears above other UI elements */
+}
+
+/* Casting Progress Fill */
+#casting-progress-fill {
+  height: 100%;
+  width: 0%;
+  background-color: #0f0; /* Green color for progress */
+  border-radius: 10px;
+  transition: width 0.1s linear; /* Smooth transition for progress */
+}
+
+/* Optional: Casting Skill Name */
+#casting-skill-name {
+  position: absolute;
+  top: -25px; /* Positioned above the progress bar */
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}

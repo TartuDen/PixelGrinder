@@ -176,7 +176,7 @@ const playerSkills = [
     range: 20,
     magicAttack: 3,
     meleeAttack: 0,
-    castingTime: 0,
+    castingTime: 1,
     cooldown: 2, //in seconds
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage:

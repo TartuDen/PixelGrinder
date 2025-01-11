@@ -15,6 +15,8 @@ export default class SkillManager {
     this.cooldowns = {}; // Object to track cooldown timers for each skill.
     this.isCasting = false; // Flag to indicate if a skill is currently being cast.
     this.currentCastingSkill = null; // Reference to the skill being cast.
+
+    this.castingTimer = null; // To track casting progress
   }
 
   /**
@@ -90,15 +92,38 @@ export default class SkillManager {
 
     console.log(`Casting ${skill.name}...`);
 
-    // Optionally, you can display a casting animation here if desired
+    // Show the casting progress bar
+    this.scene.uiManager.showCastingProgress(skill.name, skill.castingTime);
 
-    // Schedule the execution of the skill after the casting time.
+    const totalTime = skill.castingTime;
+    let elapsedTime = 0;
+
+    // Update casting progress every 100ms
+    this.castingTimer = this.scene.time.addEvent({
+      delay: 100, // 0.1 seconds
+      callback: () => {
+        elapsedTime += 0.1;
+        this.scene.uiManager.updateCastingProgress(elapsedTime, totalTime);
+
+        if (elapsedTime >= totalTime) {
+          this.castingTimer.remove(false);
+        }
+      },
+      callbackScope: this,
+      loop: true,
+    });
+
+    // Schedule skill execution after casting time
     this.scene.time.delayedCall(
       skill.castingTime * 1000,
       () => {
         this.executeSkill(skill);
         this.isCasting = false;
         this.currentCastingSkill = null;
+        this.castingTimer.remove(false);
+
+        // Hide the casting progress bar
+        this.scene.uiManager.hideCastingProgress();
       },
       [],
       this
@@ -116,27 +141,29 @@ export default class SkillManager {
     const player = this.scene.player;
     const targetedMob = this.scene.targetedMob;
 
-    // Deduct the skill's mana cost from the player.
+    // Deduct mana
     this.scene.deductMana(skill.manaCost);
 
-    // Apply damage to the targeted mob if the skill deals damage.
+    // Apply skill effects (damage, healing, etc.)
     if (skill.magicAttack > 0 && targetedMob) {
       const playerStats = this.getPlayerStats();
-      const mobStats = this.scene.mobManager.getStats(targetedMob); // Corrected retrieval of mob stats
+      const mobStats = this.scene.mobManager.getStats(targetedMob);
 
-      // Calculate damage using player's magicAttack and skill's magicAttack
-      const damage = calculateMagicDamage(playerStats, mobStats, skill.magicAttack);
+      const damage = calculateMagicDamage(
+        playerStats,
+        mobStats,
+        skill.magicAttack
+      );
 
       this.scene.mobManager.applyDamageToMob(targetedMob, damage);
       console.log(
         `${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${damage} magic damage.`
       );
 
-      // Trigger skill animation at the mob's position
+      // Trigger skill animation
       this.triggerSkillAnimation(skill, player, targetedMob);
     }
 
-    // Apply healing to the player if the skill heals.
     if (skill.heal) {
       this.scene.currentHealth = Math.min(
         this.scene.maxHealth,
@@ -145,11 +172,10 @@ export default class SkillManager {
       console.log(`${skill.name} healed for ${skill.heal} HP.`);
     }
 
-    // Start the skill's cooldown if applicable.
     if (skill.cooldown > 0) {
       this.cooldowns[skill.id] = skill.cooldown;
 
-      // Schedule the end of the cooldown.
+      // Schedule cooldown end
       this.scene.time.addEvent({
         delay: skill.cooldown * 1000,
         callback: () => {
@@ -160,11 +186,11 @@ export default class SkillManager {
         callbackScope: this,
       });
 
-      // Update the UI to show the cooldown overlay.
+      // Update UI with cooldown
       this.scene.uiManager.updateSkillCooldown(skill.id, skill.cooldown);
     }
 
-    // Refresh the UI to reflect changes in mana and health.
+    // Refresh UI
     this.scene.updateUI();
   }
 
