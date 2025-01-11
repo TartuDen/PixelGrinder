@@ -22,6 +22,7 @@ export function calculatePlayerStats() {
     strength,
     dexterity,
     constitution,
+    speed, // Added speed from base stats
   } = playerBaseStats;
 
   // 2) Derived stats from base stats * statWeights
@@ -32,7 +33,7 @@ export function calculatePlayerStats() {
   let magicEvasion = 0;
   let meleeEvasion = 0;
 
-  // a) apply intellect
+  // a) Apply intellect
   magicAttack += intellect * statWeights.intellect.magicAttack;
   meleeAttack += intellect * statWeights.intellect.meleeAttack;
   magicDefense += intellect * statWeights.intellect.magicDefense;
@@ -40,7 +41,7 @@ export function calculatePlayerStats() {
   magicEvasion += intellect * statWeights.intellect.magicEvasion;
   meleeEvasion += intellect * statWeights.intellect.meleeEvasion;
 
-  // b) apply strength
+  // b) Apply strength
   magicAttack += strength * statWeights.strength.magicAttack;
   meleeAttack += strength * statWeights.strength.meleeAttack;
   magicDefense += strength * statWeights.strength.magicDefense;
@@ -48,7 +49,7 @@ export function calculatePlayerStats() {
   magicEvasion += strength * statWeights.strength.magicEvasion;
   meleeEvasion += strength * statWeights.strength.meleeEvasion;
 
-  // c) apply dexterity
+  // c) Apply dexterity
   magicAttack += dexterity * statWeights.dexterity.magicAttack;
   meleeAttack += dexterity * statWeights.dexterity.meleeAttack;
   magicDefense += dexterity * statWeights.dexterity.magicDefense;
@@ -56,7 +57,7 @@ export function calculatePlayerStats() {
   magicEvasion += dexterity * statWeights.dexterity.magicEvasion;
   meleeEvasion += dexterity * statWeights.dexterity.meleeEvasion;
 
-  // d) apply constitution
+  // d) Apply constitution
   magicAttack += constitution * statWeights.constitution.magicAttack;
   meleeAttack += constitution * statWeights.constitution.meleeAttack;
   magicDefense += constitution * statWeights.constitution.magicDefense;
@@ -64,8 +65,11 @@ export function calculatePlayerStats() {
   magicEvasion += constitution * statWeights.constitution.magicEvasion;
   meleeEvasion += constitution * statWeights.constitution.meleeEvasion;
 
+  // Initialize total speed with base speed
+  let totalSpeed = speed; // From playerBaseStats.speed
+
   // 3) Add contributions from equipped weapon & armor
-  //    a) weapon
+  // a) Weapon
   if (playerEquippedItems.weapon) {
     const equippedWeapon = weaponItems.find(
       (w) => w.name === playerEquippedItems.weapon
@@ -79,10 +83,11 @@ export function calculatePlayerStats() {
       meleeDefense += equippedWeapon.meleeDefense;
       magicEvasion += equippedWeapon.magicEvasion;
       meleeEvasion += equippedWeapon.meleeEvasion;
+      totalSpeed += equippedWeapon.speed; // Add weapon speed modifier
     }
   }
 
-  //    b) armor pieces
+  // b) Armor pieces
   const armorSlots = ["head", "chest", "shoulders", "legs", "feet"];
   armorSlots.forEach((slot) => {
     const armorItemName = playerEquippedItems[slot];
@@ -97,11 +102,12 @@ export function calculatePlayerStats() {
         meleeDefense += equippedArmor.meleeDefense;
         magicEvasion += equippedArmor.magicEvasion;
         meleeEvasion += equippedArmor.meleeEvasion;
+        totalSpeed += equippedArmor.speed; // Add armor speed modifier
       }
     }
   });
 
-  // 4) Return final compiled stats
+  // 4) Return final compiled stats, including speed
   return {
     health,
     mana,
@@ -111,6 +117,7 @@ export function calculatePlayerStats() {
     meleeDefense,
     magicEvasion,
     meleeEvasion,
+    speed: totalSpeed, // Total player speed
   };
 }
 
@@ -118,7 +125,7 @@ export function calculatePlayerStats() {
  * Adds a small ±2 random variance to a base damage.
  */
 function addRandomVariance(base) {
-  // random integer from -2 to +2
+  // Random integer from -2 to +2
   const randomAdjustment = Math.floor(Math.random() * 5) - 2;
   return base + randomAdjustment;
 }

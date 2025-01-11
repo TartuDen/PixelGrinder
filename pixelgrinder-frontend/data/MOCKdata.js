@@ -13,9 +13,10 @@ const playerBaseStats = {
   health: 100,
   mana: 150,
   intellect: 3, // formerly int_stat
-  strength: 3,  // formerly str_stat
+  strength: 3, // formerly str_stat
   dexterity: 3, // formerly dex_stat
   constitution: 4, // formerly con_stat
+  speed: 50, // Added base speed (units can be pixels per second or similar)
 };
 
 // --- Stat Weights (How base stats affect derived stats) ---
@@ -54,7 +55,7 @@ const statWeights = {
   },
 };
 
-// --- Weapons and Armors ---
+// --- Weapons ---
 const weaponItems = [
   {
     name: "basic_staff",
@@ -67,6 +68,7 @@ const weaponItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
+    speed: 0, // Default speed modifier
   },
   {
     name: "green_branch",
@@ -79,9 +81,12 @@ const weaponItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
+    speed: 0, // Default speed modifier
   },
+  // Add more weapons here...
 ];
 
+// --- Armors ---
 const armorItems = [
   {
     name: "common_robe_chest",
@@ -94,6 +99,7 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
+    speed: 0, // Default speed modifier
   },
   {
     name: "common_robe_pants",
@@ -106,7 +112,35 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
+    speed: 0, // Default speed modifier
   },
+  {
+    name: "light_boots",
+    type: "boots",
+    health: 2,
+    mana: 0,
+    magicAttack: 0,
+    meleeAttack: 0,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+    speed: 10, // Increases player speed by 10 units
+  },
+  {
+    name: "swift_gauntlets",
+    type: "gauntlets",
+    health: 1,
+    mana: 0,
+    magicAttack: 0,
+    meleeAttack: 0,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+    speed: 5, // Increases player speed by 5 units
+  },
+  // Add more armors here...
 ];
 
 // --- What the player is currently wearing ---
@@ -215,6 +249,7 @@ const mobsData = {
     mobType: "friend",
     mobAgroRange: 300,
     attackCooldown: 2000, // milliseconds between attacks
+    speed: 50, // Added speed
   },
   goblin: {
     name: "Goblin",
@@ -230,12 +265,14 @@ const mobsData = {
     mobType: "enemy",
     mobAgroRange: 300,
     attackCooldown: 1500,
+    speed: 70, // Added speed
   },
+  // Add more mobs here...
 };
 
 const naturalRegeneration = {
   manaRegen: 3, // Regenerates 3 mana per regenerationTime
-  hpRegen: 4,   // Regenerates 4 health per regenerationTime
+  hpRegen: 4, // Regenerates 4 health per regenerationTime
   regenerationTime: 5000, // Time in ms (5s)
 };
 
@@ -254,5 +291,5 @@ export {
   playerSkills,
   mobsData,
   naturalRegeneration,
-  TAB_TARGET_RANGE
+  TAB_TARGET_RANGE,
 };

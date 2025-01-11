@@ -26,6 +26,7 @@ export default class MainScene extends Phaser.Scene {
     this.currentHealth = 0;
     this.maxMana = 0;
     this.maxHealth = 0;
+    this.playerSpeed = 100; // Will be updated dynamically
 
     // Managers
     this.uiManager = null;
@@ -36,9 +37,11 @@ export default class MainScene extends Phaser.Scene {
     this.cursors = null;
   }
 
-  // A helper to always get up-to-date stats
+  /**
+   * Get current player stats, including speed.
+   */
   getPlayerStats() {
-    const derivedStats = calculatePlayerStats(); // { health, mana, magicAttack, ... }
+    const derivedStats = calculatePlayerStats(); // { health, mana, magicAttack, ..., speed }
     return {
       currentMana: this.currentMana, // Current mana from MainScene
       maxMana: derivedStats.mana, // Derived max mana from stats and equipment
@@ -50,6 +53,7 @@ export default class MainScene extends Phaser.Scene {
       meleeDefense: derivedStats.meleeDefense,
       magicEvasion: derivedStats.magicEvasion,
       meleeEvasion: derivedStats.meleeEvasion,
+      speed: derivedStats.speed, // Include speed
       // Add other stats if necessary
     };
   }
@@ -83,11 +87,8 @@ export default class MainScene extends Phaser.Scene {
     // Setup UI
     this.uiManager.setupSkills(playerSkills);
 
-    // Initialize player stats from playerBaseStats
-    this.maxHealth = playerBaseStats.health;
-    this.currentHealth = playerBaseStats.health;
-    this.maxMana = playerBaseStats.mana;
-    this.currentMana = playerBaseStats.mana;
+    // Initialize player stats
+    this.updatePlayerStats(); // This sets this.playerSpeed based on equipment
 
     // Update the UI once at the start
     this.updateUI();
@@ -145,6 +146,9 @@ export default class MainScene extends Phaser.Scene {
   //  UI
   // --------------------------------------------------------------
   updateUI() {
+    // Update player stats
+    this.updatePlayerStats();
+
     const playerStats = {
       name: playerProfile.name,
       currentHealth: this.currentHealth,
@@ -153,6 +157,7 @@ export default class MainScene extends Phaser.Scene {
       maxMana: this.maxMana,
       level: playerProfile.level, // Use dynamic level if available
       xp: playerProfile.totalExp,
+      speed: this.playerSpeed, // Include speed in UI stats
     };
 
     // Update the UI via UIManager
@@ -268,6 +273,9 @@ export default class MainScene extends Phaser.Scene {
 
     if (result.success) {
       // Additional logic if needed after successfully using a skill
+      // For example, if items are consumed or changes occur
+      // Then, update player stats if necessary
+      this.updatePlayerStats();
     }
   }
 
@@ -582,7 +590,42 @@ export default class MainScene extends Phaser.Scene {
 
     // Start with a default animation
     this.player.anims.play("walk-down");
-    this.playerSpeed = 100;
+
+    // Initialize player speed based on stats
+    this.updatePlayerStats();
+  }
+
+  /**
+   * Recalculates and updates player stats, including speed.
+   */
+  updatePlayerStats() {
+    const stats = calculatePlayerStats();
+    this.maxHealth = stats.health;
+    this.maxMana = stats.mana;
+
+    // Initialize currentHealth and currentMana to max if they are 0
+    if (this.currentHealth === 0) {
+      this.currentHealth = this.maxHealth;
+      console.log(`Player Health Initialized to Max: ${this.currentHealth}`);
+    } else {
+      // Ensure currentHealth does not exceed maxHealth
+      this.currentHealth = Math.min(this.currentHealth, this.maxHealth);
+    }
+
+    if (this.currentMana === 0) {
+      this.currentMana = this.maxMana;
+      console.log(`Player Mana Initialized to Max: ${this.currentMana}`);
+    } else {
+      // Ensure currentMana does not exceed maxMana
+      this.currentMana = Math.min(this.currentMana, this.maxMana);
+    }
+
+    // Update player speed with constraints
+    const MIN_SPEED = 50;
+    const MAX_SPEED = 200;
+    this.playerSpeed = Phaser.Math.Clamp(stats.speed, MIN_SPEED, MAX_SPEED);
+
+    console.log(`Player Speed Updated: ${this.playerSpeed}`);
   }
 
   setupCamera() {
@@ -672,5 +715,20 @@ export default class MainScene extends Phaser.Scene {
     ) {
       this.player.anims.stop();
     }
+
+    // Normalize and scale the velocity so that player can't move faster along a diagonal
+    this.player.body.velocity.normalize().scale(this.playerSpeed);
+  }
+
+  // Example method to equip an item
+  equipItem(itemType, itemName) {
+    playerEquippedItems[itemType] = itemName;
+    console.log(`Equipped ${itemName} to ${itemType}`);
+
+    // Recalculate and update player stats
+    this.updatePlayerStats();
+
+    // Update the UI to reflect changes
+    this.updateUI();
   }
 }
