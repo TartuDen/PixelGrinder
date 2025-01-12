@@ -1,6 +1,6 @@
 // managers/MobManager.js
 
-import { mobsData, MOB_CHASE_SPEED_MULT } from "../data/MOCKdata.js";
+import { mobsData, MOB_CHASE_SPEED_MULT, SKILL_RANGE_EXTENDER, TAB_TARGET_RANGE } from "../data/MOCKdata.js";
 import { calculateMeleeDamage, calculateMagicDamage } from "../helpers/calculatePlayerStats.js";
 
 export default class MobManager {
@@ -14,7 +14,7 @@ export default class MobManager {
     this.mobs = this.scene.physics.add.group({ collideWorldBounds: true });
 
     // Collide with scene layers
-    this.scene.physics.add.collider(this.mobs, this.scene.player);
+    this.scene.physics.add.collider(this.mobs, this.scene.playerManager.player);
     this.scene.physics.add.collider(this.mobs, this.scene.collisionLayer);
     this.scene.physics.add.collider(this.mobs, this.mobs);
 
@@ -31,7 +31,8 @@ export default class MobManager {
       mob.customData = {
         id: mobTypeID,
         hp: mobInfo.health,
-        magicDefense: mobInfo.magicDefense, // Ensure magicDefense is part of mobInfo
+        magicDefense: mobInfo.magicDefense,
+        meleeDefense: mobInfo.meleeDefense,
         spawnX: spawnZone.x,
         spawnY: spawnZone.y,
         isDead: false,
@@ -183,7 +184,7 @@ export default class MobManager {
     const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y);
     direction.normalize();
 
-    const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT; // Calculate chase speed based on multiplier
+    const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
 
     if (Math.abs(direction.x) > Math.abs(direction.y)) {
@@ -226,7 +227,7 @@ export default class MobManager {
       magicAttack: mobInfo.magicAttack,
       meleeAttack: mobInfo.meleeAttack,
     };
-    const playerStats = this.scene.getPlayerStats();
+    const playerStats = this.scene.playerManager.getPlayerStats();
     let damage = 0;
 
     if (mobInfo.meleeAttack >= mobInfo.magicAttack) {
@@ -238,10 +239,10 @@ export default class MobManager {
     }
 
     console.log(`Mob "${mob.customData.id}" attacks player for ${damage} damage.`);
-    this.scene.currentHealth = Math.max(0, this.scene.currentHealth - damage);
+    this.scene.playerManager.currentHealth = Math.max(0, this.scene.playerManager.currentHealth - damage);
     this.scene.updateUI(); // reflect damage
 
-    if (this.scene.currentHealth <= 0) {
+    if (this.scene.playerManager.currentHealth <= 0) {
       this.scene.handlePlayerDeath();
     }
   }
@@ -317,7 +318,7 @@ export default class MobManager {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
         console.log(`Mob "${mob.customData.id}" became enemy.`);
-        this.chasePlayer(mob, this.scene.player, mobsData[mob.customData.id]);
+        this.chasePlayer(mob, this.scene.playerManager.player, mobsData[mob.customData.id]);
       }
     }
   }
@@ -330,8 +331,130 @@ export default class MobManager {
   getStats(mob) {
     return {
       magicDefense: mob.customData.magicDefense,
-      meleeDefense: mob.customData.meleeDefense, // Ensure meleeDefense is present
+      meleeDefense: mob.customData.meleeDefense,
       // Add other stats if necessary
     };
+  }
+
+  /**
+   * Cycle through available targets within range.
+   * @param {Phaser.GameObjects.Sprite} player - The player sprite.
+   * @param {number} range - The targeting range.
+   * @param {Function} callback - Callback to execute after cycling target.
+   */
+  cycleTarget(player, range, callback) {
+    const mobsInRange = this.mobs.getChildren().filter((mob) => {
+      if (mob.customData.isDead) return false;
+      const distance = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        mob.x,
+        mob.y
+      );
+      return distance <= range;
+    });
+
+    if (mobsInRange.length === 0) {
+      console.log("No mobs within TAB targeting range.");
+      return;
+    }
+
+    // Sort mobs by distance from the player (closest first)
+    mobsInRange.sort((a, b) => {
+      const distanceA = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        b.x,
+        b.y
+      );
+      return distanceA - distanceB;
+    });
+
+    // Cycle to the next target
+    this.scene.currentTargetIndex =
+      (this.scene.currentTargetIndex + 1) % mobsInRange.length;
+
+    // Set the new targeted mob
+    const mob = mobsInRange[this.scene.currentTargetIndex];
+    this.scene.targetedMob = mob;
+
+    // Highlight the targeted mob
+    this.highlightMob(mob);
+
+    console.log(`Targeted Mob: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
+
+    if (typeof callback === "function") {
+      callback();
+    }
+  }
+
+  /**
+   * Highlight the targeted mob.
+   * @param {Phaser.GameObjects.Sprite} mob - The mob to highlight.
+   */
+  highlightMob(mob) {
+    // Clear previous tints
+    this.mobs.getChildren().forEach((m) => m.clearTint());
+
+    // Apply a tint to the targeted mob
+    mob.setTint(0xff0000); // Red tint for highlighting
+  }
+
+  /**
+   * Handle mob click event.
+   * @param {Phaser.GameObjects.Sprite} mob - The clicked mob.
+   */
+  onMobClicked(mob) {
+    if (!mob.active) return;
+
+    // Clear previous tints
+    this.mobs.getChildren().forEach((m) => m.clearTint());
+
+    // Highlight the clicked mob
+    mob.setTint(0xff0000);
+
+    // Set as targeted mob
+    this.scene.targetedMob = mob;
+
+    // Find the index of the clicked mob within mobsInRange
+    const player = this.scene.playerManager.player;
+    const mobsInRange = this.mobs.getChildren().filter((mob) => {
+      if (mob.customData.isDead) return false;
+      const distance = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        mob.x,
+        mob.y
+      );
+      return distance <= TAB_TARGET_RANGE;
+    });
+
+    // Sort mobs by distance
+    mobsInRange.sort((a, b) => {
+      const distanceA = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        b.x,
+        b.y
+      );
+      return distanceA - distanceB;
+    });
+
+    // Update currentTargetIndex based on clicked mob's position in the sorted list
+    this.scene.currentTargetIndex = mobsInRange.indexOf(mob);
+
+    console.log(`Mob clicked: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
   }
 }

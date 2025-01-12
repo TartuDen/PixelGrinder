@@ -24,7 +24,7 @@ export default class SkillManager {
 
   /**
    * Preloads skills from the player's skill list.
-   * Assumes that `playerSkills` is available in MainScene.js and passed correctly.
+   * Assumes that `playerSkills` is available via the passed skills list.
    */
   preloadSkills() {
     // Assuming skills are accessible via `playerSkills` in the MainScene.
@@ -81,10 +81,18 @@ export default class SkillManager {
       return { success: false };
     }
 
+    // Access player via PlayerManager
+    const player = this.scene.playerManager.player;
+
+    if (!player) {
+      console.error("PlayerManager.player is undefined.");
+      return { success: false };
+    }
+
     // Calculate distance to the targeted mob
     const distance = Phaser.Math.Distance.Between(
-      this.scene.player.x,
-      this.scene.player.y,
+      player.x,
+      player.y,
       targetedMob.x,
       targetedMob.y
     );
@@ -191,8 +199,8 @@ export default class SkillManager {
 
         // Calculate current distance
         const currentDistance = Phaser.Math.Distance.Between(
-          this.scene.player.x,
-          this.scene.player.y,
+          this.scene.playerManager.player.x,
+          this.scene.playerManager.player.y,
           targetedMob.x,
           targetedMob.y
         );
@@ -221,7 +229,7 @@ export default class SkillManager {
    * @param {Phaser.GameObjects.Sprite} targetedMob - The mob being targeted.
    */
   executeSkill(skill, targetedMob) {
-    const player = this.scene.player;
+    const player = this.scene.playerManager.player;
 
     // Deduct mana
     this.scene.deductMana(skill.manaCost);
@@ -247,9 +255,9 @@ export default class SkillManager {
     }
 
     if (skill.heal) {
-      this.scene.currentHealth = Math.min(
-        this.scene.maxHealth,
-        this.scene.currentHealth + skill.heal
+      this.scene.playerManager.currentHealth = Math.min(
+        this.scene.playerManager.maxHealth,
+        this.scene.playerManager.currentHealth + skill.heal
       );
       console.log(`${skill.name} healed for ${skill.heal} HP.`);
     }

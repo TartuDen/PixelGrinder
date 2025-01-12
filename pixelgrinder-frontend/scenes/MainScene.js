@@ -3,92 +3,74 @@
 import UIManager from "../managers/UIManager.js";
 import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
+import PlayerManager from "../managers/PlayerManager.js";
+import InputManager from "../managers/InputManager.js";
 
 import {
   naturalRegeneration,
   playerProfile,
   playerSkills,
-  playerBaseStats,
-  TAB_TARGET_RANGE, // Import TAB_TARGET_RANGE here
+  TAB_TARGET_RANGE,
+  playerBaseStats, // Added this line
 } from "../data/MOCKdata.js";
-
-import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
 
-    this.currentTargetIndex = -1; // Initialize to -1 to start from the first mob
+    this.currentTargetIndex = -1;
     this.targetedMob = null;
-
-    // Player stats
-    this.currentMana = 0;
-    this.currentHealth = 0;
-    this.maxMana = 0;
-    this.maxHealth = 0;
-    this.playerSpeed = 100; // Will be updated dynamically
 
     // Managers
     this.uiManager = null;
     this.skillManager = null;
     this.mobManager = null;
-
-    // Input keys
-    this.cursors = null;
-  }
-
-  /**
-   * Get current player stats, including speed.
-   */
-  getPlayerStats() {
-    const derivedStats = calculatePlayerStats(); // { health, mana, magicAttack, ..., speed }
-    return {
-      currentMana: this.currentMana, // Current mana from MainScene
-      maxMana: derivedStats.mana, // Derived max mana from stats and equipment
-      currentHealth: this.currentHealth, // Current health
-      maxHealth: derivedStats.health, // Derived max health from stats and equipment
-      magicAttack: derivedStats.magicAttack,
-      meleeAttack: derivedStats.meleeAttack,
-      magicDefense: derivedStats.magicDefense,
-      meleeDefense: derivedStats.meleeDefense,
-      magicEvasion: derivedStats.magicEvasion,
-      meleeEvasion: derivedStats.meleeEvasion,
-      speed: derivedStats.speed, // Include speed
-      // Add other stats if necessary
-    };
+    this.playerManager = null;
+    this.inputManager = null;
   }
 
   preload() {
     // Load default assets (tilemap, etc.)
     this.loadAssets();
-
-    // Prepare skill manager
-    this.skillManager = new SkillManager(this, () => this.getPlayerStats());
-    this.skillManager.preloadSkills();
   }
 
   create() {
     this.createTilemap();
     this.defineAnimations();
-    this.createPlayer();
-    this.setupCamera();
-    this.setupControls();
 
-    // Initialize Managers
-    this.uiManager = new UIManager(this); // Pass the scene reference
-    // Pass a callback to handle closing the stats menu
+    // Initialize Player Manager before SkillManager
+    this.playerManager = new PlayerManager(this);
+    this.playerManager.createPlayer(this.map); // Pass the tilemap
+
+    // Initialize SkillManager with a callback to get player stats
+    this.skillManager = new SkillManager(this, () =>
+      this.playerManager.getPlayerStats()
+    );
+    this.skillManager.preloadSkills();
+
+    this.setupCamera();
+
+    // Initialize UIManager
+    this.uiManager = new UIManager(this);
     this.uiManager.init(() => {
-      this.hideStatsMenu();
+      this.uiManager.hideStatsMenu();
+      this.scene.resume();
     });
 
+    // Initialize MobManager
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
 
     // Setup UI
     this.uiManager.setupSkills(playerSkills);
 
-    // Initialize player stats
-    this.updatePlayerStats(); // This sets this.playerSpeed based on equipment
+    // Initialize Input Manager
+    this.inputManager = new InputManager(
+      this,
+      this.playerManager,
+      this.skillManager
+    );
+    this.inputManager.setupControls(playerSkills);
 
     // Update the UI once at the start
     this.updateUI();
@@ -98,100 +80,66 @@ export default class MainScene extends Phaser.Scene {
 
     // Natural regeneration
     this.time.addEvent({
-      delay: naturalRegeneration.regenerationTime, // Already in ms
-      callback: this.regenerateStats,
+      delay: naturalRegeneration.regenerationTime,
+      callback: () => this.playerManager.regenerateStats(naturalRegeneration),
       callbackScope: this,
       loop: true,
-    });
-
-    // Capture the TAB key to prevent default browser behavior
-    this.input.keyboard.addCapture("TAB");
-
-    // TAB key for cycling targets
-    const tabKey = this.input.keyboard.addKey(
-      Phaser.Input.Keyboard.KeyCodes.TAB
-    );
-    tabKey.on("down", () => {
-      this.cycleTarget();
-      this.updateUI();
-    });
-
-    // B key for stats logs & toggling
-    this.input.keyboard.on("keydown-B", () => {
-      this.summarizePlayerStats(); // Console logs
-      this.toggleStatsMenu();
     });
   }
 
   update(time, delta) {
-    this.handlePlayerMovement();
-    this.mobManager.updateMobs(this.player);
-    // UI is managed by UIManager, no need to update UI every frame
-    // this.updateUI();
-  }
+    const cursors = this.inputManager.getInputKeys();
+    const isCasting = this.skillManager.isCasting;
 
-  // --------------------------------------------------------------
-  //  Player Death
-  // --------------------------------------------------------------
-  handlePlayerDeath() {
-    console.log("Player died!");
-    // Implement game-over or respawn logic here
-    // For example, restart the scene after a delay
-    this.time.delayedCall(2000, () => {
-      this.scene.restart();
-    });
+    // Handle player movement
+    this.playerManager.handleMovement(cursors, isCasting);
+
+    // Update mobs
+    this.mobManager.updateMobs(this.playerManager.player);
+
+    // UI is managed by UIManager, no need to update UI every frame
   }
 
   // --------------------------------------------------------------
   //  UI
   // --------------------------------------------------------------
   updateUI() {
-    // Update player stats
-    this.updatePlayerStats();
+    const playerStats = this.playerManager.getPlayerStats();
 
-    const playerStats = {
+    const uiStats = {
       name: playerProfile.name,
-      currentHealth: this.currentHealth,
-      maxHealth: this.maxHealth,
-      currentMana: this.currentMana,
-      maxMana: this.maxMana,
-      level: playerProfile.level, // Use dynamic level if available
+      currentHealth: playerStats.currentHealth,
+      maxHealth: playerStats.maxHealth,
+      currentMana: playerStats.currentMana,
+      maxMana: playerStats.maxMana,
+      level: playerProfile.level,
       xp: playerProfile.totalExp,
-      speed: this.playerSpeed, // Include speed in UI stats
+      speed: playerStats.speed,
     };
 
     // Update the UI via UIManager
-    this.uiManager.updateUI(playerStats);
+    this.uiManager.updateUI(uiStats);
   }
 
   toggleStatsMenu() {
     if (this.uiManager.statsMenu.style.display === "block") {
-      this.hideStatsMenu();
+      this.uiManager.hideStatsMenu();
+      this.scene.resume();
     } else {
-      this.showStatsMenu();
+      // Generate stats HTML
+      const statsHTML = this.generateStatsHTML();
+      this.uiManager.showStatsMenu(statsHTML);
+
+      // Pause the scene
+      this.scene.pause();
     }
-  }
-
-  showStatsMenu() {
-    // Generate stats HTML
-    const statsHTML = this.generateStatsHTML();
-    this.uiManager.showStatsMenu(statsHTML);
-
-    // Pause the scene
-    this.scene.pause();
-  }
-
-  hideStatsMenu() {
-    this.uiManager.hideStatsMenu();
-    this.scene.resume();
   }
 
   generateStatsHTML() {
     // Collect stats
-    const derivedStats = this.getPlayerStats();
+    const derivedStats = this.playerManager.getPlayerStats();
     const { name, class: cls, level, totalExp } = playerProfile;
 
-    // Use imported playerBaseStats instead of hardcoding
     const { health, mana, intellect, strength, dexterity, constitution } =
       playerBaseStats;
 
@@ -258,9 +206,8 @@ export default class MainScene extends Phaser.Scene {
   //  Summarize Stats in Console
   // --------------------------------------------------------------
   summarizePlayerStats() {
-    // Your existing console logs or just keep it simpler
     console.log("=== Player Stats Summary ===");
-    console.table(this.getPlayerStats());
+    console.table(this.playerManager.getPlayerStats());
     console.log("============================");
   }
 
@@ -268,21 +215,23 @@ export default class MainScene extends Phaser.Scene {
   //  Skills
   // --------------------------------------------------------------
   useSkill(skill) {
-    // Delegate skill usage to SkillManager
     const result = this.skillManager.useSkill(skill);
 
     if (result.success) {
-      // Additional logic if needed after successfully using a skill
-      // For example, if items are consumed or changes occur
-      // Then, update player stats if necessary
-      this.updatePlayerStats();
+      // Update player stats if necessary
+      this.playerManager.updatePlayerStats();
     }
   }
 
   deductMana(amount) {
     console.log(`Deducting ${amount} mana.`);
-    this.currentMana = Math.max(0, this.currentMana - amount);
-    console.log(`Current Mana after deduction: ${this.currentMana}`);
+    this.playerManager.currentMana = Math.max(
+      0,
+      this.playerManager.currentMana - amount
+    );
+    console.log(
+      `Current Mana after deduction: ${this.playerManager.currentMana}`
+    );
     // Update the UI to reflect mana deduction
     this.updateUI();
   }
@@ -291,140 +240,39 @@ export default class MainScene extends Phaser.Scene {
   //  Targeting
   // --------------------------------------------------------------
   cycleTarget() {
-    // Get all mobs that are alive and within the TAB_TARGET_RANGE
-    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
-      if (mob.customData.isDead) return false; // Exclude dead mobs
-      const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        mob.x,
-        mob.y
-      );
-      return distance <= TAB_TARGET_RANGE;
-    });
-
-    if (mobsInRange.length === 0) {
-      console.log("No mobs within TAB targeting range.");
-      return; // No mobs to target
-    }
-
-    // Sort mobs by distance from the player (closest first)
-    mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        a.x,
-        a.y
-      );
-      const distanceB = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        b.x,
-        b.y
-      );
-      return distanceA - distanceB;
-    });
-
-    // Cycle to the next target
-    this.currentTargetIndex =
-      (this.currentTargetIndex + 1) % mobsInRange.length;
-
-    // Set the new targeted mob
-    const mob = mobsInRange[this.currentTargetIndex];
-    this.targetedMob = mob;
-
-    // Highlight the targeted mob
-    this.highlightMob(mob);
-
-    console.log(`Targeted Mob: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
+    this.mobManager.cycleTarget(
+      this.playerManager.player,
+      TAB_TARGET_RANGE,
+      () => {
+        this.updateUI();
+      }
+    );
   }
 
   highlightMob(mob) {
-    // Clear previous tints
-    this.mobManager.mobs.getChildren().forEach((m) => m.clearTint());
-
-    // Apply a tint to the targeted mob
-    mob.setTint(0xff0000); // Red tint for highlighting
+    this.mobManager.highlightMob(mob);
   }
 
   onMobClicked(mob) {
-    if (!mob.active) return;
-
-    // Clear previous tints
-    this.mobManager.mobs.getChildren().forEach((m) => m.clearTint());
-
-    // Highlight the clicked mob
-    mob.setTint(0xff0000);
-
-    // Set as targeted mob
-    this.targetedMob = mob;
-
-    // Find the index of the clicked mob within mobsInRange
-    const mobsInRange = this.mobManager.mobs.getChildren().filter((mob) => {
-      if (mob.customData.isDead) return false;
-      const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        mob.x,
-        mob.y
-      );
-      return distance <= TAB_TARGET_RANGE;
-    });
-
-    // Sort mobs by distance
-    mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        a.x,
-        a.y
-      );
-      const distanceB = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        b.x,
-        b.y
-      );
-      return distanceA - distanceB;
-    });
-
-    // Update currentTargetIndex based on clicked mob's position in the sorted list
-    this.currentTargetIndex = mobsInRange.indexOf(mob);
-
-    console.log(`Mob clicked: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
+    this.mobManager.onMobClicked(mob);
+    this.updateUI();
   }
 
   // --------------------------------------------------------------
-  //  Natural Regeneration
+  //  Player Death
   // --------------------------------------------------------------
-  regenerateStats() {
-    const beforeMana = this.currentMana;
-    this.currentMana = Math.min(
-      this.maxMana,
-      this.currentMana + naturalRegeneration.manaRegen
-    );
-
-    const beforeHealth = this.currentHealth;
-    this.currentHealth = Math.min(
-      this.maxHealth,
-      this.currentHealth + naturalRegeneration.hpRegen
-    );
-
-    console.log(
-      `Regenerated +${this.currentMana - beforeMana} mana, +${
-        this.currentHealth - beforeHealth
-      } HP`
-    );
-
-    // Update the UI to reflect regeneration
-    this.updateUI();
+  handlePlayerDeath() {
+    console.log("Player died!");
+    // Implement game-over or respawn logic here
+    // For example, restart the scene after a delay
+    this.time.delayedCall(2000, () => {
+      this.scene.restart();
+    });
   }
 
   // --------------------------------------------------------------
   //  Asset Loading & World Setup
   // --------------------------------------------------------------
-  // scenes/MainScene.js
-
   loadAssets() {
     // Tilemap JSON
     this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
@@ -566,66 +414,10 @@ export default class MainScene extends Phaser.Scene {
           start: 0,
           end: skill.animationSeq[1],
         }),
-        frameRate: 15, // Adjust frame rate as needed
-        repeat: 0, // Play once
+        frameRate: 15,
+        repeat: 0,
       });
     });
-  }
-
-  createPlayer() {
-    const heroStart = this.map.findObject(
-      "GameObjects",
-      (obj) => obj.name === "HeroStart"
-    );
-    this.player = this.physics.add.sprite(
-      heroStart.x,
-      heroStart.y,
-      "characters"
-    );
-    this.player.setCollideWorldBounds(true);
-    this.player.setScale(1);
-
-    // Collision with walls
-    this.physics.add.collider(this.player, this.collisionLayer);
-
-    // Start with a default animation
-    this.player.anims.play("walk-down");
-
-    // Initialize player speed based on stats
-    this.updatePlayerStats();
-  }
-
-  /**
-   * Recalculates and updates player stats, including speed.
-   */
-  updatePlayerStats() {
-    const stats = calculatePlayerStats();
-    this.maxHealth = stats.health;
-    this.maxMana = stats.mana;
-
-    // Initialize currentHealth and currentMana to max if they are 0
-    if (this.currentHealth === 0) {
-      this.currentHealth = this.maxHealth;
-      console.log(`Player Health Initialized to Max: ${this.currentHealth}`);
-    } else {
-      // Ensure currentHealth does not exceed maxHealth
-      this.currentHealth = Math.min(this.currentHealth, this.maxHealth);
-    }
-
-    if (this.currentMana === 0) {
-      this.currentMana = this.maxMana;
-      console.log(`Player Mana Initialized to Max: ${this.currentMana}`);
-    } else {
-      // Ensure currentMana does not exceed maxMana
-      this.currentMana = Math.min(this.currentMana, this.maxMana);
-    }
-
-    // Update player speed with constraints
-    const MIN_SPEED = 50;
-    const MAX_SPEED = 200;
-    this.playerSpeed = Phaser.Math.Clamp(stats.speed, MIN_SPEED, MAX_SPEED);
-
-    console.log(`Player Speed Updated: ${this.playerSpeed}`);
   }
 
   setupCamera() {
@@ -641,94 +433,6 @@ export default class MainScene extends Phaser.Scene {
       this.map.widthInPixels,
       this.map.heightInPixels
     );
-    this.cameras.main.startFollow(this.player);
-  }
-
-  setupControls() {
-    this.cursors = this.input.keyboard.addKeys({
-      up: Phaser.Input.Keyboard.KeyCodes.W,
-      down: Phaser.Input.Keyboard.KeyCodes.S,
-      left: Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
-    });
-
-    // Numeric keys 1-9 for skills
-    const skillKeyCodes = [
-      Phaser.Input.Keyboard.KeyCodes.ONE,
-      Phaser.Input.Keyboard.KeyCodes.TWO,
-      Phaser.Input.Keyboard.KeyCodes.THREE,
-      Phaser.Input.Keyboard.KeyCodes.FOUR,
-      Phaser.Input.Keyboard.KeyCodes.FIVE,
-      Phaser.Input.Keyboard.KeyCodes.SIX,
-      Phaser.Input.Keyboard.KeyCodes.SEVEN,
-      Phaser.Input.Keyboard.KeyCodes.EIGHT,
-      Phaser.Input.Keyboard.KeyCodes.NINE,
-    ];
-
-    playerSkills.forEach((skill, index) => {
-      if (index < skillKeyCodes.length) {
-        const key = this.input.keyboard.addKey(skillKeyCodes[index]);
-        key.on("down", () => {
-          console.log(`Skill triggered: ${skill.name}`);
-          this.useSkill(skill);
-        });
-      }
-    });
-  }
-
-  // --------------------------------------------------------------
-  //  Player Movement Handling
-  // --------------------------------------------------------------
-  handlePlayerMovement() {
-    if (!this.player || !this.player.body) return;
-
-    // Prevent movement if casting
-    if (this.skillManager.isCasting) {
-      this.player.body.setVelocity(0);
-      this.player.anims.stop();
-      return;
-    }
-
-    this.player.body.setVelocity(0);
-
-    if (this.cursors.up.isDown) {
-      this.player.body.setVelocityY(-this.playerSpeed);
-      this.player.anims.play("walk-up", true);
-    } else if (this.cursors.down.isDown) {
-      this.player.body.setVelocityY(this.playerSpeed);
-      this.player.anims.play("walk-down", true);
-    }
-
-    if (this.cursors.left.isDown) {
-      this.player.body.setVelocityX(-this.playerSpeed);
-      this.player.anims.play("walk-left", true);
-    } else if (this.cursors.right.isDown) {
-      this.player.body.setVelocityX(this.playerSpeed);
-      this.player.anims.play("walk-right", true);
-    }
-
-    if (
-      !this.cursors.up.isDown &&
-      !this.cursors.down.isDown &&
-      !this.cursors.left.isDown &&
-      !this.cursors.right.isDown
-    ) {
-      this.player.anims.stop();
-    }
-
-    // Normalize and scale the velocity so that player can't move faster along a diagonal
-    this.player.body.velocity.normalize().scale(this.playerSpeed);
-  }
-
-  // Example method to equip an item
-  equipItem(itemType, itemName) {
-    playerEquippedItems[itemType] = itemName;
-    console.log(`Equipped ${itemName} to ${itemType}`);
-
-    // Recalculate and update player stats
-    this.updatePlayerStats();
-
-    // Update the UI to reflect changes
-    this.updateUI();
+    this.cameras.main.startFollow(this.playerManager.player);
   }
 }
