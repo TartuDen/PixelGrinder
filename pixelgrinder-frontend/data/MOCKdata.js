@@ -149,8 +149,8 @@ const playerEquippedItems = {
   head: null,
   chest: null,
   shoulders: null,
-  legs: null,
-  feet: null,
+  legs: "common_robe_pants",
+  feet: "light_boots",
 };
 
 // --- Player Backpack / Inventory ---

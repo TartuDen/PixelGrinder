@@ -1,18 +1,26 @@
+/* ==========================================
+   General UI Styles
+========================================== */
+
 /* Player Info Display */
 #player-info {
   position: fixed;
   top: 20px;
   left: 20px;
   color: #fff;
-  font-family: Arial, sans-serif;
+  font-family: 'Cinzel', serif; /* Fantasy-inspired font */
   z-index: 1000; /* High z-index to appear above the game canvas */
+  background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent background */
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
 .health-bar, .mana-bar {
   position: relative;
   width: 200px;
   height: 20px;
-  background-color: #555;
+  background-color: #333; /* Darker background for better contrast */
   border-radius: 5px;
   margin-bottom: 10px;
 }
@@ -25,11 +33,11 @@
 }
 
 #health-fill {
-  background-color: #f00; /* Red for health */
+  background-color: #e74c3c; /* Rich red for health */
 }
 
 #mana-fill {
-  background-color: #00f; /* Blue for mana */
+  background-color: #3498db; /* Vibrant blue for mana */
 }
 
 .health-bar span, .mana-bar span {
@@ -41,6 +49,7 @@
   color: #fff;
   font-size: 14px;
   line-height: 20px;
+  font-family: 'Cinzel', serif; /* Consistent fantasy font */
 }
 
 /* Casting Bar */
@@ -52,23 +61,30 @@
   display: flex;
   gap: 10px; /* Space between casting slots */
   padding: 10px;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  background-color: rgba(0, 0, 0, 0.7); /* Darker semi-transparent background */
   border-radius: 10px;
   z-index: 1000; /* High z-index to appear above the game canvas */
   max-width: 90%; /* Prevents overflow on smaller screens */
   overflow-x: auto; /* Allows horizontal scrolling if too many skills */
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
 
 .casting-slot {
   position: relative;
   width: 64px; /* Adjust size as needed */
   height: 64px;
-  border: 2px solid #fff;
+  border: 2px solid #f1c40f; /* Gold border for prominence */
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   flex: 0 0 auto; /* Prevents the slots from shrinking */
-  background-color: #333; /* Background color for better visibility */
+  background-color: #2c3e50; /* Dark background for better visibility */
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.casting-slot:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #f1c40f;
 }
 
 .casting-slot img {
@@ -82,10 +98,11 @@
   bottom: 4px;
   left: 4px;
   background-color: rgba(0, 0, 0, 0.7);
-  color: #fff;
+  color: #f1c40f; /* Gold color for mana cost */
   padding: 2px 4px;
   border-radius: 4px;
   font-size: 12px;
+  font-family: 'Cinzel', serif;
 }
 
 /* Cooldown Overlay */
@@ -101,14 +118,16 @@
   justify-content: center;
   border-radius: 8px; /* Match casting-slot border-radius */
   overflow: hidden;
+  pointer-events: none; /* Allows click-through */
 }
 
 .cooldown-timer {
   position: relative;
   z-index: 1;
-  color: #fff;
+  color: #f1c40f; /* Gold color for timer */
   font-size: 16px;
   font-weight: bold;
+  font-family: 'Cinzel', serif;
 }
 
 /* Stats Menu */
@@ -117,49 +136,78 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background-color: rgba(0,0,0,0.8);
+  background-color: rgba(34, 34, 34, 0.95); /* Dark, opaque background */
   padding: 20px;
-  border-radius: 8px;
-  color: #fff;
-  font-family: Arial, sans-serif;
+  border-radius: 10px;
+  color: #f1c40f; /* Gold text color */
+  font-family: 'Cinzel', serif; /* Fantasy-inspired font */
   z-index: 2000; /* Highest z-index to appear above all UI elements */
   max-width: 90%;
   max-height: 90%;
   overflow-y: auto; /* Adds scroll if content exceeds height */
+  box-shadow: 0 0 20px rgba(0,0,0,0.7);
+  background-image: url('assets/textures/parchment.jpg'); /* Parchment texture */
+  background-size: cover;
+  background-position: center;
 }
 
 .stats-menu table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin-top: 20px;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent table background */
 }
 
 .stats-menu th, .stats-menu td {
-  border: 1px solid #fff;
+  border: 1px solid #f1c40f; /* Gold borders */
   padding: 8px;
-  text-align: left;
+  text-align: center;
+  color: #fff; /* White text for readability */
 }
 
 .stats-menu th {
-  background-color: #444;
+  background-color: #8e44ad; /* Rich purple header for distinction */
+  color: #f1c40f; /* Gold text in headers */
+  font-size: 16px;
 }
 
+.stats-menu tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.1); /* Light overlay for even rows */
+}
+
+.stats-menu tr:hover {
+  background-color: rgba(255, 255, 255, 0.2); /* Highlight on hover */
+}
+
+.stats-menu th:first-child, .stats-menu td:first-child {
+  text-align: left;
+  background-color: rgba(142, 68, 173, 0.8); /* Consistent header styling */
+}
+
+.stats-menu th:nth-child(2), .stats-menu td:nth-child(2) {
+  background-color: rgba(231, 243, 254, 0.3); /* Soft blue for basic stats */
+  color: #fff; /* Ensure text is readable */
+}
+
+/* Close Button for Stats Menu */
 #close-stats {
   position: absolute;
   top: 10px;
   right: 10px;
-  background-color: #f00;
+  background-color: #c0392b; /* Dark red for close button */
   color: #fff;
   border: none;
   padding: 5px 10px;
   cursor: pointer;
   border-radius: 3px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  transition: background-color 0.3s;
 }
 
 #close-stats:hover {
-  background-color: #c00;
+  background-color: #e74c3c; /* Lighter red on hover */
 }
-
 
 /* Casting Progress Bar Container */
 #casting-progress-container {
@@ -170,28 +218,85 @@
   width: 300px; /* Adjust width as needed */
   height: 20px;
   background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
-  border: 2px solid #fff;
+  border: 2px solid #f1c40f; /* Gold border */
   border-radius: 10px;
   display: none; /* Hidden by default */
   z-index: 1001; /* Ensures it appears above other UI elements */
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  font-family: 'Cinzel', serif;
 }
 
 /* Casting Progress Fill */
 #casting-progress-fill {
   height: 100%;
   width: 0%;
-  background-color: #0f0; /* Green color for progress */
+  background-color: #27ae60; /* Emerald green for progress */
   border-radius: 10px;
   transition: width 0.1s linear; /* Smooth transition for progress */
 }
 
-/* Optional: Casting Skill Name */
+/* Casting Skill Name */
 #casting-skill-name {
   position: absolute;
   top: -25px; /* Positioned above the progress bar */
   left: 50%;
   transform: translateX(-50%);
-  color: #fff;
-  font-family: Arial, sans-serif;
+  color: #f1c40f; /* Gold color */
+  font-family: 'Cinzel', serif;
   font-size: 14px;
+  text-shadow: 1px 1px 2px #000;
+}
+
+/* Optional: Adding Font from Google Fonts for Fantasy Style */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+/* ==========================================
+   Responsive Design Enhancements
+========================================== */
+
+/* Ensure the stats menu and casting bar adapt to smaller screens */
+@media (max-width: 600px) {
+  #player-info {
+    width: 90%;
+    left: 5%;
+    top: 10px;
+    font-size: 14px;
+  }
+
+  .health-bar, .mana-bar {
+    width: 100%;
+  }
+
+  #casting-bar {
+    flex-wrap: wrap;
+    bottom: 10px;
+    padding: 5px;
+  }
+
+  .casting-slot {
+    width: 48px;
+    height: 48px;
+  }
+
+  .mana-cost {
+    font-size: 10px;
+  }
+
+  .stats-menu {
+    padding: 15px;
+  }
+
+  .stats-menu th, .stats-menu td {
+    padding: 6px;
+    font-size: 12px;
+  }
+
+  #close-stats {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  #casting-progress-container {
+    width: 80%;
+  }
 }

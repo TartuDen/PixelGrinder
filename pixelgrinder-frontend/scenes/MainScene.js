@@ -11,7 +11,10 @@ import {
   playerProfile,
   playerSkills,
   TAB_TARGET_RANGE,
-  playerBaseStats, // Added this line
+  playerBaseStats,
+  playerEquippedItems,
+  weaponItems,
+  armorItems,
 } from "../data/MOCKdata.js";
 
 export default class MainScene extends Phaser.Scene {
@@ -136,41 +139,151 @@ export default class MainScene extends Phaser.Scene {
   }
 
   generateStatsHTML() {
-    // Collect stats
-    const derivedStats = this.playerManager.getPlayerStats();
-    const { name, class: cls, level, totalExp } = playerProfile;
+    const { class: cls, name, level } = playerProfile;
 
-    const { health, mana, intellect, strength, dexterity, constitution } =
-      playerBaseStats;
+    // Define the list of stats to display
+    const statList = [
+      { key: "class", label: "Class", type: "text" },
+      { key: "name", label: "Name", type: "text" },
+      { key: "level", label: "Level", type: "text" },
+      { key: "health", label: "Health", type: "number" },
+      { key: "mana", label: "Mana", type: "number" },
+      { key: "intellect", label: "Intellect", type: "number" },
+      { key: "strength", label: "Strength", type: "number" },
+      { key: "dexterity", label: "Dexterity", type: "number" },
+      { key: "constitution", label: "Constitution", type: "number" },
+      { key: "speed", label: "Speed", type: "number" },
+      { key: "magicAttack", label: "Magic Attack", type: "number" },
+      { key: "meleeAttack", label: "Melee Attack", type: "number" },
+      { key: "magicDefense", label: "Magic Defense", type: "number" },
+      { key: "meleeDefense", label: "Melee Defense", type: "number" },
+      { key: "magicEvasion", label: "Magic Evasion", type: "number" },
+      { key: "meleeEvasion", label: "Melee Evasion", type: "number" },
+    ];
 
-    const dynamicBaseStats = {
-      health,
-      mana,
-      intellect,
-      strength,
-      dexterity,
-      constitution,
+    // Equipment slots in order
+    const equipmentSlots = [
+      "weapon",
+      "head",
+      "chest",
+      "shoulders",
+      "legs",
+      "feet",
+    ];
+
+    // Function to get item stats
+    const getItemStats = (slot) => {
+      const itemName = playerEquippedItems[slot];
+      if (!itemName) return null;
+
+      // Determine if the slot is for weapons or armor
+      const isWeaponSlot = slot === "weapon";
+      const itemsArray = isWeaponSlot ? weaponItems : armorItems;
+
+      // Find the item
+      return itemsArray.find((item) => item.name === itemName) || null;
     };
 
-    const baseStatsHTML = this.generateStatsTable(
-      "Base Stats",
-      dynamicBaseStats
-    );
-    const derivedStatsHTML = this.generateStatsTable(
-      "Derived Stats",
-      derivedStats
-    );
+    // Gather stats from each equipment
+    const equipmentStats = equipmentSlots.map((slot) => getItemStats(slot));
 
-    return `
-      <h3>Player Info</h3>
-      <p><strong>Name:</strong> ${name}</p>
-      <p><strong>Class:</strong> ${cls}</p>
-      <p><strong>Level:</strong> ${level || "N/A"}</p>
-      <p><strong>Experience:</strong> ${totalExp}</p>
+    // Calculate total derived stats
+    const totalStats = { ...playerBaseStats };
 
-      ${baseStatsHTML}
-      ${derivedStatsHTML}
+    equipmentStats.forEach((item) => {
+      if (item) {
+        for (const stat in item) {
+          if (stat === "name" || stat === "type") continue; // Skip non-stats
+          if (typeof totalStats[stat] === "number") {
+            totalStats[stat] += item[stat];
+          } else {
+            totalStats[stat] = item[stat];
+          }
+        }
+      }
+    });
+
+    // For derived stats that are not directly summed (e.g., class, name, level), handle separately
+    const derivedStats = { ...totalStats };
+
+    // Prepare table headers
+    let headers = `
+      <tr>
+        <th>Stat</th>
+        <th>Basic</th>
     `;
+
+    equipmentSlots.forEach((slot) => {
+      const item = getItemStats(slot);
+      const headerName = item
+        ? item.name
+        : slot.charAt(0).toUpperCase() + slot.slice(1);
+      headers += `<th>${headerName}</th>`;
+    });
+
+    headers += `<th>Derived</th></tr>`;
+
+    // Start building the table
+    let tableHTML = `
+      <h3>Player Stats</h3>
+      <table>
+        <thead>
+          ${headers}
+        </thead>
+        <tbody>
+    `;
+
+    // Populate table rows
+    statList.forEach((stat) => {
+      let row = `<tr><td>${stat.label}</td>`;
+
+      if (stat.type === "text") {
+        // For text stats: class, name, level
+        let basicValue;
+        if (stat.key === "class") basicValue = cls;
+        else if (stat.key === "name") basicValue = name;
+        else if (stat.key === "level") basicValue = level;
+
+        row += `<td>${basicValue}</td>`;
+
+        // Equipment columns: display '-' for text stats
+        equipmentSlots.forEach(() => {
+          row += `<td>-</td>`;
+        });
+
+        // Derived column: same as basic
+        row += `<td>${basicValue}</td>`;
+      } else if (stat.type === "number") {
+        // For numerical stats: health, mana, etc.
+        // Basic value
+        const basicValue = playerBaseStats[stat.key] || 0;
+        row += `<td>${basicValue}</td>`;
+
+        // Equipment contributions
+        equipmentStats.forEach((item) => {
+          if (item && typeof item[stat.key] === "number") {
+            row += `<td>${item[stat.key]}</td>`;
+          } else {
+            row += `<td>0</td>`;
+          }
+        });
+
+        // Derived value
+        const derivedValue = totalStats[stat.key] || 0;
+        row += `<td>${derivedValue}</td>`;
+      }
+
+      row += `</tr>`;
+      tableHTML += row;
+    });
+
+    // Close the table
+    tableHTML += `
+        </tbody>
+      </table>
+    `;
+
+    return tableHTML;
   }
 
   generateStatsTable(title, stats) {
