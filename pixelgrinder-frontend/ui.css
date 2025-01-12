@@ -1,8 +1,15 @@
 /* ==========================================
+   Import Fonts
+========================================== */
+
+/* Adding Font from Google Fonts for Fantasy Style */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+/* ==========================================
    General UI Styles
 ========================================== */
 
-/* Player Info Display */
+/* In-Game Player Info Display */
 #player-info {
   position: fixed;
   top: 20px;
@@ -130,7 +137,7 @@
   font-family: 'Cinzel', serif;
 }
 
-/* Stats Menu */
+/* "B" Stats Menu */
 .stats-menu {
   position: fixed;
   top: 50%;
@@ -149,6 +156,17 @@
   background-image: url('assets/textures/parchment.jpg'); /* Parchment texture */
   background-size: cover;
   background-position: center;
+}
+
+.player-info { /* "B" Menu Player Info */
+  margin-bottom: 20px;
+  font-family: 'Cinzel', serif; /* Fantasy-inspired font */
+}
+
+.player-info p {
+  margin: 5px 0;
+  color: #f1c40f; /* Gold color for text */
+  font-size: 16px;
 }
 
 .stats-menu table {
@@ -247,15 +265,13 @@
   text-shadow: 1px 1px 2px #000;
 }
 
-/* Optional: Adding Font from Google Fonts for Fantasy Style */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
-
 /* ==========================================
    Responsive Design Enhancements
 ========================================== */
 
 /* Ensure the stats menu and casting bar adapt to smaller screens */
 @media (max-width: 600px) {
+  /* In-Game Player Info */
   #player-info {
     width: 90%;
     left: 5%;
@@ -267,6 +283,11 @@
     width: 100%;
   }
 
+  .player-info p { /* "B" Menu Player Info */
+    font-size: 14px;
+  }
+
+  /* Casting Bar */
   #casting-bar {
     flex-wrap: wrap;
     bottom: 10px;
@@ -282,6 +303,7 @@
     font-size: 10px;
   }
 
+  /* "B" Stats Menu */
   .stats-menu {
     padding: 15px;
   }

@@ -143,9 +143,6 @@ export default class MainScene extends Phaser.Scene {
 
     // Define the list of stats to display
     const statList = [
-      { key: "class", label: "Class", type: "text" },
-      { key: "name", label: "Name", type: "text" },
-      { key: "level", label: "Level", type: "text" },
       { key: "health", label: "Health", type: "number" },
       { key: "mana", label: "Mana", type: "number" },
       { key: "intellect", label: "Intellect", type: "number" },
@@ -184,27 +181,27 @@ export default class MainScene extends Phaser.Scene {
       return itemsArray.find((item) => item.name === itemName) || null;
     };
 
-    // Gather stats from each equipment
-    const equipmentStats = equipmentSlots.map((slot) => getItemStats(slot));
+    // Gather stats from each equipped item
+    const equippedItems = equipmentSlots
+      .map((slot) => ({
+        slot,
+        item: getItemStats(slot),
+      }))
+      .filter((e) => e.item !== null); // Only include equipped items
 
     // Calculate total derived stats
     const totalStats = { ...playerBaseStats };
 
-    equipmentStats.forEach((item) => {
-      if (item) {
-        for (const stat in item) {
-          if (stat === "name" || stat === "type") continue; // Skip non-stats
-          if (typeof totalStats[stat] === "number") {
-            totalStats[stat] += item[stat];
-          } else {
-            totalStats[stat] = item[stat];
-          }
+    equippedItems.forEach(({ item }) => {
+      for (const stat in item) {
+        if (stat === "name" || stat === "type") continue; // Skip non-stats
+        if (typeof totalStats[stat] === "number") {
+          totalStats[stat] += item[stat];
+        } else {
+          totalStats[stat] = item[stat];
         }
       }
     });
-
-    // For derived stats that are not directly summed (e.g., class, name, level), handle separately
-    const derivedStats = { ...totalStats };
 
     // Prepare table headers
     let headers = `
@@ -213,11 +210,10 @@ export default class MainScene extends Phaser.Scene {
         <th>Basic</th>
     `;
 
-    equipmentSlots.forEach((slot) => {
-      const item = getItemStats(slot);
-      const headerName = item
-        ? item.name
-        : slot.charAt(0).toUpperCase() + slot.slice(1);
+    equippedItems.forEach(({ slot, item }) => {
+      const headerName = `${slot.charAt(0).toUpperCase() + slot.slice(1)}: ${
+        item.name
+      }`;
       headers += `<th>${headerName}</th>`;
     });
 
@@ -225,7 +221,6 @@ export default class MainScene extends Phaser.Scene {
 
     // Start building the table
     let tableHTML = `
-      <h3>Player Stats</h3>
       <table>
         <thead>
           ${headers}
@@ -237,31 +232,14 @@ export default class MainScene extends Phaser.Scene {
     statList.forEach((stat) => {
       let row = `<tr><td>${stat.label}</td>`;
 
-      if (stat.type === "text") {
-        // For text stats: class, name, level
-        let basicValue;
-        if (stat.key === "class") basicValue = cls;
-        else if (stat.key === "name") basicValue = name;
-        else if (stat.key === "level") basicValue = level;
-
-        row += `<td>${basicValue}</td>`;
-
-        // Equipment columns: display '-' for text stats
-        equipmentSlots.forEach(() => {
-          row += `<td>-</td>`;
-        });
-
-        // Derived column: same as basic
-        row += `<td>${basicValue}</td>`;
-      } else if (stat.type === "number") {
-        // For numerical stats: health, mana, etc.
+      if (stat.type === "number") {
         // Basic value
         const basicValue = playerBaseStats[stat.key] || 0;
         row += `<td>${basicValue}</td>`;
 
         // Equipment contributions
-        equipmentStats.forEach((item) => {
-          if (item && typeof item[stat.key] === "number") {
+        equippedItems.forEach(({ item }) => {
+          if (typeof item[stat.key] === "number") {
             row += `<td>${item[stat.key]}</td>`;
           } else {
             row += `<td>0</td>`;
@@ -283,7 +261,20 @@ export default class MainScene extends Phaser.Scene {
       </table>
     `;
 
-    return tableHTML;
+    // Add Player Info (Name, Class, Level) above the table
+    const playerInfoHTML = `
+      <div class="player-info">
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Class:</strong> ${cls}</p>
+        <p><strong>Level:</strong> ${level}</p>
+      </div>
+    `;
+
+    // Combine Player Info and Table
+    return `
+      ${playerInfoHTML}
+      ${tableHTML}
+    `;
   }
 
   generateStatsTable(title, stats) {
