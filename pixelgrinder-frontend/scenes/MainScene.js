@@ -228,7 +228,9 @@ export default class MainScene extends Phaser.Scene {
       // Equipment contributions
       equippedItems.forEach(({ item }) => {
         const value = item[stat.key] !== undefined ? item[stat.key] : 0;
-        row += `<td>${value}</td>`;
+        // Replace 0 with empty string
+        const displayValue = value !== 0 ? value : "";
+        row += `<td>${displayValue}</td>`;
       });
 
       // Derived value
