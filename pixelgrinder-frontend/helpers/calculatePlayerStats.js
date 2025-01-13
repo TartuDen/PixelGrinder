@@ -14,18 +14,11 @@ import {
  *   (2) equipped weapon & armor
  */
 export function calculatePlayerStats() {
-  // 1) Start with base stats
-  let {
-    health,
-    mana,
-    intellect,
-    strength,
-    dexterity,
-    constitution,
-    speed, // Added speed from base stats
-  } = playerBaseStats;
+  // Start with base stats
+  let { health, mana, intellect, strength, dexterity, constitution, speed } =
+    playerBaseStats;
 
-  // 2) Derived stats from base stats * statWeights
+  // Initialize derived stats
   let magicAttack = 0;
   let meleeAttack = 0;
   let magicDefense = 0;
@@ -33,43 +26,23 @@ export function calculatePlayerStats() {
   let magicEvasion = 0;
   let meleeEvasion = 0;
 
-  // a) Apply intellect
-  magicAttack += intellect * statWeights.intellect.magicAttack;
-  meleeAttack += intellect * statWeights.intellect.meleeAttack;
-  magicDefense += intellect * statWeights.intellect.magicDefense;
-  meleeDefense += intellect * statWeights.intellect.meleeDefense;
-  magicEvasion += intellect * statWeights.intellect.magicEvasion;
-  meleeEvasion += intellect * statWeights.intellect.meleeEvasion;
+  // Apply stat weights
+  for (const stat in statWeights) {
+    const weight = statWeights[stat];
+    const statValue = eval(stat); // e.g., intellect, strength
 
-  // b) Apply strength
-  magicAttack += strength * statWeights.strength.magicAttack;
-  meleeAttack += strength * statWeights.strength.meleeAttack;
-  magicDefense += strength * statWeights.strength.magicDefense;
-  meleeDefense += strength * statWeights.strength.meleeDefense;
-  magicEvasion += strength * statWeights.strength.magicEvasion;
-  meleeEvasion += strength * statWeights.strength.meleeEvasion;
+    magicAttack += statValue * weight.magicAttack;
+    meleeAttack += statValue * weight.meleeAttack;
+    magicDefense += statValue * weight.magicDefense;
+    meleeDefense += statValue * weight.meleeDefense;
+    magicEvasion += statValue * weight.magicEvasion;
+    meleeEvasion += statValue * weight.meleeEvasion;
+  }
 
-  // c) Apply dexterity
-  magicAttack += dexterity * statWeights.dexterity.magicAttack;
-  meleeAttack += dexterity * statWeights.dexterity.meleeAttack;
-  magicDefense += dexterity * statWeights.dexterity.magicDefense;
-  meleeDefense += dexterity * statWeights.dexterity.meleeDefense;
-  magicEvasion += dexterity * statWeights.dexterity.magicEvasion;
-  meleeEvasion += dexterity * statWeights.dexterity.meleeEvasion;
+  // Initialize total speed
+  let totalSpeed = speed;
 
-  // d) Apply constitution
-  magicAttack += constitution * statWeights.constitution.magicAttack;
-  meleeAttack += constitution * statWeights.constitution.meleeAttack;
-  magicDefense += constitution * statWeights.constitution.magicDefense;
-  meleeDefense += constitution * statWeights.constitution.meleeDefense;
-  magicEvasion += constitution * statWeights.constitution.magicEvasion;
-  meleeEvasion += constitution * statWeights.constitution.meleeEvasion;
-
-  // Initialize total speed with base speed
-  let totalSpeed = speed; // From playerBaseStats.speed
-
-  // 3) Add contributions from equipped weapon & armor
-  // a) Weapon
+  // Add equipment contributions
   if (playerEquippedItems.weapon) {
     const equippedWeapon = weaponItems.find(
       (w) => w.name === playerEquippedItems.weapon
@@ -83,11 +56,10 @@ export function calculatePlayerStats() {
       meleeDefense += equippedWeapon.meleeDefense;
       magicEvasion += equippedWeapon.magicEvasion;
       meleeEvasion += equippedWeapon.meleeEvasion;
-      totalSpeed += equippedWeapon.speed; // Add weapon speed modifier
+      totalSpeed += equippedWeapon.speed;
     }
   }
 
-  // b) Armor pieces
   const armorSlots = ["head", "chest", "shoulders", "legs", "feet"];
   armorSlots.forEach((slot) => {
     const armorItemName = playerEquippedItems[slot];
@@ -102,12 +74,12 @@ export function calculatePlayerStats() {
         meleeDefense += equippedArmor.meleeDefense;
         magicEvasion += equippedArmor.magicEvasion;
         meleeEvasion += equippedArmor.meleeEvasion;
-        totalSpeed += equippedArmor.speed; // Add armor speed modifier
+        totalSpeed += equippedArmor.speed;
       }
     }
   });
 
-  // 4) Return final compiled stats, including speed
+  // Return final stats
   return {
     health,
     mana,
@@ -117,7 +89,7 @@ export function calculatePlayerStats() {
     meleeDefense,
     magicEvasion,
     meleeEvasion,
-    speed: totalSpeed, // Total player speed
+    speed: totalSpeed,
   };
 }
 
@@ -145,7 +117,11 @@ export function calculateMeleeDamage(attackerStats, defenderStats) {
 /**
  * Calculate damage for a magic attack, incorporating skill's magicAttack.
  */
-export function calculateMagicDamage(attackerStats, defenderStats, skillMagicAttack = 0) {
+export function calculateMagicDamage(
+  attackerStats,
+  defenderStats,
+  skillMagicAttack = 0
+) {
   const { magicAttack } = attackerStats;
   const { magicDefense } = defenderStats;
 

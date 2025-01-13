@@ -6,6 +6,8 @@ import MobManager from "../managers/MobManager.js";
 import PlayerManager from "../managers/PlayerManager.js";
 import InputManager from "../managers/InputManager.js";
 
+import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
+
 import {
   naturalRegeneration,
   playerProfile,
@@ -129,7 +131,7 @@ export default class MainScene extends Phaser.Scene {
       this.uiManager.hideStatsMenu();
       this.scene.resume();
     } else {
-      // Generate stats HTML
+      // Generate stats HTML using the updated function
       const statsHTML = this.generateStatsHTML();
       this.uiManager.showStatsMenu(statsHTML);
 
@@ -141,24 +143,10 @@ export default class MainScene extends Phaser.Scene {
   generateStatsHTML() {
     const { class: cls, name, level } = playerProfile;
 
-    // Define the list of stats to display
-    const statList = [
-      { key: "health", label: "Health", type: "number" },
-      { key: "mana", label: "Mana", type: "number" },
-      { key: "intellect", label: "Intellect", type: "number" },
-      { key: "strength", label: "Strength", type: "number" },
-      { key: "dexterity", label: "Dexterity", type: "number" },
-      { key: "constitution", label: "Constitution", type: "number" },
-      { key: "speed", label: "Speed", type: "number" },
-      { key: "magicAttack", label: "Magic Attack", type: "number" },
-      { key: "meleeAttack", label: "Melee Attack", type: "number" },
-      { key: "magicDefense", label: "Magic Defense", type: "number" },
-      { key: "meleeDefense", label: "Melee Defense", type: "number" },
-      { key: "magicEvasion", label: "Magic Evasion", type: "number" },
-      { key: "meleeEvasion", label: "Melee Evasion", type: "number" },
-    ];
+    // Retrieve base stats
+    const baseStats = { ...playerBaseStats };
 
-    // Equipment slots in order
+    // Retrieve equipment stats
     const equipmentSlots = [
       "weapon",
       "head",
@@ -167,47 +155,31 @@ export default class MainScene extends Phaser.Scene {
       "legs",
       "feet",
     ];
-
-    // Function to get item stats
-    const getItemStats = (slot) => {
-      const itemName = playerEquippedItems[slot];
-      if (!itemName) return null;
-
-      // Determine if the slot is for weapons or armor
-      const isWeaponSlot = slot === "weapon";
-      const itemsArray = isWeaponSlot ? weaponItems : armorItems;
-
-      // Find the item
-      return itemsArray.find((item) => item.name === itemName) || null;
-    };
-
-    // Gather stats from each equipped item
     const equippedItems = equipmentSlots
-      .map((slot) => ({
-        slot,
-        item: getItemStats(slot),
-      }))
-      .filter((e) => e.item !== null); // Only include equipped items
+      .map((slot) => {
+        const itemName = playerEquippedItems[slot];
+        if (!itemName) return null;
 
-    // Calculate total derived stats
-    const totalStats = { ...playerBaseStats };
+        // Determine if the slot is for weapons or armor
+        const isWeaponSlot = slot === "weapon";
+        const itemsArray = isWeaponSlot ? weaponItems : armorItems;
 
-    equippedItems.forEach(({ item }) => {
-      for (const stat in item) {
-        if (stat === "name" || stat === "type") continue; // Skip non-stats
-        if (typeof totalStats[stat] === "number") {
-          totalStats[stat] += item[stat];
-        } else {
-          totalStats[stat] = item[stat];
+        const item = itemsArray.find((i) => i.name === itemName);
+        if (item) {
+          return { slot, item };
         }
-      }
-    });
+        return null;
+      })
+      .filter((e) => e !== null);
+
+    // Calculate derived stats using calculatePlayerStats
+    const derivedStats = calculatePlayerStats();
 
     // Prepare table headers
     let headers = `
       <tr>
         <th>Stat</th>
-        <th>Basic</th>
+        <th>Base</th>
     `;
 
     equippedItems.forEach(({ slot, item }) => {
@@ -228,28 +200,41 @@ export default class MainScene extends Phaser.Scene {
         <tbody>
     `;
 
+    // Define the list of stats to display
+    const statList = [
+      { key: "health", label: "Health" },
+      { key: "mana", label: "Mana" },
+      { key: "intellect", label: "Intellect" },
+      { key: "strength", label: "Strength" },
+      { key: "dexterity", label: "Dexterity" },
+      { key: "constitution", label: "Constitution" },
+      { key: "speed", label: "Speed" },
+      { key: "magicAttack", label: "Magic Attack" },
+      { key: "meleeAttack", label: "Melee Attack" },
+      { key: "magicDefense", label: "Magic Defense" },
+      { key: "meleeDefense", label: "Melee Defense" },
+      { key: "magicEvasion", label: "Magic Evasion" },
+      { key: "meleeEvasion", label: "Melee Evasion" },
+    ];
+
     // Populate table rows
     statList.forEach((stat) => {
       let row = `<tr><td>${stat.label}</td>`;
 
-      if (stat.type === "number") {
-        // Basic value
-        const basicValue = playerBaseStats[stat.key] || 0;
-        row += `<td>${basicValue}</td>`;
+      // Base value
+      const baseValue = baseStats[stat.key] || 0;
+      row += `<td>${baseValue}</td>`;
 
-        // Equipment contributions
-        equippedItems.forEach(({ item }) => {
-          if (typeof item[stat.key] === "number") {
-            row += `<td>${item[stat.key]}</td>`;
-          } else {
-            row += `<td>0</td>`;
-          }
-        });
+      // Equipment contributions
+      equippedItems.forEach(({ item }) => {
+        const value = item[stat.key] !== undefined ? item[stat.key] : 0;
+        row += `<td>${value}</td>`;
+      });
 
-        // Derived value
-        const derivedValue = totalStats[stat.key] || 0;
-        row += `<td>${derivedValue}</td>`;
-      }
+      // Derived value
+      const derivedValue =
+        derivedStats[stat.key] !== undefined ? derivedStats[stat.key] : 0;
+      row += `<td>${derivedValue}</td>`;
 
       row += `</tr>`;
       tableHTML += row;

@@ -13,7 +13,7 @@ const playerBaseStats = {
   health: 100,
   mana: 150,
   intellect: 3, // formerly int_stat
-  strength: 3, // formerly str_stat
+  strength: 0, // formerly str_stat
   dexterity: 3, // formerly dex_stat
   constitution: 4, // formerly con_stat
   speed: 50, // Added base speed (units can be pixels per second or similar)
