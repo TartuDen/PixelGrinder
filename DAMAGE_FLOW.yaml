@@ -1,0 +1,39 @@
+Player Uses Skill
+        |
+        V
+SkillManager.useSkill(skill, targetMob)
+        |
+        V
+calculateMagicDamage(playerStats, mobStats, skillMagicAttack)
+        |
+        V
+[ Hit or Miss? ]
+        |
+        V
+If Hit:
+    targetMob.takeDamage(damage)
+        |
+        V
+    Mob's Health -= damage
+Else:
+    Log Miss
+
+Mob AI Determines to Attack Player
+        |
+        V
+Mob.attack(player)
+        |
+        V
+calculateMeleeDamage(mobStats, playerStats)
+        |
+        V
+[ Hit or Miss? ]
+        |
+        V
+If Hit:
+    playerManager.takeDamage(damage)
+        |
+        V
+    Player's Health -= damage
+Else:
+    Log Miss
