@@ -41,6 +41,18 @@ export default class SkillManager {
   }
 
   /**
+   * Determines if an attack is evaded based on the defender's evasion stat.
+   *
+   * @param {number} evasionStat - The evasion stat of the defender.
+   * @returns {boolean} - True if the attack is evaded; otherwise, false.
+   */
+  isAttackEvaded(evasionStat) {
+    const evasionChance = 1 * evasionStat;
+    const roll = Phaser.Math.FloatBetween(0, 100);
+    return roll < evasionChance;
+  }
+
+  /**
    * Attempts to use a specified skill.
    * Handles casting time and cooldowns based on skill attributes.
    *
@@ -67,9 +79,9 @@ export default class SkillManager {
     // Retrieve current player stats.
     const playerStats = this.getPlayerStats();
     console.log(
-      `Current Mana: ${playerStats.currentMana} / ${playerStats.maxMana}`
+      `Current Mana: ${playerStats.mana} / ${playerStats.mana}`
     ); // Debug log
-    if (playerStats.currentMana < skill.manaCost) {
+    if (playerStats.mana < skill.manaCost) {
       console.log("Not enough mana to use this skill.");
       return { success: false };
     }
@@ -239,19 +251,29 @@ export default class SkillManager {
       const playerStats = this.getPlayerStats();
       const mobStats = this.scene.mobManager.getStats(targetedMob);
 
-      const damage = calculateMagicDamage(
-        playerStats,
-        mobStats,
-        skill.magicAttack
-      );
+      // Evasion Check
+      const magicEvasion = mobStats.magicEvasion || 0;
+      const evaded = this.isAttackEvaded(magicEvasion);
 
-      this.scene.mobManager.applyDamageToMob(targetedMob, damage);
-      console.log(
-        `${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${damage} magic damage.`
-      );
+      if (evaded) {
+        console.log(
+          `${skill.name} attack was evaded by Mob ${targetedMob.customData.id}.`
+        );
+      } else {
+        const damage = calculateMagicDamage(
+          playerStats,
+          mobStats,
+          skill.magicAttack
+        );
 
-      // Trigger skill animation
-      this.triggerSkillAnimation(skill, player, targetedMob);
+        this.scene.mobManager.applyDamageToMob(targetedMob, damage);
+        console.log(
+          `${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${damage} magic damage.`
+        );
+
+        // Trigger skill animation
+        this.triggerSkillAnimation(skill, player, targetedMob);
+      }
     }
 
     if (skill.heal) {
@@ -370,7 +392,7 @@ export default class SkillManager {
     if (this.isCasting) return false;
     if (this.cooldowns[skill.id] && this.cooldowns[skill.id] > 0) return false;
     const playerStats = this.getPlayerStats();
-    if (playerStats.currentMana < skill.manaCost) return false;
+    if (playerStats.mana < skill.manaCost) return false;
     return true;
   }
 }

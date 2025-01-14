@@ -137,7 +137,7 @@ const armorItems = [
     magicDefense: 0,
     meleeDefense: 0,
     magicEvasion: 0,
-    meleeEvasion: 0,
+    meleeEvasion: 50,
     speed: 5, // Increases player speed by 5 units
   },
   // Add more armors here...
@@ -149,7 +149,7 @@ const playerEquippedItems = {
   head: null,
   chest: null,
   shoulders: null,
-  legs: "common_robe_pants",
+  legs: "swift_gauntlets",
   feet: "light_boots",
 };
 
@@ -244,7 +244,7 @@ const mobsData = {
     meleeAttack: 20,
     magicDefense: 2,
     meleeDefense: 30,
-    magicEvasion: 1,
+    magicEvasion: 1, // maximum evasion is 100 which corresponds to 100%
     meleeEvasion: 1,
     mobType: "friend",
     mobAgroRange: 300,

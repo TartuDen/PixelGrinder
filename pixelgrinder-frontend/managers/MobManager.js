@@ -1,7 +1,15 @@
 // managers/MobManager.js
 
-import { mobsData, MOB_CHASE_SPEED_MULT, SKILL_RANGE_EXTENDER, TAB_TARGET_RANGE } from "../data/MOCKdata.js";
-import { calculateMeleeDamage, calculateMagicDamage } from "../helpers/calculatePlayerStats.js";
+import {
+  mobsData,
+  MOB_CHASE_SPEED_MULT,
+  SKILL_RANGE_EXTENDER,
+  TAB_TARGET_RANGE,
+} from "../data/MOCKdata.js";
+import {
+  calculateMeleeDamage,
+  calculateMagicDamage,
+} from "../helpers/calculatePlayerStats.js";
 
 export default class MobManager {
   constructor(scene) {
@@ -31,13 +39,15 @@ export default class MobManager {
       mob.customData = {
         id: mobTypeID,
         hp: mobInfo.health,
-        magicDefense: mobInfo.magicDefense,
-        meleeDefense: mobInfo.meleeDefense,
+        magicDefense: mobInfo.magicDefense || 0,
+        meleeDefense: mobInfo.meleeDefense || 0,
+        magicEvasion: mobInfo.magicEvasion || 0,
+        meleeEvasion: mobInfo.meleeEvasion || 0,
         spawnX: spawnZone.x,
         spawnY: spawnZone.y,
         isDead: false,
         currentType: mobInfo.mobType, // 'friend' or 'enemy'
-        state: "idle",               // 'idle', 'chasing', 'attacking'
+        state: "idle", // 'idle', 'chasing', 'attacking'
         lastAttackTime: 0,
         hpText: null,
       };
@@ -71,6 +81,18 @@ export default class MobManager {
   }
 
   /**
+   * Determines if an attack is evaded based on the defender's evasion stat.
+   *
+   * @param {number} evasionStat - The evasion stat of the defender.
+   * @returns {boolean} - True if the attack is evaded; otherwise, false.
+   */
+  isAttackEvaded(evasionStat) {
+    const evasionChance = 1 * evasionStat; // 1% per evasion point
+    const roll = Phaser.Math.FloatBetween(0, 100);
+    return roll < evasionChance;
+  }
+
+  /**
    * Update AI for each mob
    */
   updateMobs(player) {
@@ -87,8 +109,10 @@ export default class MobManager {
       if (!mobInfo) return;
 
       const distanceToPlayer = Phaser.Math.Distance.Between(
-        mob.x, mob.y,
-        player.x, player.y
+        mob.x,
+        mob.y,
+        player.x,
+        player.y
       );
 
       if (mob.customData.currentType !== "enemy") {
@@ -138,7 +162,11 @@ export default class MobManager {
    */
   assignRandomIdleMovement(mob) {
     const changeDirection = () => {
-      if (!mob.active || mob.customData.isDead || mob.customData.state !== "idle") {
+      if (
+        !mob.active ||
+        mob.customData.isDead ||
+        mob.customData.state !== "idle"
+      ) {
         return;
       }
       const mobInfo = mobsData[mob.customData.id];
@@ -181,7 +209,10 @@ export default class MobManager {
    * Make the mob chase the player
    */
   chasePlayer(mob, player, mobInfo) {
-    const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y);
+    const direction = new Phaser.Math.Vector2(
+      player.x - mob.x,
+      player.y - mob.y
+    );
     direction.normalize();
 
     const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
@@ -232,14 +263,43 @@ export default class MobManager {
 
     if (mobInfo.meleeAttack >= mobInfo.magicAttack) {
       // Melee
+      const meleeEvasion = playerStats.meleeEvasion || 0;
+      const evaded = this.isAttackEvaded(meleeEvasion);
+
+      if (evaded) {
+        console.log(
+          `Player evaded melee attack from Mob "${mob.customData.id}".`
+        );
+        return;
+      }
+
       damage = calculateMeleeDamage(mobStats, playerStats);
+      console.log(
+        `Mob "${mob.customData.id}" attacks player for ${damage} melee damage.`
+      );
     } else {
       // Magic
+      const magicEvasion = playerStats.magicEvasion || 0;
+      const evaded = this.isAttackEvaded(magicEvasion);
+
+      if (evaded) {
+        console.log(
+          `Player evaded magic attack from Mob "${mob.customData.id}".`
+        );
+        return;
+      }
+
       damage = calculateMagicDamage(mobStats, playerStats);
+      console.log(
+        `Mob "${mob.customData.id}" casts magic on player for ${damage} magic damage.`
+      );
     }
 
-    console.log(`Mob "${mob.customData.id}" attacks player for ${damage} damage.`);
-    this.scene.playerManager.currentHealth = Math.max(0, this.scene.playerManager.currentHealth - damage);
+    // Apply damage
+    this.scene.playerManager.currentHealth = Math.max(
+      0,
+      this.scene.playerManager.currentHealth - damage
+    );
     this.scene.updateUI(); // reflect damage
 
     if (this.scene.playerManager.currentHealth <= 0) {
@@ -297,7 +357,9 @@ export default class MobManager {
     mob.anims.play("mob-walk-down");
     mob.clearTint();
 
-    console.log(`Respawning mob "${mob.customData.id}" at (${mob.x},${mob.y}).`);
+    console.log(
+      `Respawning mob "${mob.customData.id}" at (${mob.x},${mob.y}).`
+    );
     this.assignRandomIdleMovement(mob);
   }
 
@@ -318,20 +380,26 @@ export default class MobManager {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
         console.log(`Mob "${mob.customData.id}" became enemy.`);
-        this.chasePlayer(mob, this.scene.playerManager.player, mobsData[mob.customData.id]);
+        this.chasePlayer(
+          mob,
+          this.scene.playerManager.player,
+          mobsData[mob.customData.id]
+        );
       }
     }
   }
 
   /**
    * Retrieve stats of a given mob
-   * @param {Phaser.GameObjects.Sprite} mob 
+   * @param {Phaser.GameObjects.Sprite} mob
    * @returns {Object} mobStats
    */
   getStats(mob) {
     return {
       magicDefense: mob.customData.magicDefense,
       meleeDefense: mob.customData.meleeDefense,
+      magicEvasion: mob.customData.magicEvasion, // Include magicEvasion
+      meleeEvasion: mob.customData.meleeEvasion, // Include meleeEvasion
       // Add other stats if necessary
     };
   }
