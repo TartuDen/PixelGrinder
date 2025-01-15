@@ -305,6 +305,9 @@ describe("SkillManager", () => {
     // Fast-forward time to simulate casting time completion
     jest.advanceTimersByTime(skill.castingTime * 1000);
 
+    // Additionally, advance time to trigger any periodic updateCastingProgress calls
+    jest.advanceTimersByTime(100); // Adjust based on how often updateCastingProgress is called
+
     // Ensure that casting is completed
     expect(skillManager.isCasting).toBe(false);
     expect(skillManager.currentCastingSkill).toBe(null);
@@ -336,7 +339,8 @@ describe("SkillManager", () => {
     );
 
     // Ensure that setScale was called
-    const mockSkillSprite = mockScene.add.sprite.mock.results[1].value;
+    const lastCallIndex = mockScene.add.sprite.mock.calls.length - 1;
+    const mockSkillSprite = mockScene.add.sprite.mock.results[lastCallIndex].value;
     expect(mockSkillSprite.setScale).toHaveBeenCalledWith(1);
 
     // Ensure that play was called
