@@ -89,7 +89,7 @@ global.Phaser = {
   
   // 6. Mock the scene
   const mockScene = {
-    phaser: Phaser, // Add this line to ensure Phaser is accessible via this.scene.phaser
+    phaser: Phaser, // Ensure that Phaser is accessible via this.scene.phaser
     physics: {
       add: {
         group: jest.fn(),
@@ -281,7 +281,7 @@ global.Phaser = {
       // Verify that Phaser.Math.Distance.Between was called correctly for each mob
       const children = mockGroup.getChildren();
       children.forEach((mob) => {
-        expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(player.x, player.y, mob.x, mob.y);
+        expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(mob.x, mob.y, player.x, player.y);
       });
   
       // Expect each mob's state to change to 'chasing' and setVelocity to be called
@@ -313,7 +313,7 @@ global.Phaser = {
       // Verify that Phaser.Math.Distance.Between was called correctly for each mob
       const children = mockGroup.getChildren();
       children.forEach((mob) => {
-        expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(player.x, player.y, mob.x, mob.y);
+        expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(mob.x, mob.y, player.x, player.y);
       });
   
       // Expect calculateMeleeDamage to have been called for each mob
@@ -395,7 +395,7 @@ global.Phaser = {
       // Verify that Phaser.Math.Distance.Between was called correctly for each mob
       const children = mockGroup.getChildren();
       children.forEach((mob) => {
-        expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(player.x, player.y, mob.x, mob.y);
+        expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(mob.x, mob.y, player.x, player.y);
       });
   
       // Expect isAttackEvaded to have been called for each mob
