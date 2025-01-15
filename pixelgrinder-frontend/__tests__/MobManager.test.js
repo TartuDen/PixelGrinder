@@ -165,6 +165,9 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
 
+  // **Mock isAttackEvaded on the prototype before instantiating MobManager**
+  jest.spyOn(MobManager.prototype, 'isAttackEvaded').mockReturnValue(true);
+
   // Reset Phaser Math functions
   Phaser.Math.Distance.Between.mockReset();
   Phaser.Math.FloatBetween.mockReset();
@@ -230,6 +233,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.clearAllTimers();
+  jest.restoreAllMocks(); // Restore original implementations
 });
 
 describe("MobManager", () => {
@@ -299,6 +303,7 @@ describe("MobManager", () => {
       expect(mob.body.setVelocity).toHaveBeenCalled();
       // We also expect the mob to be animating
       expect(mob.anims.play).toHaveBeenCalled();
+      expect(mob.log).not.toBeDefined(); // Ensure log isn't interfering
     });
   });
 
@@ -382,17 +387,16 @@ describe("MobManager", () => {
       mob.customData.lastAttackTime = 0;
     });
 
-    // **Use jest.spyOn on the prototype to mock isAttackEvaded**
-    jest.spyOn(MobManager.prototype, 'isAttackEvaded').mockReturnValue(true);
+    // **Ensure that isAttackEvaded is already mocked to return true in beforeEach**
 
     // Call update
     mobManager.updateMobs(player);
 
     // Each mob tries to attack once, so isAttackEvaded should be called for each
-    expect(mobManager.isAttackEvaded).toHaveBeenCalledTimes(2);
+    expect(MobManager.prototype.isAttackEvaded).toHaveBeenCalledTimes(2);
     // Slime uses meleeAttack, so we check player's meleeEvasion=10
-    expect(mobManager.isAttackEvaded).toHaveBeenCalledWith(10);
-    expect(mobManager.isAttackEvaded).toHaveBeenCalledWith(10);
+    expect(MobManager.prototype.isAttackEvaded).toHaveBeenCalledWith(10);
+    expect(MobManager.prototype.isAttackEvaded).toHaveBeenCalledWith(10);
 
     // Because all attacks were evaded, no damage
     expect(mockScene.playerManager.currentHealth).toBe(100);
