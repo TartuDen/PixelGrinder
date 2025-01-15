@@ -270,7 +270,7 @@ export default class MobManager {
         console.log(
           `Player evaded melee attack from Mob "${mob.customData.id}".`
         );
-        return;
+        return; // Prevent further execution
       }
 
       damage = calculateMeleeDamage(mobStats, playerStats);
@@ -286,7 +286,7 @@ export default class MobManager {
         console.log(
           `Player evaded magic attack from Mob "${mob.customData.id}".`
         );
-        return;
+        return; // Prevent further execution
       }
 
       damage = calculateMagicDamage(mobStats, playerStats);
@@ -295,7 +295,7 @@ export default class MobManager {
       );
     }
 
-    // Apply damage
+    // Apply damage only if not evaded
     this.scene.playerManager.currentHealth = Math.max(
       0,
       this.scene.playerManager.currentHealth - damage

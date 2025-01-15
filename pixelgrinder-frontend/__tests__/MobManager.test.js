@@ -17,12 +17,23 @@ global.Phaser = {
     },
     FloatBetween: jest.fn(),
     Between: jest.fn().mockReturnValue(0), // Always return 0 for predictable direction
-    Vector2: jest.fn().mockImplementation((x, y) => ({
-      x,
-      y,
-      normalize: jest.fn(),
+    Vector2: class { // Properly mock Vector2 as a class
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+      }
+
+      normalize() {
+        // Mock normalize, assuming it mutates the vector
+        const length = Math.sqrt(this.x * this.x + this.y * this.y);
+        if (length === 0) return this;
+        this.x /= length;
+        this.y /= length;
+        return this;
+      }
+
       // Add more methods if needed
-    })),
+    },
   },
   Physics: {
     Group: jest.fn(),
@@ -371,19 +382,17 @@ describe("MobManager", () => {
       mob.customData.lastAttackTime = 0;
     });
 
-    // Spy on isAttackEvaded and force it to return true (attack is evaded)
-    const evasionSpy = jest
-      .spyOn(mobManager, "isAttackEvaded")
-      .mockReturnValue(true);
+    // **Directly mock isAttackEvaded to always return true**
+    mobManager.isAttackEvaded = jest.fn().mockReturnValue(true);
 
     // Call update
     mobManager.updateMobs(player);
 
     // Each mob tries to attack once, so isAttackEvaded should be called for each
-    expect(evasionSpy).toHaveBeenCalledTimes(2);
+    expect(mobManager.isAttackEvaded).toHaveBeenCalledTimes(2);
     // Slime uses meleeAttack, so we check player's meleeEvasion=10
-    expect(evasionSpy).toHaveBeenCalledWith(10);
-    expect(evasionSpy).toHaveBeenCalledWith(10);
+    expect(mobManager.isAttackEvaded).toHaveBeenCalledWith(10);
+    expect(mobManager.isAttackEvaded).toHaveBeenCalledWith(10);
 
     // Because all attacks were evaded, no damage
     expect(mockScene.playerManager.currentHealth).toBe(100);
