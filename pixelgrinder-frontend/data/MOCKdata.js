@@ -125,7 +125,7 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 10, // Increases player speed by 10 units
+    speed: 5, // Increases player speed by 10 units
   },
   {
     name: "swift_gauntlets",
