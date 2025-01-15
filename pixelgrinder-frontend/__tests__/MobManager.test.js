@@ -382,8 +382,8 @@ describe("MobManager", () => {
       mob.customData.lastAttackTime = 0;
     });
 
-    // **Directly mock isAttackEvaded to always return true**
-    mobManager.isAttackEvaded = jest.fn().mockReturnValue(true);
+    // **Use jest.spyOn on the prototype to mock isAttackEvaded**
+    jest.spyOn(MobManager.prototype, 'isAttackEvaded').mockReturnValue(true);
 
     // Call update
     mobManager.updateMobs(player);
