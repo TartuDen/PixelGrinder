@@ -241,7 +241,7 @@ const mobsData = {
     health: 50,
     mana: 0,
     magicAttack: 0,
-    meleeAttack: 20,
+    meleeAttack: 2,
     magicDefense: 2,
     meleeDefense: 30,
     magicEvasion: 1, // maximum evasion is 100 which corresponds to 100%

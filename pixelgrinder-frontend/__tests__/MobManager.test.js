@@ -16,6 +16,7 @@ global.Phaser = {
       Between: jest.fn(),
     },
     FloatBetween: jest.fn(),
+    Between: jest.fn().mockReturnValue(0), // Always return 0 for predictable direction
   },
   Physics: {
     Group: jest.fn(),
@@ -35,7 +36,7 @@ jest.spyOn(calculatePlayerStats, "calculateMeleeDamage").mockReturnValue(5);
 jest.spyOn(calculatePlayerStats, "calculateMagicDamage").mockReturnValue(7);
 
 // Utility function to create mock mobs
-function createMockMob(id = "slime") {
+function createMockMob(id = "goblin") { // Default to "goblin" as it's an enemy
   return {
     // Mark mob as active so updateMobs() doesn't bail out
     active: true,
@@ -156,13 +157,14 @@ beforeEach(() => {
   // Reset Phaser Math functions
   Phaser.Math.Distance.Between.mockReset();
   Phaser.Math.FloatBetween.mockReset();
+  Phaser.Math.Between.mockReset().mockReturnValue(0); // Reset Between to always return 0
 
-  // Create mock mobs
-  const mob1 = createMockMob("slime");
+  // Create mock mobs as "goblin" (enemy)
+  const mob1 = createMockMob("goblin");
   mob1.customData.spawnX = 200;
   mob1.customData.spawnY = 300;
 
-  const mob2 = createMockMob("slime");
+  const mob2 = createMockMob("goblin");
   mob2.customData.spawnX = 400;
   mob2.customData.spawnY = 500;
 
@@ -222,7 +224,7 @@ describe("MobManager", () => {
     expect(mockScene.physics.add.group).toHaveBeenCalledWith({
       collideWorldBounds: true,
     });
-    expect(mockScene.physics.add.collider).toHaveBeenCalledTimes(3); 
+    expect(mockScene.physics.add.collider).toHaveBeenCalledTimes(3);
     // Colliders: (mobs, player), (mobs, collisionLayer), (mobs, mobs)
 
     // Verify that mobs are created based on spawn zones
@@ -255,15 +257,23 @@ describe("MobManager", () => {
       // setInteractive should have been called
       expect(mob.setInteractive).toHaveBeenCalledWith({ useHandCursor: true });
 
-      // mob.anims.play should have been called
+      // mob.anims.play should have been called for idle movement
       expect(mob.anims.play).toHaveBeenCalledWith("mob-walk-down");
+
+      // assignRandomIdleMovement should have been called via changeDirection
+      // Since Phaser.Math.Between returns 0, direction should be "Right"
+      expect(mob.body.setVelocity).toHaveBeenCalledWith(
+        mobsData[mob.customData.id].speed,
+        0
+      );
+      expect(mob.anims.play).toHaveBeenCalledWith("mob-walk-right", true);
     });
   });
 
   test("should handle mob state transitions based on player distance", () => {
     const player = mockScene.playerManager.player;
 
-    // Force the distance to always be 100, well within slime's mobAgroRange of 300
+    // Force the distance to always be 100, well within goblin's mobAgroRange of 300
     Phaser.Math.Distance.Between.mockReturnValue(100);
 
     // Simulate update call
@@ -281,7 +291,7 @@ describe("MobManager", () => {
   test("should attack the player when within attack range and apply damage", () => {
     const player = mockScene.playerManager.player;
 
-    // Force the distance to be 30, below slime's attackRange=40
+    // Force the distance to be 30, below goblin's attackRange=40
     Phaser.Math.Distance.Between.mockReturnValue(30);
 
     // Mock current time so cooldown checks pass
@@ -333,13 +343,17 @@ describe("MobManager", () => {
     jest.advanceTimersByTime(5000);
 
     // Mob should have new HP, be active, etc.
-    expect(mob.customData.hp).toBe(mobsData["slime"].health);
+    expect(mob.customData.hp).toBe(mobsData["goblin"].health);
     expect(mob.customData.isDead).toBe(false);
     expect(mob.setActive).toHaveBeenCalledWith(true);
     expect(mob.setVisible).toHaveBeenCalledWith(true);
     expect(mob.body.setEnable).toHaveBeenCalledWith(true);
     expect(mob.customData.hpText.setText).toHaveBeenCalledWith(
-      `HP: ${mobsData["slime"].health}`
+      `HP: ${mobsData["goblin"].health}`
+    );
+    expect(mob.customData.hpText.setPosition).toHaveBeenCalledWith(
+      mob.customData.spawnX,
+      mob.customData.spawnY - 20
     );
     expect(mob.customData.hpText.setVisible).toHaveBeenCalledWith(true);
   });
@@ -360,14 +374,16 @@ describe("MobManager", () => {
     });
 
     // Spy on isAttackEvaded and force it to return true (attack is evaded)
-    const evasionSpy = jest.spyOn(mobManager, "isAttackEvaded").mockReturnValue(true);
+    const evasionSpy = jest
+      .spyOn(mobManager, "isAttackEvaded")
+      .mockReturnValue(true);
 
     // Call update
     mobManager.updateMobs(player);
 
     // Each mob tries to attack once, so isAttackEvaded should be called for each
     expect(evasionSpy).toHaveBeenCalledTimes(2);
-    // Slime uses meleeAttack, so we check player's meleeEvasion=10
+    // Goblin uses meleeAttack, so we check player's meleeEvasion=10
     expect(evasionSpy).toHaveBeenCalledWith(10);
     expect(evasionSpy).toHaveBeenCalledWith(10);
 
