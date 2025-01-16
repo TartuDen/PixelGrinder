@@ -1,7 +1,7 @@
 // __tests__/MobManager.test.js
 
 // 1. Mock Helper Functions at the very top before any imports
-jest.mock('../helpers/calculatePlayerStats.js', () => ({
+jest.mock("../helpers/calculatePlayerStats.js", () => ({
   calculateMeleeDamage: jest.fn().mockReturnValue(5),
   calculateMagicDamage: jest.fn().mockReturnValue(7),
 }));
@@ -23,7 +23,8 @@ global.Phaser = {
     },
     FloatBetween: jest.fn(),
     Between: jest.fn().mockReturnValue(0), // Always return 0 for predictable direction
-    Vector2: class { // Properly mock Vector2 as a class
+    Vector2: class {
+      // Properly mock Vector2 as a class
       constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -55,7 +56,8 @@ global.Phaser = {
 };
 
 // 3. Utility function to create mock mobs
-function createMockMob(id = "slime") { // Default to "slime"
+function createMockMob(id = "slime") {
+  // Default to "slime"
   return {
     // Mark mob as active so updateMobs() doesn't bail out
     active: true,
@@ -166,6 +168,9 @@ let mockMobs;
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+
+  // Make sure each test starts with full player health:
+  mockScene.playerManager.currentHealth = 100;
 
   // Set 'slime' as 'enemy' to align with test expectations
   mobsData["slime"].mobType = "enemy";
@@ -383,7 +388,7 @@ describe("MobManager", () => {
     });
 
     // **Use jest.spyOn to mock isAttackEvaded on the prototype to always return true**
-    jest.spyOn(MobManager.prototype, 'isAttackEvaded').mockReturnValue(true);
+    jest.spyOn(MobManager.prototype, "isAttackEvaded").mockReturnValue(true);
 
     // Call update
     mobManager.updateMobs(player);
