@@ -15,7 +15,12 @@ global.Phaser = {
               setVelocityY: jest.fn(),
               setVelocityX: jest.fn(),
               setEnable: jest.fn(),
-              velocity: { x: 0, y: 0 },
+              velocity: {
+                x: 0,
+                y: 0,
+                normalize: jest.fn().mockReturnThis(), // Mock normalize to return the velocity object
+                scale: jest.fn(), // Mock scale
+              },
             };
             this.setScale = jest.fn().mockReturnThis();
             this.setCollideWorldBounds = jest.fn(); // Correctly mock setCollideWorldBounds on the sprite
@@ -127,24 +132,12 @@ global.Phaser = {
     beforeEach(() => {
       jest.clearAllMocks();
   
-      // 1. Mock scene with physics and updateUI
-      mockScene = {
-        physics: {
-          add: {
-            sprite: jest.fn(),
-            collider: jest.fn(),
-          },
-        },
-        collisionLayer: {}, // Mock collision layer
-        updateUI: jest.fn(),
-      };
-  
-      // 2. Mock tilemap object with findObject method
+      // 1. Mock tilemap object with findObject method
       tilemap = {
         findObject: jest.fn().mockReturnValue({ x: 100, y: 150 }),
       };
   
-      // 3. Mock player sprite
+      // 2. Mock player sprite with enhanced velocity
       mockPlayerSprite = new Phaser.Physics.Arcade.Sprite(
         mockScene,
         100,
@@ -152,13 +145,22 @@ global.Phaser = {
         "characters"
       );
   
-      // 4. Mock physics.add.sprite to return the mocked player sprite
-      mockScene.physics.add.sprite.mockReturnValue(mockPlayerSprite);
+      // 3. Mock scene with physics and updateUI
+      mockScene = {
+        physics: {
+          add: {
+            sprite: jest.fn().mockReturnValue(mockPlayerSprite),
+            collider: jest.fn(),
+          },
+        },
+        collisionLayer: {}, // Mock collision layer
+        updateUI: jest.fn(),
+      };
   
-      // 5. Initialize PlayerManager with the mocked scene
+      // 4. Initialize PlayerManager with the mocked scene
       playerManager = new PlayerManager(mockScene);
   
-      // 6. Assign the mocked player sprite to playerManager.player
+      // 5. Assign the mocked player sprite to playerManager.player
       playerManager.player = mockPlayerSprite;
     });
   
@@ -356,6 +358,12 @@ global.Phaser = {
   
       // Verify that appropriate animation was played
       expect(mockPlayerSprite.anims.play).toHaveBeenCalledWith("walk-up", true);
+  
+      // Verify that velocity.normalize was called
+      expect(mockPlayerSprite.body.velocity.normalize).toHaveBeenCalled();
+  
+      // Verify that velocity.scale was called with playerSpeed
+      expect(mockPlayerSprite.body.velocity.scale).toHaveBeenCalledWith(100);
     });
   
     test("should stop player movement and animations when casting", () => {
@@ -379,6 +387,12 @@ global.Phaser = {
   
       // Verify that animations were stopped
       expect(mockPlayerSprite.anims.stop).toHaveBeenCalled();
+  
+      // Verify that velocity.normalize was NOT called (since movement is stopped)
+      expect(mockPlayerSprite.body.velocity.normalize).not.toHaveBeenCalled();
+  
+      // Verify that velocity.scale was NOT called
+      expect(mockPlayerSprite.body.velocity.scale).not.toHaveBeenCalled();
     });
   
     test("should equip an item and update stats correctly", () => {
