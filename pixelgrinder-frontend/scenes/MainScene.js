@@ -90,6 +90,12 @@ export default class MainScene extends Phaser.Scene {
       callbackScope: this,
       loop: true,
     });
+    // Calculate and log player level
+    const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
+      playerProfile.totalExp
+    );
+    console.log(`Player Level: ${level}`);
+    console.log(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
   }
 
   update(time, delta) {
@@ -103,6 +109,35 @@ export default class MainScene extends Phaser.Scene {
     this.mobManager.updateMobs(this.playerManager.player);
 
     // UI is managed by UIManager, no need to update UI every frame
+  }
+
+  /**
+   * Helper function to calculate player's level based on total EXP.
+   * @param {number} totalExp - The total experience points of the player.
+   * @returns {Object} An object containing the current level, current EXP towards next level, and EXP required for next level.
+   */
+  calculatePlayerLevel(totalExp) {
+    let level = 1;
+    let expForNextLevel = 100; // EXP required to reach level 2
+    let accumulatedExp = 0;
+
+    while (totalExp >= accumulatedExp + expForNextLevel && level < 50) {
+      accumulatedExp += expForNextLevel;
+      level += 1;
+      expForNextLevel = Math.floor(expForNextLevel * 1.5); // Increase required EXP by 50%
+    }
+
+    const currentExp = totalExp - accumulatedExp;
+    const nextLevelExp = expForNextLevel;
+
+    // Optionally, update the player's level in playerProfile
+    if (playerProfile.level !== level) {
+      playerProfile.level = level;
+      console.log(`Congratulations! You've reached Level ${level}!`);
+      // You can also trigger other events here, such as increasing stats or notifying the UI.
+    }
+
+    return { level, currentExp, nextLevelExp };
   }
 
   // --------------------------------------------------------------

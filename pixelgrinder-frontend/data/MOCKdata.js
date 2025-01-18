@@ -5,7 +5,7 @@ const playerProfile = {
   class: "mage",
   name: "Omigod",
   level: 1, // Added level for UI
-  totalExp: 0,
+  totalExp: 130,
 };
 
 // --- Player Base Stats ---
