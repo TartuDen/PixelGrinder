@@ -68,6 +68,18 @@ export default class PlayerManager {
   }
 
   /**
+   * Replenish player's Health and Mana to full.
+   */
+  replenishHealthAndMana() {
+    this.currentHealth = this.maxHealth;
+    this.currentMana = this.maxMana;
+    console.log("Player's Health and Mana have been fully replenished upon leveling up.");
+    
+    // Notify MainScene to update UI
+    this.scene.emitStatsUpdate();
+  }
+
+  /**
    * Get current player stats, including speed.
    */
   getPlayerStats() {

@@ -80,8 +80,8 @@ export default class MainScene extends Phaser.Scene {
     );
     this.inputManager.setupControls(playerSkills);
 
-    // Update the UI once at the start
-    this.updateUI();
+    // Emit initial stats to update the UI
+    this.emitStatsUpdate();
 
     // Create skill animations
     this.skillManager.createSkillAnimations();
@@ -138,6 +138,10 @@ export default class MainScene extends Phaser.Scene {
     if (playerProfile.level !== level) {
       playerProfile.level = level;
       console.log(`Congratulations! You've reached Level ${level}!`);
+
+      // **Trigger Replenishment**
+      this.playerManager.replenishHealthAndMana();
+
       // Optionally, trigger other events like stat increases here
     }
 
