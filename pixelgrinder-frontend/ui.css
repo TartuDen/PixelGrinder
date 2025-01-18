@@ -23,7 +23,7 @@
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
-.health-bar, .mana-bar {
+.health-bar, .mana-bar, .exp-bar {
   position: relative;
   width: 200px;
   height: 20px;
@@ -32,7 +32,7 @@
   margin-bottom: 10px;
 }
 
-#health-fill, #mana-fill {
+#health-fill, #mana-fill, #exp-fill {
   height: 100%;
   width: 100%; /* Initial width; will be dynamically updated */
   border-radius: 5px;
@@ -47,7 +47,11 @@
   background-color: #3498db; /* Vibrant blue for mana */
 }
 
-.health-bar span, .mana-bar span {
+#exp-fill {
+  background-color: #f39c12; /* Orange for EXP */
+}
+
+.health-bar span, .mana-bar span, .exp-bar span {
   position: absolute;
   width: 100%;
   text-align: center;
@@ -153,7 +157,7 @@
   max-height: 90%;
   overflow-y: auto; /* Adds scroll if content exceeds height */
   box-shadow: 0 0 20px rgba(0,0,0,0.7);
-  background-image: url('assets/textures/parchment.jpg'); /* Parchment texture */
+  /* background-image: url('assets/textures/parchment.jpg'); Parchment texture */
   background-size: cover;
   background-position: center;
 }
@@ -279,7 +283,7 @@
     font-size: 14px;
   }
 
-  .health-bar, .mana-bar {
+  .health-bar, .mana-bar, .exp-bar {
     width: 100%;
   }
 

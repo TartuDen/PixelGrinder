@@ -5,7 +5,7 @@ const playerProfile = {
   class: "mage",
   name: "Omigod",
   level: 1, // Added level for UI
-  totalExp: 130,
+  totalExp: 90,
 };
 
 // --- Player Base Stats ---
@@ -250,6 +250,7 @@ const mobsData = {
     mobAgroRange: 300,
     attackCooldown: 2000, // milliseconds between attacks
     speed: 20, // Added speed
+    expReward: 10,
   },
   goblin: {
     name: "Goblin",
@@ -266,6 +267,7 @@ const mobsData = {
     mobAgroRange: 300,
     attackCooldown: 1500,
     speed: 70, // Added speed
+    expReward: 22,
   },
   // Add more mobs here...
 };

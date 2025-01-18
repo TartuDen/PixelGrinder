@@ -62,6 +62,9 @@ export default class PlayerManager {
     this.playerSpeed = Phaser.Math.Clamp(stats.speed, MIN_SPEED, MAX_SPEED);
 
     console.log(`Player Speed Updated: ${this.playerSpeed}`);
+
+    // Notify MainScene to update UI
+    this.scene.emitStatsUpdate();
   }
 
   /**
@@ -143,7 +146,7 @@ export default class PlayerManager {
     this.updatePlayerStats();
 
     // Update the UI to reflect changes
-    this.scene.updateUI();
+    this.scene.emitStatsUpdate();
   }
 
   /**
@@ -170,6 +173,14 @@ export default class PlayerManager {
     );
 
     // Update the UI to reflect regeneration
-    this.scene.updateUI();
+    this.scene.emitStatsUpdate();
+  }
+
+  /**
+   * Method to handle gaining experience.
+   * @param {number} amount - Amount of EXP to gain.
+   */
+  gainExperience(amount) {
+    this.scene.gainExperience(amount);
   }
 }

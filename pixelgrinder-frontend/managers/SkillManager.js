@@ -79,9 +79,9 @@ export default class SkillManager {
     // Retrieve current player stats.
     const playerStats = this.getPlayerStats();
     console.log(
-      `Current Mana: ${playerStats.mana} / ${playerStats.mana}`
-    ); // Debug log
-    if (playerStats.mana < skill.manaCost) {
+      `Current Mana: ${playerStats.currentMana} / ${playerStats.maxMana}` // Updated log
+    );
+    if (playerStats.currentMana < skill.manaCost) {
       console.log("Not enough mana to use this skill.");
       return { success: false };
     }
@@ -274,6 +274,11 @@ export default class SkillManager {
         // Trigger skill animation
         this.triggerSkillAnimation(skill, player, targetedMob);
       }
+
+      // Optionally, grant EXP upon successful skill usage
+      if (skill.expReward && damage > 0) {
+        this.scene.playerManager.gainExperience(skill.expReward);
+      }
     }
 
     if (skill.heal) {
@@ -303,7 +308,7 @@ export default class SkillManager {
     }
 
     // Refresh UI
-    this.scene.updateUI();
+    this.scene.emitStatsUpdate();
   }
 
   /**
@@ -392,7 +397,7 @@ export default class SkillManager {
     if (this.isCasting) return false;
     if (this.cooldowns[skill.id] && this.cooldowns[skill.id] > 0) return false;
     const playerStats = this.getPlayerStats();
-    if (playerStats.mana < skill.manaCost) return false;
+    if (playerStats.currentMana < skill.manaCost) return false;
     return true;
   }
 }

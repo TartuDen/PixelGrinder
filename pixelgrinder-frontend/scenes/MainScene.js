@@ -32,6 +32,9 @@ export default class MainScene extends Phaser.Scene {
     this.mobManager = null;
     this.playerManager = null;
     this.inputManager = null;
+
+    // Event emitter
+    this.events = new Phaser.Events.EventEmitter();
   }
 
   preload() {
@@ -90,6 +93,7 @@ export default class MainScene extends Phaser.Scene {
       callbackScope: this,
       loop: true,
     });
+
     // Calculate and log player level
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
@@ -130,20 +134,60 @@ export default class MainScene extends Phaser.Scene {
     const currentExp = totalExp - accumulatedExp;
     const nextLevelExp = expForNextLevel;
 
-    // Optionally, update the player's level in playerProfile
+    // Check if level has changed
     if (playerProfile.level !== level) {
       playerProfile.level = level;
       console.log(`Congratulations! You've reached Level ${level}!`);
-      // You can also trigger other events here, such as increasing stats or notifying the UI.
+      // Optionally, trigger other events like stat increases here
     }
 
+    // Emit event with updated stats
+    this.emitStatsUpdate();
+
     return { level, currentExp, nextLevelExp };
+  }
+
+  /**
+   * Method to handle gaining experience.
+   * @param {number} amount - Amount of EXP to gain.
+   */
+  gainExperience(amount) {
+    playerProfile.totalExp += amount;
+    console.log(`Gained ${amount} EXP. Total EXP: ${playerProfile.totalExp}`);
+
+    // Recalculate level based on new total EXP
+    const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
+      playerProfile.totalExp
+    );
+
+    console.log(`Player Level: ${level}`);
+    console.log(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+  }
+
+  /**
+   * Emit statsUpdated event with current stats
+   */
+  emitStatsUpdate() {
+    const playerStats = this.playerManager.getPlayerStats();
+    this.events.emit("statsUpdated", {
+      name: playerProfile.name,
+      currentHealth: playerStats.currentHealth,
+      maxHealth: playerStats.maxHealth,
+      currentMana: playerStats.currentMana,
+      maxMana: playerStats.maxMana,
+      level: playerProfile.level,
+      xp: playerProfile.totalExp,
+      speed: playerStats.speed,
+    });
   }
 
   // --------------------------------------------------------------
   //  UI
   // --------------------------------------------------------------
-  updateUI() {
+  updateUI(stats) {
+    // This method is now redundant as UI updates are handled via events.
+    // However, if you have other UI elements to update, you can keep it.
+    // For now, we'll leave it as is.
     const playerStats = this.playerManager.getPlayerStats();
 
     const uiStats = {
@@ -359,7 +403,7 @@ export default class MainScene extends Phaser.Scene {
       `Current Mana after deduction: ${this.playerManager.currentMana}`
     );
     // Update the UI to reflect mana deduction
-    this.updateUI();
+    this.emitStatsUpdate();
   }
 
   // --------------------------------------------------------------
@@ -370,7 +414,7 @@ export default class MainScene extends Phaser.Scene {
       this.playerManager.player,
       TAB_TARGET_RANGE,
       () => {
-        this.updateUI();
+        this.emitStatsUpdate();
       }
     );
   }
@@ -381,7 +425,7 @@ export default class MainScene extends Phaser.Scene {
 
   onMobClicked(mob) {
     this.mobManager.onMobClicked(mob);
-    this.updateUI();
+    this.emitStatsUpdate();
   }
 
   // --------------------------------------------------------------

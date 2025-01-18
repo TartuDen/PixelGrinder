@@ -315,6 +315,13 @@ export default class MobManager {
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-dead", true);
 
+    // Grant EXP to the player upon mob death
+    const expReward = mobsData[mob.customData.id].expReward || 0; // Default EXP
+    this.scene.playerManager.gainExperience(expReward);
+    console.log(
+      `Player gained ${expReward} EXP from defeating ${mob.customData.id}.`
+    );
+
     // Hide after a short delay
     this.scene.time.delayedCall(1000, () => {
       mob.setActive(false).setVisible(false);

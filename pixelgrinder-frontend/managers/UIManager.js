@@ -14,6 +14,10 @@ export default class UIManager {
     this.uiLevel = document.getElementById("player-level");
     this.uiXP = document.getElementById("player-xp");
 
+    // New EXP elements
+    this.uiExpFill = document.getElementById("exp-fill");
+    this.uiExpText = document.getElementById("exp-text");
+
     this.healthText = document.getElementById("health-text");
     this.manaText = document.getElementById("mana-text");
 
@@ -66,6 +70,19 @@ export default class UIManager {
         }
       });
     }
+
+    // Listen for stats updates
+    if (this.scene.events) {
+      this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
+    }
+  }
+
+  /**
+   * Handle stats updates from the game logic
+   * @param {Object} stats - The updated stats object
+   */
+  handleStatsUpdate(stats) {
+    this.updateUI(stats);
   }
 
   /**
@@ -164,6 +181,7 @@ export default class UIManager {
     maxMana,
     level,
     xp,
+    speed,
   }) {
     // Update health
     if (this.uiHealthFill && this.healthText) {
@@ -196,6 +214,30 @@ export default class UIManager {
 
     if (this.uiXP) this.uiXP.textContent = `XP: ${xp}`;
     else console.warn("Player XP element not found.");
+
+    // Update EXP bar
+    if (this.uiExpFill && this.uiExpText) {
+      // Calculate EXP needed for next level
+      let expForNextLevel = 100;
+      let accumulatedExp = 0;
+      let tempLevel = 1;
+
+      while (xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
+        accumulatedExp += expForNextLevel;
+        tempLevel += 1;
+        expForNextLevel = Math.floor(expForNextLevel * 1.5);
+      }
+
+      const currentExp = xp - accumulatedExp;
+      const expPercent = (currentExp / expForNextLevel) * 100;
+
+      this.uiExpFill.style.width = `${expPercent}%`;
+      this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPercent.toFixed(
+        1
+      )}%)`;
+    } else {
+      console.warn("EXP elements not found in the DOM.");
+    }
   }
 
   /**
