@@ -43,6 +43,8 @@ export default class MainScene extends Phaser.Scene {
   }
 
   create() {
+    // Initialize previous level tracker
+    this.previousLevel = playerProfile.level;
     this.createTilemap();
     this.defineAnimations();
 

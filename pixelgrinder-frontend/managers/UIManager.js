@@ -78,11 +78,17 @@ export default class UIManager {
   }
 
   /**
-   * Handle stats updates from the game logic
-   * @param {Object} stats - The updated stats object
+   * Handle stats updates and check for level-up to show notification.
+   * @param {Object} stats - The updated stats object.
    */
   handleStatsUpdate(stats) {
     this.updateUI(stats);
+
+    // Check if level has increased to show notification
+    if (stats.level > (this.previousLevel || 1)) {
+      this.showLevelUpNotification(stats.level);
+      this.previousLevel = stats.level;
+    }
   }
 
   /**
@@ -317,5 +323,51 @@ export default class UIManager {
   hideStatsMenu() {
     if (!this.statsMenu) return;
     this.statsMenu.style.display = "none";
+  }
+
+  /**
+   * Display a level-up notification.
+   * @param {number} newLevel - The new level achieved.
+   */
+  showLevelUpNotification(newLevel) {
+    // Create notification elements
+    const notification = document.createElement("div");
+    notification.classList.add("level-up-notification");
+    notification.textContent = `Level Up! Now at Level ${newLevel}!`;
+
+    // Append to body
+    document.body.appendChild(notification);
+
+    // Animate the notification (fade in and out)
+    notification.style.opacity = 1;
+    notification.style.transform = "translateY(0)";
+
+    // After 3 seconds, remove the notification
+    this.scene.time.delayedCall(
+      3000,
+      () => {
+        notification.style.opacity = 0;
+        notification.style.transform = "translateY(-20px)";
+        // Remove from DOM after transition
+        setTimeout(() => {
+          notification.remove();
+        }, 500);
+      },
+      [],
+      this
+    );
+  }
+  /**
+   * Handle stats updates and check for level-up to show notification.
+   * @param {Object} stats - The updated stats object.
+   */
+  handleStatsUpdate(stats) {
+    this.updateUI(stats);
+
+    // Check if level has increased to show notification
+    if (stats.level > (this.previousLevel || 1)) {
+      this.showLevelUpNotification(stats.level);
+      this.previousLevel = stats.level;
+    }
   }
 }
