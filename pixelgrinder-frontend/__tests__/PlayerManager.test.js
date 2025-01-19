@@ -124,8 +124,16 @@ jest.mock("../helpers/calculatePlayerStats.js", () => ({
   calculateMeleeDamage: jest.fn(),
 }));
 
+// 3. **Mock the playerProfile module to include 'level'**
+jest.mock("../data/MOCKdata.js", () => ({
+  playerProfile: {
+    level: 1, // Set the default level for tests
+  },
+}));
+
 import PlayerManager from "../managers/PlayerManager.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
+import { playerProfile } from "../data/MOCKdata.js"; // Import the mocked playerProfile
 
 describe("PlayerManager", () => {
   let mockScene;
@@ -259,6 +267,9 @@ describe("PlayerManager", () => {
     // Verify that playerSpeed was clamped correctly
     expect(global.Phaser.Math.Clamp).toHaveBeenCalledWith(130, 50, 200);
     expect(playerManager.playerSpeed).toBe(130);
+
+    // Verify that emitStatsUpdate was called
+    expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
   });
 
   test("should update player stats correctly when currentHealth and currentMana are non-zero and below max", () => {
@@ -298,23 +309,26 @@ describe("PlayerManager", () => {
     // Verify that playerSpeed was clamped correctly
     expect(global.Phaser.Math.Clamp).toHaveBeenCalledWith(110, 50, 200);
     expect(playerManager.playerSpeed).toBe(110);
+
+    // Verify that emitStatsUpdate was called
+    expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
   });
 
   test("getPlayerStats should return correct stats", () => {
     // Mock calculatePlayerStats to return specific stats
     calculatePlayerStats.mockReturnValue({
       magicAttack: 22,
-      meleeAttack: 18,
       magicDefense: 11,
-      meleeDefense: 9,
       magicEvasion: 5,
+      meleeAttack: 18,
+      meleeDefense: 9,
       meleeEvasion: 3,
     });
 
     // Initialize player stats
     playerManager.currentHealth = 120;
-    playerManager.maxHealth = 150;
     playerManager.currentMana = 90;
+    playerManager.maxHealth = 150;
     playerManager.maxMana = 120;
     playerManager.playerSpeed = 115;
 
@@ -338,6 +352,7 @@ describe("PlayerManager", () => {
       magicEvasion: 5,
       meleeEvasion: 3,
       speed: 115,
+      level: 1, // Ensure 'level' is included as mocked
     });
   });
 
@@ -444,8 +459,7 @@ describe("PlayerManager", () => {
     // Verify that updatePlayerStats was called
     expect(spyUpdatePlayerStats).toHaveBeenCalled();
 
-    // Because your code calls `this.scene.emitStatsUpdate()`, in older tests we used `mockScene.updateUI`.
-    // But now we have `emitStatsUpdate`. We must confirm it was called:
+    // Because your code calls `this.scene.emitStatsUpdate()`, ensure it's called
     expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
 
     // Verify console logs
@@ -479,8 +493,8 @@ describe("PlayerManager", () => {
     playerManager.regenerateStats(regenerationData);
 
     // Verify that currentMana and currentHealth were updated correctly
-    expect(playerManager.currentMana).toBe(90);
-    expect(playerManager.currentHealth).toBe(95);
+    expect(playerManager.currentMana).toBe(90); // 80 +10 = 90
+    expect(playerManager.currentHealth).toBe(95); // 90 +5 =95
 
     // Ensure that values do not exceed max
     playerManager.currentHealth = 148;
@@ -489,7 +503,7 @@ describe("PlayerManager", () => {
     expect(playerManager.currentHealth).toBe(150); // Clamped to maxHealth
     expect(playerManager.currentMana).toBe(120); // Clamped to maxMana
 
-    // Now, we expect `emitStatsUpdate` rather than `updateUI`
+    // Now, we expect `emitStatsUpdate` to have been called twice
     expect(mockScene.emitStatsUpdate).toHaveBeenCalledTimes(2);
 
     // Verify console logs for regeneration
@@ -506,8 +520,13 @@ describe("PlayerManager", () => {
 
   test("gainExperience should add EXP correctly and trigger level up when threshold is crossed", () => {
     // Setup
-    mockScene.playerEquippedItems.level = 1;
+    // Assuming playerProfile.level is 1
+    playerProfile.level = 1;
+
+    // Initialize playerEquippedItems to include 'totalExp'
     mockScene.playerEquippedItems.totalExp = 90; // Close to level 2 (100 needed)
+
+    // Mock console.log to suppress logs during tests
     jest.spyOn(console, "log").mockImplementation(() => {});
 
     // Call gainExperience
@@ -516,15 +535,19 @@ describe("PlayerManager", () => {
     // Ensure we called `scene.gainExperience`
     expect(mockScene.gainExperience).toHaveBeenCalledWith(20);
 
-    // (Because your PlayerManager simply does `this.scene.gainExperience(amount)`.
-    // So you might want to test that logic in MainScene test instead.)
-
+    // Restore console.log
     console.log.mockRestore();
   });
 
   test("gainExperience should not trigger level up when threshold is not crossed", () => {
-    mockScene.playerEquippedItems.level = 2;
+    // Setup
+    // Assuming playerProfile.level is 2
+    playerProfile.level = 2;
+
+    // Initialize playerEquippedItems to include 'totalExp'
     mockScene.playerEquippedItems.totalExp = 200;
+
+    // Mock console.log to suppress logs during tests
     jest.spyOn(console, "log").mockImplementation(() => {});
 
     // Call gainExperience
@@ -533,6 +556,7 @@ describe("PlayerManager", () => {
     // We only expect scene.gainExperience(30)
     expect(mockScene.gainExperience).toHaveBeenCalledWith(30);
 
+    // Restore console.log
     console.log.mockRestore();
   });
 
