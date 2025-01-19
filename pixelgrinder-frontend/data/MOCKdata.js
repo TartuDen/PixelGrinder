@@ -19,6 +19,16 @@ const playerBaseStats = {
   speed: 50, // Added base speed (units can be pixels per second or similar)
 };
 
+const playerGrowthStats = {
+  health: 7,
+  mana: 10,
+  intellect: 1,
+  strength: 1,
+  dexterity: 1,
+  constitution: 1,
+  speed: 3,
+}
+
 // --- Stat Weights (How base stats affect derived stats) ---
 const statWeights = {
   intellect: {
@@ -288,6 +298,7 @@ const SKILL_RANGE_EXTENDER = 1.1 // 30% increase of casting distance
 export {
   playerProfile,
   playerBaseStats,
+  playerGrowthStats,
   statWeights,
   weaponItems,
   armorItems,
