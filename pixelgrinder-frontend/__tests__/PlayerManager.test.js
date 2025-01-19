@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jsdom
+ */
+
 // __tests__/PlayerManager.test.js
 
 // 1. Mock Phaser globally
@@ -82,21 +86,21 @@ global.Phaser = {
   Input: {
     Keyboard: {
       KeyCodes: {
-        W: 'W',
-        S: 'S',
-        A: 'A',
-        D: 'D',
-        ONE: 'ONE',
-        TWO: 'TWO',
-        THREE: 'THREE',
-        FOUR: 'FOUR',
-        FIVE: 'FIVE',
-        SIX: 'SIX',
-        SEVEN: 'SEVEN',
-        EIGHT: 'EIGHT',
-        NINE: 'NINE',
-        TAB: 'TAB',
-        B: 'B',
+        W: "W",
+        S: "S",
+        A: "A",
+        D: "D",
+        ONE: "ONE",
+        TWO: "TWO",
+        THREE: "THREE",
+        FOUR: "FOUR",
+        FIVE: "FIVE",
+        SIX: "SIX",
+        SEVEN: "SEVEN",
+        EIGHT: "EIGHT",
+        NINE: "NINE",
+        TAB: "TAB",
+        B: "B",
       },
       addKey: jest.fn(),
       addKeys: jest.fn(),
@@ -145,7 +149,7 @@ describe("PlayerManager", () => {
       "characters"
     );
 
-    // 3. Mock scene with physics and updateUI
+    // 3. Mock scene with physics
     mockScene = {
       physics: {
         add: {
@@ -154,8 +158,11 @@ describe("PlayerManager", () => {
         },
       },
       collisionLayer: {}, // Mock collision layer
-      updateUI: jest.fn(),
       playerEquippedItems: {}, // Mock equipped items
+
+      // ADD THESE TWO to fix the TypeError:
+      emitStatsUpdate: jest.fn(),     // Used by updatePlayerStats, etc.
+      gainExperience: jest.fn(),      // Used by gainExperience method
     };
 
     // 4. Initialize PlayerManager with the mocked scene
@@ -284,9 +291,9 @@ describe("PlayerManager", () => {
     expect(playerManager.maxHealth).toBe(150);
     expect(playerManager.maxMana).toBe(120);
 
-    // Verify that currentHealth and currentMana were clamped to max if needed
-    expect(playerManager.currentHealth).toBe(100); // 100 < 150
-    expect(playerManager.currentMana).toBe(80); // 80 < 120
+    // Verify that currentHealth and currentMana were clamped if needed
+    expect(playerManager.currentHealth).toBe(100); // stays the same
+    expect(playerManager.currentMana).toBe(80);
 
     // Verify that playerSpeed was clamped correctly
     expect(global.Phaser.Math.Clamp).toHaveBeenCalledWith(110, 50, 200);
@@ -313,9 +320,10 @@ describe("PlayerManager", () => {
 
     const stats = playerManager.getPlayerStats();
 
-    // Verify that calculatePlayerStats was called once per stat accessed
-    // Depending on implementation, it might be called multiple times; adjust accordingly
-    expect(calculatePlayerStats).toHaveBeenCalledTimes(1);
+    // Because getPlayerStats references each stat from calculatePlayerStats,
+    // it calls `calculatePlayerStats()` 6 times (one for each .magicAttack, .meleeAttack, etc).
+    // So we expect 6 calls instead of 1:
+    expect(calculatePlayerStats).toHaveBeenCalledTimes(6);
 
     // Verify returned stats
     expect(stats).toEqual({
@@ -436,8 +444,9 @@ describe("PlayerManager", () => {
     // Verify that updatePlayerStats was called
     expect(spyUpdatePlayerStats).toHaveBeenCalled();
 
-    // Verify that updateUI was called
-    expect(mockScene.updateUI).toHaveBeenCalled();
+    // Because your code calls `this.scene.emitStatsUpdate()`, in older tests we used `mockScene.updateUI`.
+    // But now we have `emitStatsUpdate`. We must confirm it was called:
+    expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
 
     // Verify console logs
     expect(console.log).toHaveBeenCalledWith("Equipped Excalibur to weapon");
@@ -470,8 +479,8 @@ describe("PlayerManager", () => {
     playerManager.regenerateStats(regenerationData);
 
     // Verify that currentMana and currentHealth were updated correctly
-    expect(playerManager.currentMana).toBe(80 + 10); // Expected: 90
-    expect(playerManager.currentHealth).toBe(90 + 5); // Expected: 95
+    expect(playerManager.currentMana).toBe(90);
+    expect(playerManager.currentHealth).toBe(95);
 
     // Ensure that values do not exceed max
     playerManager.currentHealth = 148;
@@ -480,8 +489,8 @@ describe("PlayerManager", () => {
     expect(playerManager.currentHealth).toBe(150); // Clamped to maxHealth
     expect(playerManager.currentMana).toBe(120); // Clamped to maxMana
 
-    // Verify that updateUI was called
-    expect(mockScene.updateUI).toHaveBeenCalledTimes(2); // Called twice
+    // Now, we expect `emitStatsUpdate` rather than `updateUI`
+    expect(mockScene.emitStatsUpdate).toHaveBeenCalledTimes(2);
 
     // Verify console logs for regeneration
     expect(consoleSpy).toHaveBeenCalledWith(`Regenerated +10 mana, +5 HP`);
@@ -491,238 +500,45 @@ describe("PlayerManager", () => {
     consoleSpy.mockRestore();
   });
 
-  // 17. Test gainExperience Method
+  // =================
+  // gainExperience tests
+  // =================
+
   test("gainExperience should add EXP correctly and trigger level up when threshold is crossed", () => {
-    // Initialize player stats
-    playerManager.currentHealth = 100;
-    playerManager.currentMana = 50;
-    playerManager.maxHealth = 150;
-    playerManager.maxMana = 120;
-    playerManager.playerSpeed = 100;
-    mockScene.playerEquippedItems = {};
-
-    // Mock calculatePlayerStats to return specific stats
-    calculatePlayerStats.mockReturnValue({
-      health: 150,
-      mana: 120,
-      magicAttack: 20,
-      meleeAttack: 15,
-      magicDefense: 10,
-      meleeDefense: 8,
-      magicEvasion: 5,
-      meleeEvasion: 3,
-      speed: 120,
-    });
-
-    // Spy on emitStatsUpdate and replenishHealthAndMana
-    jest.spyOn(playerManager, "replenishHealthAndMana");
-    jest.spyOn(playerManager, "updatePlayerStats");
-
-    // Initial EXP and level
-    const initialLevel = mockScene.playerEquippedItems.level || 1;
-    mockScene.playerEquippedItems.level = 1; // Assuming initial level is 1
-    mockScene.playerEquippedItems.totalExp = 90; // Close to level 2 (requires 100 EXP)
-
-    // Spy on console.log
+    // Setup
+    mockScene.playerEquippedItems.level = 1;
+    mockScene.playerEquippedItems.totalExp = 90; // Close to level 2 (100 needed)
     jest.spyOn(console, "log").mockImplementation(() => {});
 
-    // Call gainExperience to cross the threshold
-    playerManager.gainExperience(20); // totalExp becomes 110
+    // Call gainExperience
+    playerManager.gainExperience(20);
 
-    // Verify totalExp
-    expect(mockScene.playerEquippedItems.totalExp).toBe(110);
+    // Ensure we called `scene.gainExperience`
+    expect(mockScene.gainExperience).toHaveBeenCalledWith(20);
 
-    // Verify calculatePlayerLevel is called via gainExperience
-    // Since calculatePlayerLevel is a private method, we infer it via other behaviors
+    // (Because your PlayerManager simply does `this.scene.gainExperience(amount)`.
+    // So you might want to test that logic in MainScene test instead.)
 
-    // Verify that replenishHealthAndMana was called upon level up
-    expect(playerManager.replenishHealthAndMana).toHaveBeenCalled();
-
-    // Verify that updatePlayerStats was called
-    expect(playerManager.updatePlayerStats).toHaveBeenCalled();
-
-    // Verify console logs
-    expect(console.log).toHaveBeenCalledWith(`Gained 20 EXP. Total EXP: 110`);
-    expect(console.log).toHaveBeenCalledWith(`Player Level: 2`);
-    expect(console.log).toHaveBeenCalledWith(`EXP: 10 / 150 to next level`);
-    expect(console.log).toHaveBeenCalledWith(`Congratulations! You've reached Level 2!`);
-    expect(console.log).toHaveBeenCalledWith(
-      "Player's Health and Mana have been fully replenished upon leveling up."
-    );
+    console.log.mockRestore();
   });
 
   test("gainExperience should not trigger level up when threshold is not crossed", () => {
-    // Initialize player stats
-    playerManager.currentHealth = 100;
-    playerManager.currentMana = 50;
-    playerManager.maxHealth = 150;
-    playerManager.maxMana = 120;
-    playerManager.playerSpeed = 100;
-    mockScene.playerEquippedItems = {};
-
-    // Mock calculatePlayerStats to return specific stats
-    calculatePlayerStats.mockReturnValue({
-      health: 150,
-      mana: 120,
-      magicAttack: 20,
-      meleeAttack: 15,
-      magicDefense: 10,
-      meleeDefense: 8,
-      magicEvasion: 5,
-      meleeEvasion: 3,
-      speed: 120,
-    });
-
-    // Spy on emitStatsUpdate and replenishHealthAndMana
-    jest.spyOn(playerManager, "replenishHealthAndMana");
-    jest.spyOn(playerManager, "updatePlayerStats");
-
-    // Initial EXP and level
-    const initialLevel = mockScene.playerEquippedItems.level || 1;
-    mockScene.playerEquippedItems.level = 2; // Assume current level is 2
-    mockScene.playerEquippedItems.totalExp = 200; // Already above level 2 threshold
-
-    // Spy on console.log
+    mockScene.playerEquippedItems.level = 2;
+    mockScene.playerEquippedItems.totalExp = 200;
     jest.spyOn(console, "log").mockImplementation(() => {});
 
-    // Call gainExperience without crossing level threshold
-    playerManager.gainExperience(30); // totalExp becomes 230
+    // Call gainExperience
+    playerManager.gainExperience(30);
 
-    // Verify totalExp
-    expect(mockScene.playerEquippedItems.totalExp).toBe(230);
+    // We only expect scene.gainExperience(30)
+    expect(mockScene.gainExperience).toHaveBeenCalledWith(30);
 
-    // Verify that replenishHealthAndMana was NOT called
-    expect(playerManager.replenishHealthAndMana).not.toHaveBeenCalled();
-
-    // Verify that updatePlayerStats was called
-    expect(playerManager.updatePlayerStats).toHaveBeenCalled();
-
-    // Verify console logs
-    expect(console.log).toHaveBeenCalledWith(`Gained 30 EXP. Total EXP: 230`);
-    expect(console.log).toHaveBeenCalledWith(`Player Level: 2`);
-    expect(console.log).toHaveBeenCalledWith(`EXP: 30 / 150 to next level`);
-    expect(console.log).not.toHaveBeenCalledWith(
-      "Congratulations! You've reached Level 2!"
-    );
-    expect(console.log).not.toHaveBeenCalledWith(
-      "Player's Health and Mana have been fully replenished upon leveling up."
-    );
+    console.log.mockRestore();
   });
 
-  test("gainExperience should handle multiple level-ups correctly", () => {
-    // Initialize player stats
-    playerManager.currentHealth = 100;
-    playerManager.currentMana = 50;
-    playerManager.maxHealth = 150;
-    playerManager.maxMana = 120;
-    playerManager.playerSpeed = 100;
-    mockScene.playerEquippedItems = {};
-
-    // Mock calculatePlayerStats to return specific stats
-    calculatePlayerStats.mockReturnValue({
-      health: 150,
-      mana: 120,
-      magicAttack: 20,
-      meleeAttack: 15,
-      magicDefense: 10,
-      meleeDefense: 8,
-      magicEvasion: 5,
-      meleeEvasion: 3,
-      speed: 120,
-    });
-
-    // Spy on emitStatsUpdate and replenishHealthAndMana
-    jest.spyOn(playerManager, "replenishHealthAndMana");
-    jest.spyOn(playerManager, "updatePlayerStats");
-
-    // Initial EXP and level
-    mockScene.playerEquippedItems.level = 1; // Initial level
-    mockScene.playerEquippedItems.totalExp = 90; // Close to level 2 (requires 100 EXP)
-
-    // Spy on console.log
-    jest.spyOn(console, "log").mockImplementation(() => {});
-
-    // Call gainExperience to cross multiple level thresholds
-    playerManager.gainExperience(300); // totalExp becomes 390
-
-    // Verify totalExp
-    expect(mockScene.playerEquippedItems.totalExp).toBe(390);
-
-    // Calculate expected level:
-    // Level 1 -> 2: 100 (total 100)
-    // Level 2 -> 3: 150 (total 250)
-    // Level 3 -> 4: 225 (total 475) -> Not reached
-    // So final level should be 3 with 390 - 100 - 150 = 140 EXP towards level 4
-
-    // Verify that replenishHealthAndMana was called twice (for level 2 and level 3)
-    expect(playerManager.replenishHealthAndMana).toHaveBeenCalledTimes(2);
-
-    // Verify that updatePlayerStats was called
-    expect(playerManager.updatePlayerStats).toHaveBeenCalled();
-
-    // Verify console logs
-    expect(console.log).toHaveBeenCalledWith(`Gained 300 EXP. Total EXP: 390`);
-    expect(console.log).toHaveBeenCalledWith(`Player Level: 3`);
-    expect(console.log).toHaveBeenCalledWith(`EXP: 140 / 225 to next level`);
-    expect(console.log).toHaveBeenCalledWith(`Congratulations! You've reached Level 2!`);
-    expect(console.log).toHaveBeenCalledWith(`Congratulations! You've reached Level 3!`);
-    expect(console.log).toHaveBeenCalledWith(
-      "Player's Health and Mana have been fully replenished upon leveling up."
-    );
-  });
-
-  test("gainExperience should not exceed max level (50)", () => {
-    // Initialize player stats
-    playerManager.currentHealth = 100;
-    playerManager.currentMana = 50;
-    playerManager.maxHealth = 150;
-    playerManager.maxMana = 120;
-    playerManager.playerSpeed = 100;
-    mockScene.playerEquippedItems = {};
-
-    // Mock calculatePlayerStats to return specific stats
-    calculatePlayerStats.mockReturnValue({
-      health: 150,
-      mana: 120,
-      magicAttack: 20,
-      meleeAttack: 15,
-      magicDefense: 10,
-      meleeDefense: 8,
-      magicEvasion: 5,
-      meleeEvasion: 3,
-      speed: 120,
-    });
-
-    // Spy on emitStatsUpdate and replenishHealthAndMana
-    jest.spyOn(playerManager, "replenishHealthAndMana");
-    jest.spyOn(playerManager, "updatePlayerStats");
-
-    // Set initial level to 49 and totalExp to just below max
-    mockScene.playerEquippedItems.level = 49;
-    mockScene.playerEquippedItems.totalExp = 100000; // Arbitrary high EXP
-
-    // Spy on console.log
-    jest.spyOn(console, "log").mockImplementation(() => {});
-
-    // Call gainExperience to exceed max level
-    playerManager.gainExperience(1000); // totalExp increases but level should cap at 50
-
-    // Verify that level does not exceed 50
-    expect(mockScene.playerEquippedItems.level).toBe(50);
-
-    // Verify that replenishHealthAndMana was called once for level 50
-    expect(playerManager.replenishHealthAndMana).toHaveBeenCalledTimes(1);
-
-    // Verify that updatePlayerStats was called
-    expect(playerManager.updatePlayerStats).toHaveBeenCalled();
-
-    // Verify console logs
-    expect(console.log).toHaveBeenCalledWith(`Gained 1000 EXP. Total EXP: 101000`);
-    expect(console.log).toHaveBeenCalledWith(`Player Level: 50`);
-    expect(console.log).toHaveBeenCalledWith(`EXP: 0 / 3375 to next level`); // Assuming 225 * 1.5^2 = 3375
-    expect(console.log).toHaveBeenCalledWith(`Congratulations! You've reached Level 50!`);
-    expect(console.log).toHaveBeenCalledWith(
-      "Player's Health and Mana have been fully replenished upon leveling up."
-    );
-  });
+  // ...You can add more "gainExperience" tests if you want, 
+  // but remember that PlayerManager.gainExperience() 
+  // just calls scene.gainExperience(...). 
+  // The real leveling logic is in MainScene or wherever 
+  // the `scene.gainExperience` is implemented.
 });

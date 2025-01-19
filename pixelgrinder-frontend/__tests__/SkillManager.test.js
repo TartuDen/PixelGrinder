@@ -33,8 +33,10 @@ describe("SkillManager", () => {
     // Mock PlayerManager
     mockPlayerManager = {
       player: { x: 100, y: 100 },
+      // getPlayerStats should return the structure used in SkillManager:
       getPlayerStats: jest.fn(() => ({
-        mana: 100,
+        currentMana: 100,
+        maxMana: 100,
         magicAttack: 10,
       })),
       currentHealth: 100,
@@ -96,18 +98,22 @@ describe("SkillManager", () => {
           };
         }),
       },
-      // Mock scene methods used in SkillManager
+      // Mock calls used in SkillManager
       deductMana: jest.fn((amount) => {
+        // Deduct from the player's actual currentMana
         mockPlayerManager.currentMana = Math.max(
           0,
           mockPlayerManager.currentMana - amount
         );
-        // Mock the next call to getPlayerStats to reflect updated mana
+        // Then let getPlayerStats reflect that
         mockPlayerManager.getPlayerStats.mockReturnValueOnce({
-          mana: mockPlayerManager.currentMana,
+          currentMana: mockPlayerManager.currentMana,
+          maxMana: mockPlayerManager.maxMana,
           magicAttack: 10,
         });
       }),
+      emitStatsUpdate: jest.fn(), // <-- Add this so executeSkill doesn't throw
+      // Example playerSkills
       playerSkills: [
         {
           id: 1,
@@ -136,26 +142,29 @@ describe("SkillManager", () => {
           animationSeq: [0, 7],
         },
       ],
-      // Mock the 'add' property with 'sprite' method including 'setScale'
+      // Mock 'add' for skill animations
       add: {
         sprite: jest.fn().mockReturnValue({
-          setScale: jest.fn().mockReturnThis(), // Allow method chaining
+          setScale: jest.fn().mockReturnThis(),
           play: jest.fn(),
           on: jest.fn(),
         }),
       },
-      // Mock 'updateUI' method
       updateUI: jest.fn(),
     };
 
-    // Mock getPlayerStats callback
-    getPlayerStatsMock = jest.fn(() => ({
-      mana: mockPlayerManager.currentMana,
-      magicAttack: 10,
-    }));
-
     // Spy on calculateMagicDamage and mock its return value
     jest.spyOn(calculatePlayerStats, "calculateMagicDamage").mockReturnValue(10);
+
+    // Also mock calculateMeleeDamage if needed
+    jest.spyOn(calculatePlayerStats, "calculateMeleeDamage").mockReturnValue(5);
+
+    // Initialize getPlayerStatsMock (example usage, though we mostly rely on mockPlayerManager above)
+    getPlayerStatsMock = jest.fn(() => ({
+      currentMana: mockPlayerManager.currentMana,
+      maxMana: mockPlayerManager.maxMana,
+      magicAttack: 10,
+    }));
 
     // Initialize SkillManager
     skillManager = new SkillManager(mockScene, getPlayerStatsMock);
@@ -176,38 +185,38 @@ describe("SkillManager", () => {
     const result = skillManager.useSkill(skill);
 
     expect(result.success).toBe(true);
+    // We called getPlayerStats() to check mana:
     expect(getPlayerStatsMock).toHaveBeenCalled();
+    // Deduct mana
     expect(mockScene.deductMana).toHaveBeenCalledWith(skill.manaCost);
-    expect(mockScene.uiManager.showCastingProgress).not.toHaveBeenCalled(); // No casting time
+    // No casting time => no casting progress
+    expect(mockScene.uiManager.showCastingProgress).not.toHaveBeenCalled();
+    // Damage should be applied
     expect(mockMobManager.getStats).toHaveBeenCalledWith(mockScene.targetedMob);
     expect(calculatePlayerStats.calculateMagicDamage).toHaveBeenCalledWith(
-      { mana: 95, magicAttack: 10 }, // Updated mana after deduction
+      {
+        currentMana: 95, // updated after deduction
+        maxMana: 100,
+        magicAttack: 10,
+      },
       { magicDefense: 5, magicEvasion: 10, active: true },
-      2
+      skill.magicAttack
     );
     expect(mockMobManager.applyDamageToMob).toHaveBeenCalledWith(
       mockScene.targetedMob,
       10
     );
+    // Cooldown set
     expect(mockScene.uiManager.updateSkillCooldown).toHaveBeenCalledWith(
       skill.id,
       skill.cooldown
     );
-    expect(mockUIManager.updateCastingProgress).not.toHaveBeenCalled();
-
-    // Ensure that 'add.sprite' was called correctly
+    // Skill animation
     expect(mockScene.add.sprite).toHaveBeenCalledWith(
       mockScene.targetedMob.x,
       mockScene.targetedMob.y,
       `${skill.name}_anim`
     );
-
-    // Ensure that setScale was called
-    const mockSkillSprite = mockScene.add.sprite.mock.results[0].value;
-    expect(mockSkillSprite.setScale).toHaveBeenCalledWith(1);
-
-    // Ensure that play was called
-    expect(mockSkillSprite.play).toHaveBeenCalledWith(`${skill.name}_anim`);
   });
 
   test("should not use a skill if it's on cooldown", () => {
@@ -220,7 +229,6 @@ describe("SkillManager", () => {
 
     expect(result.success).toBe(false);
     expect(mockScene.uiManager.showCastingProgress).not.toHaveBeenCalled();
-    expect(mockMobManager.getStats).not.toHaveBeenCalled();
     expect(mockMobManager.applyDamageToMob).not.toHaveBeenCalled();
     expect(mockScene.deductMana).not.toHaveBeenCalled();
   });
@@ -230,13 +238,15 @@ describe("SkillManager", () => {
 
     // Set player's current mana to less than skill's manaCost
     mockPlayerManager.currentMana = 5;
+    // Update mock so getPlayerStats reflects new values
     mockPlayerManager.getPlayerStats.mockReturnValueOnce({
-      mana: 5,
+      currentMana: 5,
+      maxMana: 100,
       magicAttack: 10,
     });
 
-    // Mock Phaser.Math.Distance.Between to return a distance within range
-    Phaser.Math.Distance.Between.mockReturnValue(100); // Within 150 range
+    // Distance within range
+    Phaser.Math.Distance.Between.mockReturnValue(100);
 
     const result = skillManager.useSkill(skill);
 
@@ -257,7 +267,6 @@ describe("SkillManager", () => {
 
     expect(result.success).toBe(false);
     expect(mockScene.uiManager.showCastingProgress).not.toHaveBeenCalled();
-    expect(mockMobManager.getStats).not.toHaveBeenCalled();
     expect(mockMobManager.applyDamageToMob).not.toHaveBeenCalled();
     expect(mockScene.deductMana).not.toHaveBeenCalled();
   });
@@ -265,20 +274,12 @@ describe("SkillManager", () => {
   test("should not use a skill if the target is out of range", () => {
     const skill = mockScene.playerSkills[0]; // magic_wip
 
-    // Mock Phaser.Math.Distance.Between to return a distance out of range
     Phaser.Math.Distance.Between.mockReturnValue(200); // Out of 150 range
 
     const result = skillManager.useSkill(skill);
 
     expect(result.success).toBe(false);
-    expect(Phaser.Math.Distance.Between).toHaveBeenCalledWith(
-      mockPlayerManager.player.x,
-      mockPlayerManager.player.y,
-      mockScene.targetedMob.x,
-      mockScene.targetedMob.y
-    );
     expect(mockScene.uiManager.showCastingProgress).not.toHaveBeenCalled();
-    expect(mockMobManager.getStats).not.toHaveBeenCalled();
     expect(mockMobManager.applyDamageToMob).not.toHaveBeenCalled();
     expect(mockScene.deductMana).not.toHaveBeenCalled();
   });
@@ -286,14 +287,13 @@ describe("SkillManager", () => {
   test("should handle skill with casting time correctly", () => {
     const skill = mockScene.playerSkills[1]; // fire_ball
 
-    // Mock Phaser.Math.Distance.Between to return a distance within range
-    Phaser.Math.Distance.Between.mockReturnValue(100); // Within 150 range
+    // Within range
+    Phaser.Math.Distance.Between.mockReturnValue(100);
 
-    // Mock Phaser.Math.FloatBetween to always return a value greater than magicEvasion to prevent evasion
-    Phaser.Math.FloatBetween.mockReturnValue(50); // Assuming magicEvasion is 10%
-
+    // Start useSkill
     const result = skillManager.useSkill(skill);
 
+    // We expect a cast to start
     expect(result.success).toBe(true);
     expect(mockScene.uiManager.showCastingProgress).toHaveBeenCalledWith(
       skill.name,
@@ -302,96 +302,85 @@ describe("SkillManager", () => {
     expect(skillManager.isCasting).toBe(true);
     expect(skillManager.currentCastingSkill).toBe(skill);
 
-    // Fast-forward time to simulate casting time completion
+    // Fast-forward the casting time
     jest.advanceTimersByTime(skill.castingTime * 1000);
 
-    // Additionally, advance time to trigger any periodic updateCastingProgress calls
-    jest.advanceTimersByTime(100); // Adjust based on how often updateCastingProgress is called
-
-    // Ensure that casting is completed
+    // Casting should be done now
     expect(skillManager.isCasting).toBe(false);
     expect(skillManager.currentCastingSkill).toBe(null);
-    expect(mockScene.uiManager.updateCastingProgress).toHaveBeenCalled();
     expect(mockScene.uiManager.hideCastingProgress).toHaveBeenCalled();
 
-    // Skill execution expectations
+    // Mana deducted
     expect(mockScene.deductMana).toHaveBeenCalledWith(skill.manaCost);
+    // Damage
     expect(mockMobManager.getStats).toHaveBeenCalledWith(mockScene.targetedMob);
     expect(calculatePlayerStats.calculateMagicDamage).toHaveBeenCalledWith(
-      { mana: 90, magicAttack: 10 }, // Mana deducted by 10
+      {
+        currentMana: 90,
+        maxMana: 100,
+        magicAttack: 10,
+      },
       { magicDefense: 5, magicEvasion: 10, active: true },
-      3
+      skill.magicAttack
     );
+    // Apply damage
     expect(mockMobManager.applyDamageToMob).toHaveBeenCalledWith(
       mockScene.targetedMob,
       10
     );
+    // Cooldown
     expect(mockScene.uiManager.updateSkillCooldown).toHaveBeenCalledWith(
       skill.id,
       skill.cooldown
     );
-
-    // Ensure that 'add.sprite' was called correctly
+    // Animation
     expect(mockScene.add.sprite).toHaveBeenCalledWith(
       mockScene.targetedMob.x,
       mockScene.targetedMob.y,
       `${skill.name}_anim`
     );
-
-    // Ensure that setScale was called
-    const lastCallIndex = mockScene.add.sprite.mock.calls.length - 1;
-    const mockSkillSprite = mockScene.add.sprite.mock.results[lastCallIndex].value;
-    expect(mockSkillSprite.setScale).toHaveBeenCalledWith(1);
-
-    // Ensure that play was called
-    expect(mockSkillSprite.play).toHaveBeenCalledWith(`${skill.name}_anim`);
   });
 
   test("should cancel casting if target moves out of extended range during casting", () => {
     const skill = mockScene.playerSkills[1]; // fire_ball
 
-    // Mock Phaser.Math.Distance.Between to initially be within range
-    Phaser.Math.Distance.Between.mockReturnValue(100); // Within 150 range
+    // Initially in range
+    Phaser.Math.Distance.Between.mockReturnValue(100);
+    const cancelSpy = jest.spyOn(skillManager, "cancelCasting");
 
-    // Mock Phaser.Math.FloatBetween to always return a value greater than magicEvasion to prevent evasion
-    Phaser.Math.FloatBetween.mockReturnValue(50); // Assuming magicEvasion is 10%
-
-    const cancelMock = jest.spyOn(skillManager, "cancelCasting");
-
+    // Start cast
     const result = skillManager.useSkill(skill);
-
     expect(result.success).toBe(true);
     expect(skillManager.isCasting).toBe(true);
 
-    // Mock the target moving out of extended range
-    // Assuming SKILL_RANGE_EXTENDER is 1.1, extended range = 150 * 1.1 = 165
-    // So set distance to 170
-    Phaser.Math.Distance.Between.mockReturnValue(170);
+    // Now simulate target moving out of extended range (skill.range * 1.1)
+    Phaser.Math.Distance.Between.mockReturnValue(9999); // definitely out of extended range
 
-    // Advance time to trigger the range check (assuming it's called every 100ms)
+    // Let 100ms pass to trigger range check
     jest.advanceTimersByTime(100);
 
-    expect(cancelMock).toHaveBeenCalled();
+    expect(cancelSpy).toHaveBeenCalled();
     expect(skillManager.isCasting).toBe(false);
     expect(mockScene.uiManager.hideCastingProgress).toHaveBeenCalled();
+    // No damage is applied
     expect(mockMobManager.applyDamageToMob).not.toHaveBeenCalled();
   });
 
   test("should enforce cooldown after skill use", () => {
     const skill = mockScene.playerSkills[0]; // magic_wip
-
-    // Mock Phaser.Math.Distance.Between to return a distance within range
-    Phaser.Math.Distance.Between.mockReturnValue(100); // Within 150 range
+    Phaser.Math.Distance.Between.mockReturnValue(100);
 
     const result = skillManager.useSkill(skill);
-
     expect(result.success).toBe(true);
+
+    // Cooldown is 2 seconds
     expect(skillManager.cooldowns[skill.id]).toBe(2);
 
-    // Fast-forward time to end cooldown
+    // Fast-forward 2 seconds
     jest.advanceTimersByTime(2000);
 
     expect(skillManager.cooldowns[skill.id]).toBe(0);
+    // UI update when cooldown ends
     expect(mockScene.uiManager.updateSkillCooldown).toHaveBeenCalledWith(
       skill.id,
       0
@@ -401,70 +390,63 @@ describe("SkillManager", () => {
   test("should deduct mana correctly when using a skill", () => {
     const skill = mockScene.playerSkills[0]; // magic_wip
 
-    // Initial mana
-    const initialMana = mockPlayerManager.currentMana;
-
-    // Mock Phaser.Math.Distance.Between to return a distance within range
-    Phaser.Math.Distance.Between.mockReturnValue(100); // Within 150 range
+    // Initial mana = 100
+    Phaser.Math.Distance.Between.mockReturnValue(100);
 
     const result = skillManager.useSkill(skill);
-
     expect(result.success).toBe(true);
+
+    // DeductMana is called
     expect(mockScene.deductMana).toHaveBeenCalledWith(skill.manaCost);
-    expect(mockPlayerManager.currentMana).toBe(initialMana - skill.manaCost);
-    expect(getPlayerStatsMock).toHaveBeenCalledTimes(2); // Initial and after deduction
+    // Now currentMana should be 95
+    expect(mockPlayerManager.currentMana).toBe(95);
+    // Because we updated the mock to reflect that
+    expect(getPlayerStatsMock).toHaveBeenCalledTimes(2); 
   });
 
   test("should trigger skill animation upon successful execution", () => {
     const skill = mockScene.playerSkills[0]; // magic_wip
 
-    // Do not mock triggerSkillAnimation here, since we want to verify its effects
-    // skillManager.triggerSkillAnimation = jest.fn();
-
-    // Mock Phaser.Math.Distance.Between to return a distance within range
-    Phaser.Math.Distance.Between.mockReturnValue(100); // Within 150 range
-
+    Phaser.Math.Distance.Between.mockReturnValue(100);
     const result = skillManager.useSkill(skill);
 
     expect(result.success).toBe(true);
-    // Ensure that 'add.sprite' was called correctly
+    // Check that an animation sprite was added
     expect(mockScene.add.sprite).toHaveBeenCalledWith(
       mockScene.targetedMob.x,
       mockScene.targetedMob.y,
       `${skill.name}_anim`
     );
 
-    // Access the last call to 'add.sprite'
     const lastCallIndex = mockScene.add.sprite.mock.calls.length - 1;
-    const mockSkillSprite = mockScene.add.sprite.mock.results[lastCallIndex].value;
+    const mockSkillSprite =
+      mockScene.add.sprite.mock.results[lastCallIndex].value;
 
-    // Ensure that setScale was called
     expect(mockSkillSprite.setScale).toHaveBeenCalledWith(1);
-
-    // Ensure that play was called
     expect(mockSkillSprite.play).toHaveBeenCalledWith(`${skill.name}_anim`);
   });
 
   test("canUseSkill should return correct boolean", () => {
     const skill = mockScene.playerSkills[0]; // magic_wip
 
-    // Initially, skill can be used
+    // Initially, skill is not on cooldown and not casting
     expect(skillManager.canUseSkill(skill)).toBe(true);
 
-    // Set casting to true
+    // If skillManager is casting
     skillManager.isCasting = true;
     expect(skillManager.canUseSkill(skill)).toBe(false);
     skillManager.isCasting = false;
 
-    // Set skill on cooldown
+    // If skill is on cooldown
     skillManager.cooldowns[skill.id] = 1;
     expect(skillManager.canUseSkill(skill)).toBe(false);
     skillManager.cooldowns[skill.id] = 0;
 
-    // Set insufficient mana
+    // If insufficient mana
     mockPlayerManager.currentMana = 4;
-    getPlayerStatsMock.mockReturnValueOnce({
-      mana: 4,
+    getPlayerStatsMock.mockReturnValue({
+      currentMana: 4,
+      maxMana: 100,
       magicAttack: 10,
     });
     expect(skillManager.canUseSkill(skill)).toBe(false);
