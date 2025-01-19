@@ -1,5 +1,3 @@
-// __tests__/UIManager.test.js
-
 /**
  * @jest-environment jsdom
  */
@@ -16,6 +14,7 @@ global.Phaser = {
         addEvent: jest.fn(),
         removeEvent: jest.fn(),
       };
+      this.events = new Phaser.Events.EventEmitter();
     }
   },
   Physics: {
@@ -61,6 +60,26 @@ global.Phaser = {
   Tweens: {
     add: jest.fn(),
   },
+  Events: {
+    EventEmitter: class {
+      constructor() {
+        this.listeners = {};
+      }
+
+      on(event, listener, context) {
+        if (!this.listeners[event]) this.listeners[event] = [];
+        this.listeners[event].push({ listener, context });
+      }
+
+      emit(event, data) {
+        if (this.listeners[event]) {
+          this.listeners[event].forEach(({ listener, context }) => {
+            listener.call(context, data);
+          });
+        }
+      }
+    },
+  },
   // Add other Phaser global mocks as needed
 };
 
@@ -74,13 +93,15 @@ describe("UIManager", () => {
     // Clear the document body
     document.body.innerHTML = "";
 
-    // Create necessary DOM elements
+    // Create necessary DOM elements, including new EXP elements
     document.body.innerHTML = `
       <div id="player-name"></div>
       <div id="health-fill"></div>
       <div id="mana-fill"></div>
       <div id="player-level"></div>
       <div id="player-xp"></div>
+      <div id="exp-fill"></div> <!-- New EXP Fill Element -->
+      <div id="exp-text"></div> <!-- New EXP Text Element -->
       <div id="health-text"></div>
       <div id="mana-text"></div>
       <div id="stats-menu" style="display: none;">
@@ -89,9 +110,6 @@ describe("UIManager", () => {
       </div>
       <div id="casting-bar"></div>
     `;
-
-    // Mock casting-progress-container does not exist initially
-    // UIManager should create it if not present
 
     // Initialize mockScene
     mockScene = new Phaser.Scene();
@@ -111,17 +129,25 @@ describe("UIManager", () => {
     expect(uiManager.uiManaFill).toBe(document.getElementById("mana-fill"));
     expect(uiManager.uiLevel).toBe(document.getElementById("player-level"));
     expect(uiManager.uiXP).toBe(document.getElementById("player-xp"));
+    expect(uiManager.uiExpFill).toBe(document.getElementById("exp-fill")); // Verify EXP Fill
+    expect(uiManager.uiExpText).toBe(document.getElementById("exp-text")); // Verify EXP Text
     expect(uiManager.healthText).toBe(document.getElementById("health-text"));
     expect(uiManager.manaText).toBe(document.getElementById("mana-text"));
     expect(uiManager.statsMenu).toBe(document.getElementById("stats-menu"));
-    expect(uiManager.statsContent).toBe(document.getElementById("stats-content"));
-    expect(uiManager.closeStatsButton).toBe(document.getElementById("close-stats"));
+    expect(uiManager.statsContent).toBe(
+      document.getElementById("stats-content")
+    );
+    expect(uiManager.closeStatsButton).toBe(
+      document.getElementById("close-stats")
+    );
     expect(uiManager.castingBar).toBe(document.getElementById("casting-bar"));
   });
 
   test("constructor should create and append casting-progress-container if not present", () => {
     // Remove casting-progress-container if it exists
-    const existingContainer = document.getElementById("casting-progress-container");
+    const existingContainer = document.getElementById(
+      "casting-progress-container"
+    );
     if (existingContainer) {
       existingContainer.remove();
     }
@@ -129,27 +155,27 @@ describe("UIManager", () => {
     // Re-initialize UIManager to trigger constructor logic
     uiManager = new UIManager(mockScene);
 
-    const castingProgressContainer = document.getElementById("casting-progress-container");
+    const castingProgressContainer = document.getElementById(
+      "casting-progress-container"
+    );
     expect(castingProgressContainer).not.toBeNull();
     expect(castingProgressContainer.id).toBe("casting-progress-container");
 
     const castingSkillName = document.getElementById("casting-skill-name");
-    const castingProgressFill = document.getElementById("casting-progress-fill");
+    const castingProgressFill = document.getElementById(
+      "casting-progress-fill"
+    );
 
     expect(castingSkillName).not.toBeNull();
     expect(castingSkillName.id).toBe("casting-skill-name");
     expect(castingProgressFill).not.toBeNull();
     expect(castingProgressFill.id).toBe("casting-progress-fill");
-
-    // Remove the following lines as the constructor does not set width and display
-    // expect(castingProgressFill.style.width).toBe("0%");
-    // expect(castingProgressContainer.style.display).toBe("block"); // As per showCastingProgress
   });
 
   // 6. Test init method
   test("init should attach event listener to closeStatsButton", () => {
     // Spy on hideStatsMenu and onCloseStatsCallback
-    jest.spyOn(uiManager, "hideStatsMenu");
+    uiManager.hideStatsMenu = jest.fn();
     const onCloseStatsCallback = jest.fn();
 
     uiManager.init(onCloseStatsCallback);
@@ -170,12 +196,16 @@ describe("UIManager", () => {
     uiManager.showCastingProgress("Fireball", 3);
 
     const castingSkillName = document.getElementById("casting-skill-name");
-    const castingProgressFill = document.getElementById("casting-progress-fill");
-    const castingProgressContainer = document.getElementById("casting-progress-container");
+    const castingProgressFill = document.getElementById(
+      "casting-progress-fill"
+    );
+    const castingProgressContainer = document.getElementById(
+      "casting-progress-container"
+    );
 
+    expect(castingProgressContainer.style.display).toBe("block"); // Adjust based on actual implementation
     expect(castingSkillName.textContent).toBe("Casting: Fireball");
     expect(castingProgressFill.style.width).toBe("0%");
-    expect(castingProgressContainer.style.display).toBe("block");
   });
 
   // 8. Test updateCastingProgress
@@ -183,7 +213,9 @@ describe("UIManager", () => {
     uiManager.showCastingProgress("Fireball", 3);
     uiManager.updateCastingProgress(1.5, 3);
 
-    const castingProgressFill = document.getElementById("casting-progress-fill");
+    const castingProgressFill = document.getElementById(
+      "casting-progress-fill"
+    );
     expect(castingProgressFill.style.width).toBe("50%");
   });
 
@@ -196,8 +228,12 @@ describe("UIManager", () => {
     uiManager.hideCastingProgress();
 
     const castingSkillName = document.getElementById("casting-skill-name");
-    const castingProgressFill = document.getElementById("casting-progress-fill");
-    const castingProgressContainer = document.getElementById("casting-progress-container");
+    const castingProgressFill = document.getElementById(
+      "casting-progress-fill"
+    );
+    const castingProgressContainer = document.getElementById(
+      "casting-progress-container"
+    );
 
     expect(castingSkillName.textContent).toBe("");
     expect(castingProgressFill.style.width).toBe("0%");
@@ -223,7 +259,7 @@ describe("UIManager", () => {
     ];
 
     // Spy on scene.useSkill
-    jest.spyOn(mockScene, "useSkill");
+    mockScene.useSkill = jest.fn();
 
     uiManager.setupSkills(skills);
 
@@ -251,7 +287,7 @@ describe("UIManager", () => {
     });
   });
 
-  // 11. Test updateUI
+  // 11. Test updateUI for basic stats
   test("updateUI should correctly update health, mana, name, level, and XP UI elements", () => {
     const uiStats = {
       name: "Omigod",
@@ -261,6 +297,7 @@ describe("UIManager", () => {
       maxMana: 120,
       level: 5,
       xp: 2000,
+      speed: 100, // Assuming speed is part of stats
     };
 
     uiManager.updateUI(uiStats);
@@ -268,13 +305,13 @@ describe("UIManager", () => {
     // Health
     const healthFill = document.getElementById("health-fill");
     const healthText = document.getElementById("health-text");
-    expect(parseFloat(healthFill.style.width)).toBeCloseTo(53.33333, 4); // (80/150)*100
+    expect(parseFloat(healthFill.style.width)).toBeCloseTo((80 / 150) * 100, 4); // 53.3333
     expect(healthText.textContent).toBe("HP: 80/150 (53.3%)");
 
     // Mana
     const manaFill = document.getElementById("mana-fill");
     const manaText = document.getElementById("mana-text");
-    expect(parseFloat(manaFill.style.width)).toBeCloseTo(50.0, 4); // (60/120)*100
+    expect(parseFloat(manaFill.style.width)).toBeCloseTo((60 / 120) * 100, 4); // 50
     expect(manaText.textContent).toBe("Mana: 60/120 (50.0%)");
 
     // Name
@@ -290,7 +327,43 @@ describe("UIManager", () => {
     expect(xpElement.textContent).toBe("XP: 2000");
   });
 
-  // 12. Test updateSkillCooldown
+  // 12. Test updateUI for EXP bar and text
+  test("updateUI should correctly update the EXP bar and EXP text elements", () => {
+    const uiStats = {
+      name: "Omigod",
+      currentHealth: 80,
+      maxHealth: 150,
+      currentMana: 60,
+      maxMana: 120,
+      level: 5,
+      xp: 250, // Assume totalExp=250
+      speed: 100,
+    };
+
+    // Assuming level 2 requires 100 EXP, level 3 requires 150 EXP, total 250 EXP would mean level 3 with 0 EXP towards level 4
+    // But according to MainScene.js, levels are capped at 50, and exp increases by 1.5x each level
+    // For simplicity, let's mock the calculation part
+
+    uiManager.updateUI(uiStats);
+
+    // EXP
+    const expFill = document.getElementById("exp-fill");
+    const expText = document.getElementById("exp-text");
+    // Calculate expected EXP for level 3: Level 1->2: 100, Level 2->3: 150, total 250
+    const expectedCurrentExp = 250 - 100 - 150; // 0
+    const expectedNextLevelExp = 225; // 150 * 1.5
+
+    const expPercent = (expectedCurrentExp / expectedNextLevelExp) * 100; // 0%
+
+    expect(expFill.style.width).toBe("0%");
+    expect(expText.textContent).toBe(
+      `EXP: ${expectedCurrentExp}/${expectedNextLevelExp} (${expPercent.toFixed(
+        1
+      )}%)`
+    );
+  });
+
+  // 13. Test updateSkillCooldown
   test("updateSkillCooldown should show cooldown overlay and start countdown when cooldownTime > 0", () => {
     // Mock addEvent for cooldown countdown
     const mockRemoveEvent = jest.fn();
@@ -309,7 +382,9 @@ describe("UIManager", () => {
     // Start cooldown
     uiManager.updateSkillCooldown(skill.id, 5);
 
-    const castingSlot = document.querySelector(`.casting-slot[data-skill-id="${skill.id}"]`);
+    const castingSlot = document.querySelector(
+      `.casting-slot[data-skill-id="${skill.id}"]`
+    );
     const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
     const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
 
@@ -328,10 +403,10 @@ describe("UIManager", () => {
 
     // Simulate the callback being called twice
     const eventCallback = mockScene.time.addEvent.mock.calls[0][0].callback;
-    eventCallback(); // elapsedTime = 4.9
+    eventCallback(); // remainingTime = 4.9
     expect(cooldownTimer.textContent).toBe("4.9");
 
-    eventCallback(); // elapsedTime = 4.8
+    eventCallback(); // remainingTime = 4.8
     expect(cooldownTimer.textContent).toBe("4.8");
   });
 
@@ -347,7 +422,9 @@ describe("UIManager", () => {
     // Start cooldown with time <= 0
     uiManager.updateSkillCooldown(skill.id, 0);
 
-    const castingSlot = document.querySelector(`.casting-slot[data-skill-id="${skill.id}"]`);
+    const castingSlot = document.querySelector(
+      `.casting-slot[data-skill-id="${skill.id}"]`
+    );
     const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
     const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
 
@@ -355,7 +432,7 @@ describe("UIManager", () => {
     expect(cooldownTimer.textContent).toBe("");
   });
 
-  // 13. Test startCooldownCountdown
+  // 14. Test startCooldownCountdown
   test("startCooldownCountdown should update cooldown timer and hide overlay when cooldown completes", () => {
     // Mock addEvent for cooldown countdown
     let cooldownCallback;
@@ -394,7 +471,7 @@ describe("UIManager", () => {
     expect(cooldownOverlay.style.display).toBe("none");
   });
 
-  // 14. Test showStatsMenu and hideStatsMenu
+  // 15. Test showStatsMenu and hideStatsMenu
   test("showStatsMenu should display the stats menu with provided HTML content", () => {
     const htmlContent = "<p>Player Stats</p>";
     uiManager.showStatsMenu(htmlContent);
@@ -415,5 +492,88 @@ describe("UIManager", () => {
 
     const statsMenu = document.getElementById("stats-menu");
     expect(statsMenu.style.display).toBe("none");
+  });
+
+  // 16. Test EXP Level-Up Notification
+  test("handleStatsUpdate should show level-up notification when level increases", () => {
+    // Spy on the prototype methods before initializing
+    jest.spyOn(UIManager.prototype, "updateUI").mockImplementation(() => {});
+    jest
+      .spyOn(UIManager.prototype, "showLevelUpNotification")
+      .mockImplementation(() => {});
+
+    // Initial previousLevel
+    uiManager.previousLevel = 1;
+
+    // Initialize UIManager to attach event listeners
+    const onCloseStatsCallback = jest.fn();
+    uiManager.init(onCloseStatsCallback);
+
+    // Emit statsUpdated event with higher level
+    const stats = {
+      level: 2,
+      name: "Omigod",
+      currentHealth: 150,
+      maxHealth: 150,
+      currentMana: 120,
+      maxMana: 120,
+      xp: 250,
+      speed: 100,
+    };
+    mockScene.events.emit("statsUpdated", stats);
+
+    // Verify that updateUI was called
+    expect(uiManager.updateUI).toHaveBeenCalledWith(stats);
+
+    // Verify that showLevelUpNotification was called
+    expect(uiManager.showLevelUpNotification).toHaveBeenCalledWith(2);
+
+    // Verify that previousLevel was updated
+    expect(uiManager.previousLevel).toBe(2);
+
+    // Restore the original implementations
+    UIManager.prototype.updateUI.mockRestore();
+    UIManager.prototype.showLevelUpNotification.mockRestore();
+  });
+
+  test("handleStatsUpdate should not show level-up notification when level does not increase", () => {
+    // Spy on the prototype methods before initializing
+    jest.spyOn(UIManager.prototype, "updateUI").mockImplementation(() => {});
+    jest
+      .spyOn(UIManager.prototype, "showLevelUpNotification")
+      .mockImplementation(() => {});
+
+    // Initial previousLevel
+    uiManager.previousLevel = 3;
+
+    // Initialize UIManager to attach event listeners
+    const onCloseStatsCallback = jest.fn();
+    uiManager.init(onCloseStatsCallback);
+
+    // Emit statsUpdated event with the same level
+    const stats = {
+      level: 3,
+      name: "Omigod",
+      currentHealth: 150,
+      maxHealth: 150,
+      currentMana: 120,
+      maxMana: 120,
+      xp: 350,
+      speed: 100,
+    };
+    mockScene.events.emit("statsUpdated", stats);
+
+    // Verify that updateUI was called
+    expect(uiManager.updateUI).toHaveBeenCalledWith(stats);
+
+    // Verify that showLevelUpNotification was NOT called
+    expect(uiManager.showLevelUpNotification).not.toHaveBeenCalled();
+
+    // Verify that previousLevel remains the same
+    expect(uiManager.previousLevel).toBe(3);
+
+    // Restore the original implementations
+    UIManager.prototype.updateUI.mockRestore();
+    UIManager.prototype.showLevelUpNotification.mockRestore();
   });
 });
