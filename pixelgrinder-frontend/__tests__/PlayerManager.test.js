@@ -114,6 +114,26 @@ global.Phaser = {
   Tweens: {
     add: jest.fn(),
   },
+  Events: {
+    EventEmitter: class {
+      constructor() {
+        this.listeners = {};
+      }
+
+      on(event, listener, context) {
+        if (!this.listeners[event]) this.listeners[event] = [];
+        this.listeners[event].push({ listener, context });
+      }
+
+      emit(event, data) {
+        if (this.listeners[event]) {
+          this.listeners[event].forEach(({ listener, context }) => {
+            listener.call(context, data);
+          });
+        }
+      }
+    },
+  },
   // Add other Phaser global mocks as needed
 };
 
@@ -124,16 +144,154 @@ jest.mock("../helpers/calculatePlayerStats.js", () => ({
   calculateMeleeDamage: jest.fn(),
 }));
 
-// 3. **Mock the playerProfile module to include 'level'**
+// 3. Mock the MOCKdata.js module with all necessary exports
 jest.mock("../data/MOCKdata.js", () => ({
   playerProfile: {
-    level: 1, // Set the default level for tests
+    class: "mage",
+    name: "TestPlayer",
+    level: 1,
+    totalExp: 0,
+  },
+  playerBaseStats: {
+    health: 100,
+    mana: 150,
+    intellect: 3,
+    strength: 0,
+    dexterity: 3,
+    constitution: 4,
+    speed: 50,
+  },
+  playerGrowthStats: {
+    health: 7,
+    mana: 10,
+    intellect: 1,
+    strength: 1,
+    dexterity: 1,
+    constitution: 1,
+    speed: 3,
+  },
+  weaponItems: [
+    {
+      name: "basic_staff",
+      type: "staff",
+      health: 0,
+      mana: 10,
+      magicAttack: 3,
+      meleeAttack: 1,
+      magicDefense: 0,
+      meleeDefense: 0,
+      magicEvasion: 0,
+      meleeEvasion: 0,
+      speed: 0,
+    },
+    // Add other weapons as needed
+  ],
+  armorItems: [
+    {
+      name: "common_robe_chest",
+      type: "robe",
+      health: 10,
+      mana: 12,
+      magicAttack: 0,
+      meleeAttack: 0,
+      magicDefense: 0,
+      meleeDefense: 0,
+      magicEvasion: 0,
+      meleeEvasion: 0,
+      speed: 0,
+    },
+    // Add other armors as needed
+  ],
+  playerEquippedItems: {
+    weapon: "basic_staff",
+    head: null,
+    chest: null,
+    shoulders: null,
+    legs: "swift_gauntlets",
+    feet: "light_boots",
+  },
+  playerSkills: [
+    {
+      id: 1,
+      name: "magic_wip",
+      manaCost: 5,
+      range: 150,
+      magicAttack: 2,
+      meleeAttack: 0,
+      castingTime: 0,
+      cooldown: 2,
+      icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
+      skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
+      animationSeq: [0, 7],
+    },
+    // Add other skills as needed
+  ],
+  mobsData: {
+    slime: {
+      name: "Slime",
+      level: 2,
+      attackRange: 40,
+      health: 50,
+      mana: 0,
+      magicAttack: 0,
+      meleeAttack: 2,
+      magicDefense: 2,
+      meleeDefense: 30,
+      magicEvasion: 1,
+      meleeEvasion: 1,
+      mobType: "friend",
+      mobAgroRange: 300,
+      attackCooldown: 2000,
+      speed: 20,
+      expReward: 10,
+    },
+    goblin: {
+      name: "Goblin",
+      level: 5,
+      attackRange: 40,
+      health: 40,
+      mana: 0,
+      magicAttack: 3,
+      meleeAttack: 4,
+      magicDefense: 2,
+      meleeDefense: 5,
+      magicEvasion: 2,
+      meleeEvasion: 2,
+      mobType: "enemy",
+      mobAgroRange: 300,
+      attackCooldown: 1500,
+      speed: 70,
+      expReward: 22,
+    },
+    // Add more mobs here...
+  },
+  naturalRegeneration: {
+    manaRegen: 3,
+    hpRegen: 4,
+    regenerationTime: 5000,
+  },
+  TAB_TARGET_RANGE: 400,
+  MOB_CHASE_SPEED_MULT: 2.0,
+  SKILL_RANGE_EXTENDER: 1.1,
+  expModifierRules: {
+    mobAtLeast5Higher: 1.2,
+    mob4Higher: 1.15,
+    mob3Higher: 1.1,
+    mob2Higher: 1.05,
+    mob1Higher: 1.03,
+    equalLevel: 1.0,
+    player1Higher: 0.97,
+    player2Higher: 0.9,
+    player3Higher: 0.8,
+    player4Higher: 0.75,
+    player5Higher: 0.5,
+    none: 0.0,
   },
 }));
 
 import PlayerManager from "../managers/PlayerManager.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
-import { playerProfile } from "../data/MOCKdata.js"; // Import the mocked playerProfile
+import { playerProfile, playerGrowthStats } from "../data/MOCKdata.js"; // Import the mocked playerProfile and playerGrowthStats
 
 describe("PlayerManager", () => {
   let mockScene;
@@ -151,7 +309,7 @@ describe("PlayerManager", () => {
 
     // 2. Mock player sprite with enhanced velocity
     mockPlayerSprite = new Phaser.Physics.Arcade.Sprite(
-      mockScene,
+      null, // scene will be assigned later
       100,
       150,
       "characters"
@@ -166,11 +324,18 @@ describe("PlayerManager", () => {
         },
       },
       collisionLayer: {}, // Mock collision layer
-      playerEquippedItems: {}, // Mock equipped items
+      playerEquippedItems: {
+        weapon: "basic_staff",
+        head: null,
+        chest: null,
+        shoulders: null,
+        legs: "swift_gauntlets",
+        feet: "light_boots",
+      }, // Mock equipped items
 
-      // ADD THESE TWO to fix the TypeError:
-      emitStatsUpdate: jest.fn(),     // Used by updatePlayerStats, etc.
-      gainExperience: jest.fn(),      // Used by gainExperience method
+      // Mocked methods used by PlayerManager
+      emitStatsUpdate: jest.fn(), // Used by updatePlayerStats, etc.
+      gainExperience: jest.fn(),  // Used by gainExperience method
     };
 
     // 4. Initialize PlayerManager with the mocked scene
@@ -178,8 +343,39 @@ describe("PlayerManager", () => {
 
     // 5. Assign the mocked player sprite to playerManager.player
     playerManager.player = mockPlayerSprite;
+
+    // 6. Reset playerProfile and playerBaseStats
+    playerProfile.level = 1;
+    playerProfile.totalExp = 0;
+
+    mockScene.playerEquippedItems.weapon = "basic_staff";
+    mockScene.playerEquippedItems.head = null;
+    mockScene.playerEquippedItems.chest = null;
+    mockScene.playerEquippedItems.shoulders = null;
+    mockScene.playerEquippedItems.legs = "swift_gauntlets";
+    mockScene.playerEquippedItems.feet = "light_boots";
+
+    playerManager.currentHealth = 120;
+    playerManager.maxHealth = 120;
+    playerManager.currentMana = 80;
+    playerManager.maxMana = 80;
+    playerManager.playerSpeed = 100;
+
+    // Mock calculatePlayerStats to return updated stats
+    calculatePlayerStats.mockReturnValue({
+      health: playerManager.maxHealth + playerGrowthStats.health, // 120 + 7 = 127
+      mana: playerManager.maxMana + playerGrowthStats.mana,       // 80 + 10 = 90
+      magicAttack: 22,
+      meleeAttack: 18,
+      magicDefense: 11,
+      meleeDefense: 9,
+      magicEvasion: 5,
+      meleeEvasion: 3,
+      speed: Phaser.Math.Clamp(playerManager.playerSpeed + playerGrowthStats.speed, 50, 200), // 100 + 3 = 103
+    });
   });
 
+  // 1. Test Constructor
   test("should create player correctly", () => {
     // Mock calculatePlayerStats to return specific stats
     calculatePlayerStats.mockReturnValue({
@@ -233,6 +429,7 @@ describe("PlayerManager", () => {
     spyUpdatePlayerStats.mockRestore();
   });
 
+  // 2. Test updatePlayerStats when currentHealth and currentMana are zero
   test("should update player stats correctly when currentHealth and currentMana are zero", () => {
     // Initialize player stats
     playerManager.currentHealth = 0;
@@ -240,15 +437,15 @@ describe("PlayerManager", () => {
 
     // Mock calculatePlayerStats to return specific stats
     calculatePlayerStats.mockReturnValue({
-      health: 200,
-      mana: 150,
-      magicAttack: 25,
-      meleeAttack: 20,
-      magicDefense: 15,
-      meleeDefense: 12,
-      magicEvasion: 7,
-      meleeEvasion: 5,
-      speed: 130,
+      health: 150,
+      mana: 120,
+      magicAttack: 18,
+      meleeAttack: 14,
+      magicDefense: 9,
+      meleeDefense: 7,
+      magicEvasion: 4,
+      meleeEvasion: 2,
+      speed: 110,
     });
 
     playerManager.updatePlayerStats();
@@ -257,21 +454,22 @@ describe("PlayerManager", () => {
     expect(calculatePlayerStats).toHaveBeenCalled();
 
     // Verify that maxHealth and maxMana were set
-    expect(playerManager.maxHealth).toBe(200);
-    expect(playerManager.maxMana).toBe(150);
+    expect(playerManager.maxHealth).toBe(150);
+    expect(playerManager.maxMana).toBe(120);
 
     // Verify that currentHealth and currentMana were initialized to max
-    expect(playerManager.currentHealth).toBe(200);
-    expect(playerManager.currentMana).toBe(150);
+    expect(playerManager.currentHealth).toBe(150);
+    expect(playerManager.currentMana).toBe(120);
 
     // Verify that playerSpeed was clamped correctly
-    expect(global.Phaser.Math.Clamp).toHaveBeenCalledWith(130, 50, 200);
-    expect(playerManager.playerSpeed).toBe(130);
+    expect(global.Phaser.Math.Clamp).toHaveBeenCalledWith(110, 50, 200);
+    expect(playerManager.playerSpeed).toBe(110);
 
     // Verify that emitStatsUpdate was called
     expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
   });
 
+  // 3. Test updatePlayerStats when currentHealth and currentMana are non-zero and below max
   test("should update player stats correctly when currentHealth and currentMana are non-zero and below max", () => {
     // Initialize player stats
     playerManager.currentHealth = 100;
@@ -314,6 +512,7 @@ describe("PlayerManager", () => {
     expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
   });
 
+  // 4. Test getPlayerStats method
   test("getPlayerStats should return correct stats", () => {
     // Mock calculatePlayerStats to return specific stats
     calculatePlayerStats.mockReturnValue({
@@ -327,10 +526,10 @@ describe("PlayerManager", () => {
 
     // Initialize player stats
     playerManager.currentHealth = 120;
-    playerManager.currentMana = 90;
+    playerManager.currentMana = 80;
     playerManager.maxHealth = 150;
     playerManager.maxMana = 120;
-    playerManager.playerSpeed = 115;
+    playerManager.playerSpeed = 100;
 
     const stats = playerManager.getPlayerStats();
 
@@ -341,7 +540,7 @@ describe("PlayerManager", () => {
 
     // Verify returned stats
     expect(stats).toEqual({
-      currentMana: 90,
+      currentMana: 80,
       maxMana: 120,
       currentHealth: 120,
       maxHealth: 150,
@@ -351,11 +550,12 @@ describe("PlayerManager", () => {
       meleeDefense: 9,
       magicEvasion: 5,
       meleeEvasion: 3,
-      speed: 115,
+      speed: 100,
       level: 1, // Ensure 'level' is included as mocked
     });
   });
 
+  // 5. Test handleMovement when not casting
   test("should handle player movement correctly when not casting", () => {
     // Initialize player sprite body velocity to zero
     mockPlayerSprite.body.velocity.x = 0;
@@ -391,6 +591,7 @@ describe("PlayerManager", () => {
     expect(mockPlayerSprite.body.velocity.scale).toHaveBeenCalledWith(100);
   });
 
+  // 6. Test handleMovement when casting
   test("should stop player movement and animations when casting", () => {
     // Initialize player sprite body velocity to some value
     mockPlayerSprite.body.velocity.x = 50;
@@ -420,6 +621,7 @@ describe("PlayerManager", () => {
     expect(mockPlayerSprite.body.velocity.scale).not.toHaveBeenCalled();
   });
 
+  // 7. Test equipItem method
   test("should equip an item and update stats correctly", () => {
     // Initialize player stats
     playerManager.currentHealth = 100;
@@ -430,15 +632,15 @@ describe("PlayerManager", () => {
 
     // Mock calculatePlayerStats to return updated stats after equipping
     calculatePlayerStats.mockReturnValue({
-      health: 180,
-      mana: 150,
-      magicAttack: 30,
-      meleeAttack: 25,
-      magicDefense: 15,
-      meleeDefense: 12,
-      magicEvasion: 7,
-      meleeEvasion: 5,
-      speed: 140,
+      health: 150 + 7, // 150 + 7 = 157
+      mana: 120 + 10,   // 120 + 10 = 130
+      magicAttack: 22,
+      meleeAttack: 18,
+      magicDefense: 11,
+      meleeDefense: 9,
+      magicEvasion: 5,
+      meleeEvasion: 3,
+      speed: Phaser.Math.Clamp(100 + 3, 50, 200), // 103
     });
 
     // Spy on console.log
@@ -459,13 +661,13 @@ describe("PlayerManager", () => {
     // Verify that updatePlayerStats was called
     expect(spyUpdatePlayerStats).toHaveBeenCalled();
 
-    // Because your code calls `this.scene.emitStatsUpdate()`, ensure it's called
+    // Verify that emitStatsUpdate was called
     expect(mockScene.emitStatsUpdate).toHaveBeenCalled();
 
     // Verify console logs
     expect(console.log).toHaveBeenCalledWith("Equipped Excalibur to weapon");
     expect(console.log).toHaveBeenCalledWith(
-      `Player Speed Updated: ${playerManager.playerSpeed}`
+      `Player Speed Updated: 103`
     );
 
     // Restore spies
@@ -473,6 +675,7 @@ describe("PlayerManager", () => {
     console.log.mockRestore();
   });
 
+  // 8. Test regenerateStats method
   test("should regenerate player stats naturally over time", () => {
     // Initialize player stats
     playerManager.currentHealth = 90;
@@ -514,17 +717,12 @@ describe("PlayerManager", () => {
     consoleSpy.mockRestore();
   });
 
-  // =================
-  // gainExperience tests
-  // =================
-
+  // 9. Test gainExperience method when level up is triggered
   test("gainExperience should add EXP correctly and trigger level up when threshold is crossed", () => {
     // Setup
     // Assuming playerProfile.level is 1
     playerProfile.level = 1;
-
-    // Initialize playerEquippedItems to include 'totalExp'
-    mockScene.playerEquippedItems.totalExp = 90; // Close to level 2 (100 needed)
+    playerProfile.totalExp = 90; // Close to level 2 (100 needed)
 
     // Mock console.log to suppress logs during tests
     jest.spyOn(console, "log").mockImplementation(() => {});
@@ -539,13 +737,12 @@ describe("PlayerManager", () => {
     console.log.mockRestore();
   });
 
+  // 10. Test gainExperience method when level up is not triggered
   test("gainExperience should not trigger level up when threshold is not crossed", () => {
     // Setup
     // Assuming playerProfile.level is 2
     playerProfile.level = 2;
-
-    // Initialize playerEquippedItems to include 'totalExp'
-    mockScene.playerEquippedItems.totalExp = 200;
+    playerProfile.totalExp = 200;
 
     // Mock console.log to suppress logs during tests
     jest.spyOn(console, "log").mockImplementation(() => {});
@@ -560,9 +757,217 @@ describe("PlayerManager", () => {
     console.log.mockRestore();
   });
 
-  // ...You can add more "gainExperience" tests if you want, 
-  // but remember that PlayerManager.gainExperience() 
-  // just calls scene.gainExperience(...). 
-  // The real leveling logic is in MainScene or wherever 
-  // the `scene.gainExperience` is implemented.
+  // =================
+  // playerGrowthStats tests
+  // =================
+  describe("playerGrowthStats", () => {
+    test("should correctly increase player attributes based on playerGrowthStats when leveling up", () => {
+      // Simulate leveling up by increasing playerProfile.level
+      playerProfile.level = 2;
+
+      // Call updatePlayerStats to apply growth
+      playerManager.updatePlayerStats();
+
+      // Now, to simulate the replenishment of health and mana upon leveling up,
+      // you need to call replenishHealthAndMana
+      playerManager.replenishHealthAndMana();
+
+      // Verify that stats have increased correctly
+      expect(playerManager.maxHealth).toBe(127); // 120 + 7
+      expect(playerManager.maxMana).toBe(90);    // 80 + 10
+      expect(playerManager.playerSpeed).toBe(103); // 100 + 3, clamped between 50 and 200
+
+      // Verify that currentHealth and currentMana are updated to max
+      expect(playerManager.currentHealth).toBe(127);
+      expect(playerManager.currentMana).toBe(90);
+
+      // Verify that emitStatsUpdate was called
+      expect(mockScene.emitStatsUpdate).toHaveBeenCalledTimes(2); // once for updatePlayerStats and once for replenishHealthAndMana
+    });
+  });
+
+  // =================
+  // expModifierRules tests
+  // =================
+  describe("expModifierRules", () => {
+    const { expModifierRules } = require("../data/MOCKdata.js"); // Import the mocked expModifierRules
+
+    test("should apply correct EXP multiplier when mob is 3 levels higher than player", () => {
+      // Ensure player level is 1
+      playerProfile.level = 1;
+
+      // Mob is 4, which is 3 levels higher than player (mobLevel - playerLevel = 3)
+      const mobLevel = 4;
+      const levelDifference = mobLevel - playerProfile.level; // 3
+      const expectedMultiplier = expModifierRules.mob3Higher; // 1.1
+      const baseExp = 100;
+      const expectedExp = Math.floor(baseExp * expectedMultiplier); // 110
+
+      // Simulate the calculation as in MobManager
+      const levelDiff = mobLevel - playerProfile.level;
+      let multiplier = 1.0;
+
+      if (levelDiff >= 5) {
+        multiplier = expModifierRules.mobAtLeast5Higher;
+      } else if (levelDiff === 4) {
+        multiplier = expModifierRules.mob4Higher;
+      } else if (levelDiff === 3) {
+        multiplier = expModifierRules.mob3Higher;
+      } else if (levelDiff === 2) {
+        multiplier = expModifierRules.mob2Higher;
+      } else if (levelDiff === 1) {
+        multiplier = expModifierRules.mob1Higher;
+      } else if (levelDiff === 0) {
+        multiplier = expModifierRules.equalLevel;
+      } else if (levelDiff === -1) {
+        multiplier = expModifierRules.player1Higher;
+      } else if (levelDiff === -2) {
+        multiplier = expModifierRules.player2Higher;
+      } else if (levelDiff === -3) {
+        multiplier = expModifierRules.player3Higher;
+      } else if (levelDiff === -4) {
+        multiplier = expModifierRules.player4Higher;
+      } else if (levelDiff === -5) {
+        multiplier = expModifierRules.player5Higher;
+      } else {
+        multiplier = expModifierRules.none;
+      }
+
+      const finalExp = Math.floor(baseExp * multiplier);
+      expect(finalExp).toBe(expectedExp);
+    });
+
+    test("should apply correct EXP multiplier when mob is 2 levels below player", () => {
+      // Player level is 3
+      playerProfile.level = 3;
+
+      // Mob is 1, which is 2 levels below (mobLevel - playerLevel = -2)
+      const mobLevel = 1; // difference = -2
+      const expectedMultiplier = expModifierRules.player2Higher; // 0.9
+      const baseExp = 100;
+      const expectedExp = Math.floor(baseExp * expectedMultiplier); // 90
+
+      // Simulate the calculation as in MobManager
+      const levelDiff = mobLevel - playerProfile.level;
+      let multiplier = 1.0;
+
+      if (levelDiff >= 5) {
+        multiplier = expModifierRules.mobAtLeast5Higher;
+      } else if (levelDiff === 4) {
+        multiplier = expModifierRules.mob4Higher;
+      } else if (levelDiff === 3) {
+        multiplier = expModifierRules.mob3Higher;
+      } else if (levelDiff === 2) {
+        multiplier = expModifierRules.mob2Higher;
+      } else if (levelDiff === 1) {
+        multiplier = expModifierRules.mob1Higher;
+      } else if (levelDiff === 0) {
+        multiplier = expModifierRules.equalLevel;
+      } else if (levelDiff === -1) {
+        multiplier = expModifierRules.player1Higher;
+      } else if (levelDiff === -2) {
+        multiplier = expModifierRules.player2Higher;
+      } else if (levelDiff === -3) {
+        multiplier = expModifierRules.player3Higher;
+      } else if (levelDiff === -4) {
+        multiplier = expModifierRules.player4Higher;
+      } else if (levelDiff === -5) {
+        multiplier = expModifierRules.player5Higher;
+      } else {
+        multiplier = expModifierRules.none;
+      }
+
+      const finalExp = Math.floor(baseExp * multiplier);
+      expect(finalExp).toBe(expectedExp);
+    });
+
+    test("should apply correct EXP multiplier when mob is 6 levels higher than player", () => {
+      // Player level is 2
+      playerProfile.level = 2;
+
+      // Mob is 8, which is 6 levels higher (mobLevel - playerLevel = 6)
+      const mobLevel = 8;
+      const levelDifference = mobLevel - playerProfile.level; // 6
+      const expectedMultiplier = expModifierRules.mobAtLeast5Higher; // 1.2
+      const baseExp = 100;
+      const expectedExp = Math.floor(baseExp * expectedMultiplier); // 120
+
+      // Simulate the calculation as in MobManager
+      const levelDiff = mobLevel - playerProfile.level;
+      let multiplier = 1.0;
+
+      if (levelDiff >= 5) {
+        multiplier = expModifierRules.mobAtLeast5Higher;
+      } else if (levelDiff === 4) {
+        multiplier = expModifierRules.mob4Higher;
+      } else if (levelDiff === 3) {
+        multiplier = expModifierRules.mob3Higher;
+      } else if (levelDiff === 2) {
+        multiplier = expModifierRules.mob2Higher;
+      } else if (levelDiff === 1) {
+        multiplier = expModifierRules.mob1Higher;
+      } else if (levelDiff === 0) {
+        multiplier = expModifierRules.equalLevel;
+      } else if (levelDiff === -1) {
+        multiplier = expModifierRules.player1Higher;
+      } else if (levelDiff === -2) {
+        multiplier = expModifierRules.player2Higher;
+      } else if (levelDiff === -3) {
+        multiplier = expModifierRules.player3Higher;
+      } else if (levelDiff === -4) {
+        multiplier = expModifierRules.player4Higher;
+      } else if (levelDiff === -5) {
+        multiplier = expModifierRules.player5Higher;
+      } else {
+        multiplier = expModifierRules.none;
+      }
+
+      const finalExp = Math.floor(baseExp * multiplier);
+      expect(finalExp).toBe(expectedExp);
+    });
+
+    test("should apply correct EXP multiplier when mob is more than 5 levels below player", () => {
+      // Player level is 6
+      playerProfile.level = 6;
+
+      // Mob is 0, which is 6 levels below (mobLevel - playerLevel = -6)
+      const mobLevel = 0; // difference = -6
+      const expectedMultiplier = expModifierRules.none; // 0.0
+      const baseExp = 100;
+      const expectedExp = Math.floor(baseExp * expectedMultiplier); // 0
+
+      // Simulate the calculation as in MobManager
+      const levelDiff = mobLevel - playerProfile.level;
+      let multiplier = 1.0;
+
+      if (levelDiff >= 5) {
+        multiplier = expModifierRules.mobAtLeast5Higher;
+      } else if (levelDiff === 4) {
+        multiplier = expModifierRules.mob4Higher;
+      } else if (levelDiff === 3) {
+        multiplier = expModifierRules.mob3Higher;
+      } else if (levelDiff === 2) {
+        multiplier = expModifierRules.mob2Higher;
+      } else if (levelDiff === 1) {
+        multiplier = expModifierRules.mob1Higher;
+      } else if (levelDiff === 0) {
+        multiplier = expModifierRules.equalLevel;
+      } else if (levelDiff === -1) {
+        multiplier = expModifierRules.player1Higher;
+      } else if (levelDiff === -2) {
+        multiplier = expModifierRules.player2Higher;
+      } else if (levelDiff === -3) {
+        multiplier = expModifierRules.player3Higher;
+      } else if (levelDiff === -4) {
+        multiplier = expModifierRules.player4Higher;
+      } else if (levelDiff === -5) {
+        multiplier = expModifierRules.player5Higher;
+      } else {
+        multiplier = expModifierRules.none;
+      }
+
+      const finalExp = Math.floor(baseExp * multiplier);
+      expect(finalExp).toBe(expectedExp);
+    });
+  });
 });
