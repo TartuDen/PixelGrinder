@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jsdom
+ */
+
 // __tests__/MobManager.test.js
 
 // 1. Mock Helper Functions at the very top before any imports
@@ -121,6 +125,7 @@ const mockScene = {
       meleeDefense: 2,
     })),
     currentHealth: 100,
+    gainExperience: jest.fn(), // <-- Added mock for gainExperience
   },
   time: {
     now: 0, // We'll manually set this during tests
@@ -341,12 +346,18 @@ describe("MobManager", () => {
     const mob = mockGroup.getChildren()[0];
     mob.customData.hp = 0;
 
+    // Define expReward for 'slime'
+    mobsData["slime"].expReward = 10; // Ensure expReward is set
+
     // Call handleMobDeath
     mobManager.handleMobDeath(mob);
 
     // The code that sets mob inactive/invisible is inside a 1000ms delayedCall
     // so we need to fast-forward time to trigger that callback
     jest.advanceTimersByTime(1000);
+
+    // Verify that gainExperience was called with expReward
+    expect(mockScene.playerManager.gainExperience).toHaveBeenCalledWith(10);
 
     expect(mob.setActive).toHaveBeenCalledWith(false);
     expect(mob.setVisible).toHaveBeenCalledWith(false);
@@ -405,5 +416,8 @@ describe("MobManager", () => {
     // Because all attacks were evaded, no damage
     expect(mockScene.playerManager.currentHealth).toBe(100);
     expect(mockScene.updateUI).not.toHaveBeenCalled();
+
+    // Restore the spy
+    MobManager.prototype.isAttackEvaded.mockRestore();
   });
 });
