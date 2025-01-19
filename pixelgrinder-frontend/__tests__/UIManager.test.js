@@ -13,6 +13,7 @@ global.Phaser = {
       this.time = {
         addEvent: jest.fn(),
         removeEvent: jest.fn(),
+        delayedCall: jest.fn(),
       };
       this.events = new Phaser.Events.EventEmitter();
     }
@@ -93,15 +94,14 @@ describe("UIManager", () => {
     // Clear the document body
     document.body.innerHTML = "";
 
-    // Create necessary DOM elements, including new EXP elements
+    // Create necessary DOM elements, excluding 'player-xp'
     document.body.innerHTML = `
       <div id="player-name"></div>
       <div id="health-fill"></div>
       <div id="mana-fill"></div>
       <div id="player-level"></div>
-      <div id="player-xp"></div>
-      <div id="exp-fill"></div> <!-- New EXP Fill Element -->
-      <div id="exp-text"></div> <!-- New EXP Text Element -->
+      <div id="exp-fill"></div> <!-- EXP Fill Element -->
+      <div id="exp-text"></div> <!-- EXP Text Element -->
       <div id="health-text"></div>
       <div id="mana-text"></div>
       <div id="stats-menu" style="display: none;">
@@ -128,7 +128,6 @@ describe("UIManager", () => {
     expect(uiManager.uiHealthFill).toBe(document.getElementById("health-fill"));
     expect(uiManager.uiManaFill).toBe(document.getElementById("mana-fill"));
     expect(uiManager.uiLevel).toBe(document.getElementById("player-level"));
-    expect(uiManager.uiXP).toBe(document.getElementById("player-xp"));
     expect(uiManager.uiExpFill).toBe(document.getElementById("exp-fill")); // Verify EXP Fill
     expect(uiManager.uiExpText).toBe(document.getElementById("exp-text")); // Verify EXP Text
     expect(uiManager.healthText).toBe(document.getElementById("health-text"));
@@ -288,7 +287,7 @@ describe("UIManager", () => {
   });
 
   // 11. Test updateUI for basic stats
-  test("updateUI should correctly update health, mana, name, level, and XP UI elements", () => {
+  test("updateUI should correctly update health, mana, name, level, and EXP bar and text elements", () => {
     const uiStats = {
       name: "Omigod",
       currentHealth: 80,
@@ -322,9 +321,28 @@ describe("UIManager", () => {
     const levelElement = document.getElementById("player-level");
     expect(levelElement.textContent).toBe("Level: 5");
 
-    // XP
-    const xpElement = document.getElementById("player-xp");
-    expect(xpElement.textContent).toBe("XP: 2000");
+    // **Remove XP element checks as 'player-xp' is no longer used**
+
+    // Verify EXP bar and EXP text
+    const expFill = document.getElementById("exp-fill");
+    const expText = document.getElementById("exp-text");
+
+    // Calculate expected EXP for level 1: level=5
+    let expForNextLevel = 100;
+    let accumulatedExp = 0;
+    let tempLevel = 1;
+
+    while (uiStats.xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
+      accumulatedExp += expForNextLevel;
+      tempLevel += 1;
+      expForNextLevel = Math.floor(expForNextLevel * 1.5);
+    }
+
+    const currentExp = uiStats.xp - accumulatedExp;
+    const expPercent = (currentExp / expForNextLevel) * 100;
+
+    expect(parseFloat(expFill.style.width)).toBeCloseTo(expPercent, 1);
+    expect(expText.textContent).toBe(`EXP: ${currentExp}/${expForNextLevel} (${expPercent.toFixed(1)}%)`);
   });
 
   // 12. Test updateUI for EXP bar and text
@@ -455,8 +473,8 @@ describe("UIManager", () => {
     uiManager.updateSkillCooldown(skill.id, 0.2); // 0.2 seconds
 
     const castingSlot = document.querySelector(`.casting-slot[data-skill-id="${skill.id}"]`);
-    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
     const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
+    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
 
     expect(cooldownOverlay.style.display).toBe("flex");
     expect(cooldownTimer.textContent).toBe("0.2");
