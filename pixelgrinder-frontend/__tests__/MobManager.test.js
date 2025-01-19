@@ -123,6 +123,8 @@ const mockScene = {
       magicEvasion: 5,
       magicDefense: 3,
       meleeDefense: 2,
+      // Optionally, include 'level' here to directly provide it
+      // level: 1,
     })),
     currentHealth: 100,
     gainExperience: jest.fn(), // <-- Added mock for gainExperience
@@ -162,6 +164,7 @@ const mockScene = {
   targetedMob: null,
   updateUI: jest.fn(), // Mock updateUI directly
   handlePlayerDeath: jest.fn(), // Mock handlePlayerDeath if called
+  playerProfile: { level: 1 }, // <-- **Added** playerProfile with 'level'
 };
 
 // 6. Initialize MobManager and set up mobs before each test
