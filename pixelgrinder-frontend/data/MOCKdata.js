@@ -12,8 +12,8 @@ const playerProfile = {
 const playerBaseStats = {
   health: 100,
   mana: 150,
-  intellect: 300, // formerly int_stat
-  strength: 0, // formerly str_stat
+  intellect: 3, // formerly int_stat
+  strength: 0,  // formerly str_stat
   dexterity: 3, // formerly dex_stat
   constitution: 4, // formerly con_stat
   speed: 50, // Added base speed (units can be pixels per second or similar)
@@ -27,7 +27,7 @@ const playerGrowthStats = {
   dexterity: 1,
   constitution: 1,
   speed: 3,
-}
+};
 
 // --- Stat Weights (How base stats affect derived stats) ---
 const statWeights = {
@@ -135,7 +135,7 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 5, // Increases player speed by 10 units
+    speed: 5, // Increases player speed
   },
   {
     name: "swift_gauntlets",
@@ -147,8 +147,8 @@ const armorItems = [
     magicDefense: 0,
     meleeDefense: 0,
     magicEvasion: 0,
-    meleeEvasion: 50,
-    speed: 5, // Increases player speed by 5 units
+    meleeEvasion: 5,
+    speed: 5, // Increases player speed
   },
   // Add more armors here...
 ];
@@ -200,53 +200,52 @@ const playerBackpack = {
 // --- Skills / Attacks ---
 const playerSkills = [
   {
-    id: 1, // Added unique ID
+    id: 1,
     name: "magic_wip",
     manaCost: 5,
     range: 150,
     magicAttack: 2,
     meleeAttack: 0,
     castingTime: 0,
-    cooldown: 2, //in seconds
+    cooldown: 2, // in seconds
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
-    skillImage:
-      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
     animationSeq: [0, 7],
   },
   {
-    id: 2, // Added unique ID
+    id: 2,
     name: "fire_ball",
     manaCost: 10,
     range: 150,
     magicAttack: 3,
     meleeAttack: 0,
     castingTime: 1,
-    cooldown: 2, //in seconds
+    cooldown: 2,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
-    skillImage:
-      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
     animationSeq: [0, 7],
   },
   {
-    id: 3, // Added unique ID
+    id: 3,
     name: "earth_root",
     manaCost: 20,
     range: 150,
     magicAttack: 5,
     meleeAttack: 0,
     castingTime: 5,
-    cooldown: 2, //in seconds
+    cooldown: 2,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
-    skillImage:
-      "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
     animationSeq: [0, 7],
   },
 ];
 
 // --- Mobs Data ---
+// Added `level` property to each mob
 const mobsData = {
   slime: {
     name: "Slime",
+    level: 2,          // <--- mob level
     attackRange: 40,
     health: 50,
     mana: 0,
@@ -254,16 +253,17 @@ const mobsData = {
     meleeAttack: 2,
     magicDefense: 2,
     meleeDefense: 30,
-    magicEvasion: 1, // maximum evasion is 100 which corresponds to 100%
+    magicEvasion: 1,
     meleeEvasion: 1,
     mobType: "friend",
     mobAgroRange: 300,
-    attackCooldown: 2000, // milliseconds between attacks
-    speed: 20, // Added speed
-    expReward: 1000,
+    attackCooldown: 2000,
+    speed: 20,
+    expReward: 10,
   },
   goblin: {
     name: "Goblin",
+    level: 5,          // <--- mob level
     attackRange: 40,
     health: 40,
     mana: 0,
@@ -276,23 +276,42 @@ const mobsData = {
     mobType: "enemy",
     mobAgroRange: 300,
     attackCooldown: 1500,
-    speed: 70, // Added speed
+    speed: 70,
     expReward: 22,
   },
   // Add more mobs here...
 };
 
-const naturalRegeneration = {
-  manaRegen: 3, // Regenerates 3 mana per regenerationTime
-  hpRegen: 4, // Regenerates 4 health per regenerationTime
-  regenerationTime: 5000, // Time in ms (5s)
+// Example approach to define how experience is modified based on level difference
+// We'll interpret "mobLevel - playerLevel = difference" and then determine a multiplier.
+const expModifierRules = {
+  // If mob is >= 5 levels above player
+  mobAtLeast5Higher: 1.2, // => 120%
+  // 4 levels higher
+  mob4Higher: 1.15,       // => 115%
+  mob3Higher: 1.1,        // => 110%
+  mob2Higher: 1.05,       // => 105%
+  mob1Higher: 1.03,       // => 103%
+  equalLevel: 1.0,        // => 100%
+  // Player is higher level:
+  player1Higher: 0.97,    // => 97%
+  player2Higher: 0.9,     // => 90%
+  player3Higher: 0.8,     // => 80%
+  player4Higher: 0.75,    // => 75%
+  player5Higher: 0.5,     // => 50%
+  // More than 5 levels higher => 0
+  none: 0.0,
 };
 
-// Define TAB targeting range (in pixels)
-const TAB_TARGET_RANGE = 400; // Adjust this value as needed
-const MOB_CHASE_SPEED_MULT = 2.0 // 10% increase of speed
-const SKILL_RANGE_EXTENDER = 1.1 // 30% increase of casting distance
+const naturalRegeneration = {
+  manaRegen: 3,
+  hpRegen: 4,
+  regenerationTime: 5000,
+};
 
+const TAB_TARGET_RANGE = 400;
+const MOB_CHASE_SPEED_MULT = 2.0;
+const SKILL_RANGE_EXTENDER = 1.1;
 
 // Export everything
 export {
@@ -309,5 +328,6 @@ export {
   naturalRegeneration,
   TAB_TARGET_RANGE,
   MOB_CHASE_SPEED_MULT,
-  SKILL_RANGE_EXTENDER
+  SKILL_RANGE_EXTENDER,
+  expModifierRules, // <- make sure to export it
 };

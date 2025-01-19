@@ -218,9 +218,6 @@ export default class UIManager {
     if (this.uiLevel) this.uiLevel.textContent = `Level: ${level}`;
     else console.warn("Player level element not found.");
 
-    if (this.uiXP) this.uiXP.textContent = `XP: ${xp}`;
-    else console.warn("Player XP element not found.");
-
     // Update EXP bar
     if (this.uiExpFill && this.uiExpText) {
       // Calculate EXP needed for next level

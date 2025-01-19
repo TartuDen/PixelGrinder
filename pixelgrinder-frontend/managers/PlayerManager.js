@@ -1,6 +1,7 @@
 // managers/PlayerManager.js
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
+import { playerProfile } from "../data/MOCKdata.js"; // Import playerProfile to access level
 
 export default class PlayerManager {
   constructor(scene) {
@@ -80,7 +81,7 @@ export default class PlayerManager {
   }
 
   /**
-   * Get current player stats, including speed.
+   * Get current player stats, including speed and level.
    */
   getPlayerStats() {
     return {
@@ -95,6 +96,7 @@ export default class PlayerManager {
       magicEvasion: calculatePlayerStats().magicEvasion,
       meleeEvasion: calculatePlayerStats().meleeEvasion,
       speed: this.playerSpeed,
+      level: playerProfile.level, // <--- Added level
       // Add other stats if necessary
     };
   }

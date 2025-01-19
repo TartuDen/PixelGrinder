@@ -5,6 +5,7 @@ import {
   MOB_CHASE_SPEED_MULT,
   SKILL_RANGE_EXTENDER,
   TAB_TARGET_RANGE,
+  expModifierRules, // <-- import the new exp rules
 } from "../data/MOCKdata.js";
 import {
   calculateMeleeDamage,
@@ -32,7 +33,9 @@ export default class MobManager {
       .objects.filter((obj) => obj.name.startsWith("MobSpawnZone"));
 
     mobSpawns.forEach((spawnZone) => {
-      const mobTypeID = "slime"; // You might want to vary this based on spawnZone properties
+      // For demonstration, let's just spawn "slime" at each spawn zone.
+      // In your actual game, you might parse spawnZone properties to decide mob type.
+      const mobTypeID = "slime";
       const mobInfo = mobsData[mobTypeID];
       const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
 
@@ -47,7 +50,7 @@ export default class MobManager {
         spawnY: spawnZone.y,
         isDead: false,
         currentType: mobInfo.mobType, // 'friend' or 'enemy'
-        state: "idle", // 'idle', 'chasing', 'attacking'
+        state: "idle",
         lastAttackTime: 0,
         hpText: null,
       };
@@ -209,10 +212,7 @@ export default class MobManager {
    * Make the mob chase the player
    */
   chasePlayer(mob, player, mobInfo) {
-    const direction = new Phaser.Math.Vector2(
-      player.x - mob.x,
-      player.y - mob.y
-    );
+    const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y);
     direction.normalize();
 
     const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
@@ -315,12 +315,31 @@ export default class MobManager {
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-dead", true);
 
-    // Grant EXP to the player upon mob death
-    const expReward = mobsData[mob.customData.id].expReward || 0; // Default EXP
-    this.scene.playerManager.gainExperience(expReward);
-    console.log(
-      `Player gained ${expReward} EXP from defeating ${mob.customData.id}.`
-    );
+    // Determine the final experience reward with level-based multipliers
+    const mobInfo = mobsData[mob.customData.id];
+    const baseExp = mobInfo.expReward || 0;
+
+    // Grab levels
+    const mobLevel = mobInfo.level || 1;
+    const playerLevel = this.scene.playerManager.getPlayerStats().level
+      ? this.scene.playerManager.getPlayerStats().level
+      : this.scene.playerProfile.level;
+
+    // Calculate difference: mobLevel - playerLevel
+    const difference = mobLevel - playerLevel;
+    const finalExp = this.calculateModifiedExp(baseExp, difference);
+
+    // Grant final EXP
+    if (finalExp > 0) {
+      this.scene.playerManager.gainExperience(finalExp);
+      console.log(
+        `Player gained ${finalExp} (modified) EXP from defeating ${mob.customData.id}.`
+      );
+    } else {
+      console.log(
+        `Player is too high level or difference is too large (difference=${difference}). No EXP awarded.`
+      );
+    }
 
     // Hide after a short delay
     this.scene.time.delayedCall(1000, () => {
@@ -336,6 +355,60 @@ export default class MobManager {
         },
       });
     });
+  }
+
+  /**
+   * Returns the final EXP after applying the level difference rules.
+   * @param {number} baseExp - The mob's base EXP reward
+   * @param {number} difference - (mobLevel - playerLevel)
+   * @returns {number} finalExp
+   */
+  calculateModifiedExp(baseExp, difference) {
+    // difference = mobLevel - playerLevel
+    // For example rules:
+    //   >= +5 => 120%
+    //   +4 => 115%
+    //   +3 => 110%
+    //   +2 => 105%
+    //   +1 => 103%
+    //   0 => 100%
+    //   -1 => 97%
+    //   -2 => 90%
+    //   -3 => 80%
+    //   -4 => 75%
+    //   -5 => 50%
+    //   below -5 => 0
+
+    let multiplier = 1.0; // default
+
+    if (difference >= 5) {
+      multiplier = expModifierRules.mobAtLeast5Higher; // 1.2 => 120%
+    } else if (difference === 4) {
+      multiplier = expModifierRules.mob4Higher; // 1.15
+    } else if (difference === 3) {
+      multiplier = expModifierRules.mob3Higher; // 1.1
+    } else if (difference === 2) {
+      multiplier = expModifierRules.mob2Higher; // 1.05
+    } else if (difference === 1) {
+      multiplier = expModifierRules.mob1Higher; // 1.03
+    } else if (difference === 0) {
+      multiplier = expModifierRules.equalLevel; // 1.0
+    } else if (difference === -1) {
+      multiplier = expModifierRules.player1Higher; // 0.97
+    } else if (difference === -2) {
+      multiplier = expModifierRules.player2Higher; // 0.9
+    } else if (difference === -3) {
+      multiplier = expModifierRules.player3Higher; // 0.8
+    } else if (difference === -4) {
+      multiplier = expModifierRules.player4Higher; // 0.75
+    } else if (difference === -5) {
+      multiplier = expModifierRules.player5Higher; // 0.5
+    } else if (difference < -5) {
+      multiplier = expModifierRules.none; // 0 => no exp
+    }
+
+    const finalExp = Math.floor(baseExp * multiplier);
+    return finalExp;
   }
 
   /**
@@ -365,7 +438,7 @@ export default class MobManager {
     mob.clearTint();
 
     console.log(
-      `Respawning mob "${mob.customData.id}" at (${mob.x},${mob.y}).`
+      `Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}).`
     );
     this.assignRandomIdleMovement(mob);
   }
@@ -405,17 +478,13 @@ export default class MobManager {
     return {
       magicDefense: mob.customData.magicDefense,
       meleeDefense: mob.customData.meleeDefense,
-      magicEvasion: mob.customData.magicEvasion, // Include magicEvasion
-      meleeEvasion: mob.customData.meleeEvasion, // Include meleeEvasion
-      // Add other stats if necessary
+      magicEvasion: mob.customData.magicEvasion,
+      meleeEvasion: mob.customData.meleeEvasion,
     };
   }
 
   /**
    * Cycle through available targets within range.
-   * @param {Phaser.GameObjects.Sprite} player - The player sprite.
-   * @param {number} range - The targeting range.
-   * @param {Function} callback - Callback to execute after cycling target.
    */
   cycleTarget(player, range, callback) {
     const mobsInRange = this.mobs.getChildren().filter((mob) => {
@@ -469,35 +538,24 @@ export default class MobManager {
     }
   }
 
-  /**
-   * Highlight the targeted mob.
-   * @param {Phaser.GameObjects.Sprite} mob - The mob to highlight.
-   */
   highlightMob(mob) {
     // Clear previous tints
     this.mobs.getChildren().forEach((m) => m.clearTint());
 
     // Apply a tint to the targeted mob
-    mob.setTint(0xff0000); // Red tint for highlighting
+    mob.setTint(0xff0000);
   }
 
-  /**
-   * Handle mob click event.
-   * @param {Phaser.GameObjects.Sprite} mob - The clicked mob.
-   */
   onMobClicked(mob) {
     if (!mob.active) return;
 
     // Clear previous tints
     this.mobs.getChildren().forEach((m) => m.clearTint());
 
-    // Highlight the clicked mob
     mob.setTint(0xff0000);
-
-    // Set as targeted mob
     this.scene.targetedMob = mob;
 
-    // Find the index of the clicked mob within mobsInRange
+    // Re-compute the sorted list
     const player = this.scene.playerManager.player;
     const mobsInRange = this.mobs.getChildren().filter((mob) => {
       if (mob.customData.isDead) return false;
@@ -510,7 +568,6 @@ export default class MobManager {
       return distance <= TAB_TARGET_RANGE;
     });
 
-    // Sort mobs by distance
     mobsInRange.sort((a, b) => {
       const distanceA = Phaser.Math.Distance.Between(
         player.x,
@@ -527,7 +584,7 @@ export default class MobManager {
       return distanceA - distanceB;
     });
 
-    // Update currentTargetIndex based on clicked mob's position in the sorted list
+    // Update currentTargetIndex based on clicked mob
     this.scene.currentTargetIndex = mobsInRange.indexOf(mob);
 
     console.log(`Mob clicked: ${mob.customData.id} at (${mob.x}, ${mob.y})`);
