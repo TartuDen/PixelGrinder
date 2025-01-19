@@ -12,7 +12,7 @@ const playerProfile = {
 const playerBaseStats = {
   health: 100,
   mana: 150,
-  intellect: 3, // formerly int_stat
+  intellect: 300, // formerly int_stat
   strength: 0, // formerly str_stat
   dexterity: 3, // formerly dex_stat
   constitution: 4, // formerly con_stat
@@ -260,7 +260,7 @@ const mobsData = {
     mobAgroRange: 300,
     attackCooldown: 2000, // milliseconds between attacks
     speed: 20, // Added speed
-    expReward: 10,
+    expReward: 1000,
   },
   goblin: {
     name: "Goblin",

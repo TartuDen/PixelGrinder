@@ -14,6 +14,7 @@ import {
   playerSkills,
   TAB_TARGET_RANGE,
   playerBaseStats,
+  playerGrowthStats, // [ADDED] Make sure we import playerGrowthStats
   playerEquippedItems,
   weaponItems,
   armorItems,
@@ -123,6 +124,7 @@ export default class MainScene extends Phaser.Scene {
    * @returns {Object} An object containing the current level, current EXP towards next level, and EXP required for next level.
    */
   calculatePlayerLevel(totalExp) {
+    let oldLevel = playerProfile.level; // [ADDED FOR MULTI-LEVEL DETECTION]
     let level = 1;
     let expForNextLevel = 100; // EXP required to reach level 2
     let accumulatedExp = 0;
@@ -137,14 +139,25 @@ export default class MainScene extends Phaser.Scene {
     const nextLevelExp = expForNextLevel;
 
     // Check if level has changed
-    if (playerProfile.level !== level) {
+    if (level > oldLevel) {
+      // [ADDED FOR LEVEL-UP STAT INCREMENT]
+      // For each level gained (in case you jump multiple levels in one big EXP gain):
+      for (let lvl = oldLevel; lvl < level; lvl++) {
+        // Increase base stats by growth stats
+        for (const statKey in playerGrowthStats) {
+          // Example: playerBaseStats.health += playerGrowthStats.health
+          playerBaseStats[statKey] += playerGrowthStats[statKey];
+        }
+      }
+
       playerProfile.level = level;
       console.log(`Congratulations! You've reached Level ${level}!`);
 
-      // **Trigger Replenishment**
-      this.playerManager.replenishHealthAndMana();
+      // Update the player's stats so new max HP/MP are calculated
+      this.playerManager.updatePlayerStats();
 
-      // Optionally, trigger other events like stat increases here
+      // Replenish (fill up) to new max HP/MP
+      this.playerManager.replenishHealthAndMana();
     }
 
     // Emit event with updated stats
