@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "easystarjs": "^0.4.4",
     "express": "^4.21.2",
     "sqlite3": "^5.1.7"
   },
