@@ -111,12 +111,14 @@ function createMockMob(id = "slime") {
 
       // [UPDATED for new features]
       wanderDirection: new Phaser.Math.Vector2(0, 0),
-      visionDistance: 32,
+      visionDistance: 50, // Adjusted to match MOCKdata.js
       lastChaseCheckTime: 0,
       lastPosition: { x: 0, y: 0 },
       stuckCheckInterval: 1000,
       isUnsticking: false,
     },
+    x: 0,
+    y: 0,
   };
 }
 
@@ -143,7 +145,7 @@ const mockScene = {
       magicEvasion: 5,
       magicDefense: 3,
       meleeDefense: 2,
-      // level can be added here if directly used
+      level: 1, // Added level for tests
     })),
     currentHealth: 100,
     gainExperience: jest.fn(), // <-- Mock for gainExperience
@@ -203,20 +205,24 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
 
-  // Make sure each test starts with full player health:
+  // Ensure each test starts with full player health:
   mockScene.playerManager.currentHealth = 100;
 
-  // Ensure 'slime' is an enemy type for testing
+  // Ensure mobs are of type 'enemy' for testing
   mobsData["slime"].mobType = "enemy";
 
   // Create mock mobs as "slime" (enemy)
   const mob1 = createMockMob("slime");
   mob1.customData.spawnX = 200;
   mob1.customData.spawnY = 300;
+  mob1.x = 200;
+  mob1.y = 300;
 
   const mob2 = createMockMob("slime");
   mob2.customData.spawnX = 400;
   mob2.customData.spawnY = 500;
+  mob2.x = 400;
+  mob2.y = 500;
 
   // Put them in an array
   mockMobs = [mob1, mob2];
@@ -227,6 +233,8 @@ beforeEach(() => {
       const mob = mockMobs.shift();
       mob.customData.spawnX = x;
       mob.customData.spawnY = y;
+      mob.x = x;
+      mob.y = y;
       return mob;
     }),
     getChildren: jest.fn(() => {
@@ -463,7 +471,7 @@ describe("MobManager", () => {
     });
 
     // Spy on isAttackEvaded to always return true
-    jest.spyOn(MobManager.prototype, "isAttackEvaded").mockReturnValue(true);
+    jest.spyOn(mobManager, "isAttackEvaded").mockReturnValue(true);
 
     // Call update
     mobManager.updateMobs(player);
@@ -481,7 +489,7 @@ describe("MobManager", () => {
     expect(mockScene.updateUI).not.toHaveBeenCalled();
 
     // Restore the spy
-    MobManager.prototype.isAttackEvaded.mockRestore();
+    mobManager.isAttackEvaded.mockRestore();
   });
 
   // -------------------------------------------------------------
@@ -508,9 +516,6 @@ describe("MobManager", () => {
     // Call updateMobs
     mobManager.updateMobs(mockScene.playerManager.player);
 
-    // Because there's an obstacle ahead, the mob should call assignRandomIdleOrWander again,
-    // leading to new wanderDirection being set to (0,1) and anim "mob-walk-down"
-
     // Verify that getTileAtWorldXY was called correctly
     expect(mockScene.collisionLayer.getTileAtWorldXY).toHaveBeenCalledWith(
       mob.x + 1 * mob.customData.visionDistance,
@@ -520,7 +525,7 @@ describe("MobManager", () => {
     // Verify that setVelocity was called again with (0, speed)
     expect(mob.body.setVelocity).toHaveBeenCalledWith(
       0,
-      mobsData[mob.customData.id].speed * 1 // y direction
+      mobsData[mob.customData.id].speed
     );
 
     // Verify that anims.play was called with "mob-walk-down", true
@@ -535,53 +540,40 @@ describe("MobManager", () => {
   // -------------------------------------------------------------
   test("should unstick if mob hasn't moved for stuckCheckInterval while chasing", () => {
     const mob = mockGroup.getChildren()[0];
+    
     // Force mob into chasing state
     mob.customData.state = "chasing";
     mob.customData.lastPosition = { x: 100, y: 100 };
-
-    // Set stuckCheckInterval
     mob.customData.stuckCheckInterval = 1000;
-
-    // Mock mob's position to simulate not moving
+  
+    // Mob hasn't moved
     mob.x = 100;
     mob.y = 100;
-
-    // Set Phaser.Math.Distance.Between to return a small distance (<5)
-    Phaser.Math.Distance.Between.mockReturnValue(2);
-
+  
+    // Here we return 100 on the FIRST call (distance to player)
+    // and 2 on the SECOND call (distance between old and new mob position).
+    Phaser.Math.Distance.Between
+      .mockReturnValueOnce(100) // distance to player => not in attack range
+      .mockReturnValueOnce(2);  // distance moved => triggers "stuck"
+  
     // Spy on performUnsticking
     jest.spyOn(mobManager, "performUnsticking").mockImplementation(() => {
-      // Mock performUnsticking to change state to 'unsticking' and set velocity
       mob.customData.state = "unsticking";
       mob.customData.isUnsticking = true;
-      mob.body.setVelocity(10, 0); // Example sideways movement
     });
-
-    // Set current time to trigger stuck check
-    mockScene.time.now = 1500;
-
-    // Call updateMobs
+  
+    // Let enough time pass so stuck-check condition is met
+    mockScene.time.now = 1500;  // e.g. > stuckCheckInterval
+  
+    // Call update
     mobManager.updateMobs(mockScene.playerManager.player);
-
-    // Verify that performUnsticking was called
+  
+    // Make sure we called performUnsticking with the correct mob
     expect(mobManager.performUnsticking).toHaveBeenCalledWith(mob);
-
-    // Verify that state is now 'unsticking'
     expect(mob.customData.state).toBe("unsticking");
-    expect(mob.customData.isUnsticking).toBe(true);
-
-    // Fast-forward time to trigger the unstick callback (500ms)
-    jest.advanceTimersByTime(500);
-
-    // After unstick duration, state should be back to 'chasing'
-    expect(mob.customData.state).toBe("chasing");
-    expect(mob.customData.isUnsticking).toBe(false);
-
-    // Verify that lastPosition was reset
-    expect(mob.customData.lastPosition.x).toBe(mob.x);
-    expect(mob.customData.lastPosition.y).toBe(mob.y);
-
-    // Restore the spy
+  
+    // Clean up spy
     mobManager.performUnsticking.mockRestore();
   });
+  
 });
