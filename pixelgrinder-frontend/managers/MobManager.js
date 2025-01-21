@@ -1,5 +1,4 @@
 // managers/MobManager.js
-
 import {
   mobsData,
   MOB_CHASE_SPEED_MULT,
@@ -33,8 +32,7 @@ export default class MobManager {
       .objects.filter((obj) => obj.name.startsWith("MobSpawnZone"));
 
     mobSpawns.forEach((spawnZone) => {
-      // For demonstration, let's just spawn "slime" at each spawn zone.
-      // In your actual game, you might parse spawnZone properties to decide mob type.
+      // Example: always spawn "slime"
       const mobTypeID = "slime";
       const mobInfo = mobsData[mobTypeID];
       const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
@@ -53,9 +51,21 @@ export default class MobManager {
         state: "idle",
         lastAttackTime: 0,
         hpText: null,
+
+        // For idle/wandering logic
+        idleTimer: null,
+        wanderTimer: null,
+        wanderDirection: new Phaser.Math.Vector2(0, 0),
+        visionDistance: 50, // how far ahead to check for obstacles
+
+        // For chasing/stuck logic
+        lastChaseCheckTime: 0,
+        lastPosition: { x: spawnZone.x, y: spawnZone.y },
+        stuckCheckInterval: 1000, // check every 1 second
+        isUnsticking: false,
       };
 
-      // HP text above mob
+      // HP text above the mob
       mob.customData.hpText = this.scene.add
         .text(spawnZone.x, spawnZone.y - 20, `HP: ${mob.customData.hp}`, {
           font: "14px Arial",
@@ -79,7 +89,9 @@ export default class MobManager {
 
       mob.setScale(1);
       mob.anims.play("mob-walk-down");
-      this.assignRandomIdleMovement(mob);
+
+      // Begin idle/wander cycle
+      this.assignRandomIdleOrWander(mob);
     });
   }
 
@@ -96,13 +108,13 @@ export default class MobManager {
   }
 
   /**
-   * Update AI for each mob
+   * Update loop for all mobs. Called from scene's update().
    */
   updateMobs(player) {
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active || mob.customData.isDead) return;
 
-      // Keep HP text above the mob
+      // Update HP text position
       if (mob.customData.hpText) {
         mob.customData.hpText.setPosition(mob.x, mob.y - 20);
       }
@@ -111,6 +123,15 @@ export default class MobManager {
       const mobInfo = mobsData[mobKey];
       if (!mobInfo) return;
 
+      // Non-enemy mobs only idle/wander, skip chase/attack
+      if (mob.customData.currentType !== "enemy") {
+        if (mob.customData.state === "wandering") {
+          this.updateWandering(mob);
+        }
+        return;
+      }
+
+      // Enemy mobs: check distance to player
       const distanceToPlayer = Phaser.Math.Distance.Between(
         mob.x,
         mob.y,
@@ -118,106 +139,204 @@ export default class MobManager {
         player.y
       );
 
-      if (mob.customData.currentType !== "enemy") {
-        // If it's not an enemy, maybe it just does random movement
-        return;
-      }
-
       switch (mob.customData.state) {
         case "idle":
+          // If player is within agro range, start chasing
           if (distanceToPlayer <= mobInfo.mobAgroRange) {
             mob.customData.state = "chasing";
-            console.log(`Mob "${mobKey}" starts chasing player.`);
-            this.chasePlayer(mob, player, mobInfo);
-          }
-          break;
-        case "chasing":
-          if (distanceToPlayer > mobInfo.mobAgroRange) {
-            // Lost player
-            this.stopChasing(mob);
-            console.log(`Mob "${mobKey}" stops chasing (out of range).`);
-          } else if (distanceToPlayer > mobInfo.attackRange) {
-            // Keep chasing
-            this.chasePlayer(mob, player, mobInfo);
-          } else {
-            // Switch to attacking
             mob.body.setVelocity(0, 0);
-            mob.anims.stop();
-            mob.customData.state = "attacking";
-            console.log(`Mob "${mobKey}" is attacking player.`);
+            console.log(`Mob "${mobKey}" starts chasing player.`);
+          }
+          // If wandering, do obstacle checks
+          break;
+
+        case "wandering":
+          // Still do idle/wandering logic
+          this.updateWandering(mob);
+          // If player is within agro range
+          if (distanceToPlayer <= mobInfo.mobAgroRange) {
+            mob.customData.state = "chasing";
+            mob.body.setVelocity(0, 0);
+            console.log(`Mob "${mobKey}" starts chasing player.`);
           }
           break;
+
+        case "chasing":
+          this.updateChasing(mob, player, mobInfo, distanceToPlayer);
+          break;
+
         case "attacking":
-          if (distanceToPlayer > mobInfo.attackRange) {
-            mob.customData.state = "chasing";
-            console.log(`Mob "${mobKey}" resumes chasing player.`);
-          } else {
-            // Attack logic
-            this.mobAttackPlayer(mob, mobInfo);
-          }
+          this.updateAttacking(mob, player, mobInfo, distanceToPlayer);
+          break;
+
+        case "unsticking":
+          // Do nothing special here, the unstick logic runs via a timer
+          // that eventually returns mob to 'chasing' state
           break;
       }
     });
   }
 
+  // --------------------------------------------------------
+  // IDLE / WANDERING LOGIC
+  // --------------------------------------------------------
+
   /**
-   * Simple random movement for idle mobs
+   * Decide whether the mob is going to idle or wander next.
+   * Use random durations and a 50/50 chance to pick one or the other.
    */
-  assignRandomIdleMovement(mob) {
-    const changeDirection = () => {
-      if (
-        !mob.active ||
-        mob.customData.isDead ||
-        mob.customData.state !== "idle"
-      ) {
-        return;
-      }
-      const mobInfo = mobsData[mob.customData.id];
-      if (!mobInfo) return;
+  assignRandomIdleOrWander(mob) {
+    if (!mob.active || mob.customData.isDead) return;
 
-      const speed = mobInfo.speed; // Use speed from mobsData
+    // Clear any old timers
+    if (mob.customData.idleTimer) {
+      mob.customData.idleTimer.remove();
+      mob.customData.idleTimer = null;
+    }
+    if (mob.customData.wanderTimer) {
+      mob.customData.wanderTimer.remove();
+      mob.customData.wanderTimer = null;
+    }
 
-      const randomDirection = Phaser.Math.Between(0, 3);
+    const doIdle = Phaser.Math.Between(0, 1) === 0; // 50% chance
 
-      switch (randomDirection) {
-        case 0: // Right
-          mob.body.setVelocity(speed, 0);
-          mob.anims.play("mob-walk-right", true);
-          break;
-        case 1: // Left
-          mob.body.setVelocity(-speed, 0);
-          mob.anims.play("mob-walk-left", true);
-          break;
-        case 2: // Down
-          mob.body.setVelocity(0, speed);
-          mob.anims.play("mob-walk-down", true);
-          break;
-        case 3: // Up
-          mob.body.setVelocity(0, -speed);
-          mob.anims.play("mob-walk-up", true);
-          break;
-      }
+    if (doIdle) {
+      // IDLE
+      mob.customData.state = "idle";
+      mob.body.setVelocity(0, 0);
+      mob.anims.stop();
 
-      this.scene.time.addEvent({
-        delay: Phaser.Math.Between(3000, 7000),
-        callback: changeDirection,
-        callbackScope: this,
+      const idleDuration = Phaser.Math.Between(2000, 5000);
+      mob.customData.idleTimer = this.scene.time.addEvent({
+        delay: idleDuration,
+        callback: () => {
+          this.startWandering(mob);
+        },
       });
-    };
-
-    changeDirection();
+    } else {
+      // WANDER
+      this.startWandering(mob);
+    }
   }
 
   /**
-   * Make the mob chase the player
+   * Put the mob into a wandering state in a random direction
+   * for a random duration.
+   */
+  startWandering(mob) {
+    if (!mob.active || mob.customData.isDead) return;
+
+    mob.customData.state = "wandering";
+
+    const mobInfo = mobsData[mob.customData.id];
+    const speed = mobInfo.speed;
+
+    // Possible directions
+    const directions = [
+      { x: 1, y: 0, anim: "mob-walk-right" },
+      { x: -1, y: 0, anim: "mob-walk-left" },
+      { x: 0, y: 1, anim: "mob-walk-down" },
+      { x: 0, y: -1, anim: "mob-walk-up" },
+    ];
+    const chosen = Phaser.Utils.Array.GetRandom(directions);
+
+    mob.customData.wanderDirection.set(chosen.x, chosen.y);
+
+    // Set velocity and anim
+    mob.body.setVelocity(chosen.x * speed, chosen.y * speed);
+    mob.anims.play(chosen.anim, true);
+
+    const wanderDuration = Phaser.Math.Between(3000, 7000);
+    mob.customData.wanderTimer = this.scene.time.addEvent({
+      delay: wanderDuration,
+      callback: () => {
+        this.assignRandomIdleOrWander(mob);
+      },
+      loop: false,
+    });
+  }
+
+  /**
+   * While wandering, periodically check if there's an obstacle
+   * ahead. If so, pick a new idle/wander state.
+   */
+  updateWandering(mob) {
+    const dir = mob.customData.wanderDirection;
+    if (dir.lengthSq() === 0) return; // not moving, no check
+
+    // Look ahead
+    const nextX = mob.x + dir.x * mob.customData.visionDistance;
+    const nextY = mob.y + dir.y * mob.customData.visionDistance;
+
+    const tile = this.scene.collisionLayer.getTileAtWorldXY(nextX, nextY);
+    if (tile && tile.collides) {
+      // Obstacle ahead, choose new state
+      this.assignRandomIdleOrWander(mob);
+    }
+  }
+
+  // --------------------------------------------------------
+  // CHASING LOGIC
+  // --------------------------------------------------------
+
+  /**
+   * Called each frame while mob is in "chasing" state.
+   */
+  updateChasing(mob, player, mobInfo, distanceToPlayer) {
+    // If player too far, stop chasing
+    if (distanceToPlayer > mobInfo.mobAgroRange) {
+      console.log(`Mob "${mob.customData.id}" stops chasing (out of range).`);
+      this.stopChasing(mob);
+      return;
+    }
+
+    // If in attack range, switch to attacking
+    if (distanceToPlayer <= mobInfo.attackRange) {
+      mob.customData.state = "attacking";
+      mob.body.setVelocity(0, 0);
+      mob.anims.stop();
+      console.log(`Mob "${mob.customData.id}" is attacking player.`);
+      return;
+    }
+
+    // Otherwise keep chasing
+    this.chasePlayer(mob, player, mobInfo);
+
+    // Check if stuck
+    const now = this.scene.time.now;
+    if (now - mob.customData.lastChaseCheckTime >= mob.customData.stuckCheckInterval) {
+      mob.customData.lastChaseCheckTime = now;
+      const distMoved = Phaser.Math.Distance.Between(
+        mob.x,
+        mob.y,
+        mob.customData.lastPosition.x,
+        mob.customData.lastPosition.y
+      );
+
+      if (distMoved < 5) {
+        // Stuck
+        console.log(`Mob "${mob.customData.id}" is stuck. Attempting to unstick...`);
+        mob.customData.state = "unsticking";
+        mob.customData.isUnsticking = true;
+        this.performUnsticking(mob);
+      } else {
+        // Update lastPosition
+        mob.customData.lastPosition.x = mob.x;
+        mob.customData.lastPosition.y = mob.y;
+      }
+    }
+  }
+
+  /**
+   * Actually set velocity and animation to chase the player.
    */
   chasePlayer(mob, player, mobInfo) {
-    const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y);
-    direction.normalize();
-
+    const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y).normalize();
     const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
+
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
 
+    // Choose animation
     if (Math.abs(direction.x) > Math.abs(direction.y)) {
       if (direction.x > 0) {
         mob.anims.play("mob-walk-right", true);
@@ -234,12 +353,82 @@ export default class MobManager {
   }
 
   /**
-   * Stop chasing and return to idle
+   * Stop chasing and return to idle/wander.
    */
   stopChasing(mob) {
-    mob.customData.state = "idle";
     mob.body.setVelocity(0, 0);
-    this.assignRandomIdleMovement(mob);
+    mob.customData.state = "idle";
+    this.assignRandomIdleOrWander(mob);
+  }
+
+  // --------------------------------------------------------
+  // UNSTICKING LOGIC
+  // --------------------------------------------------------
+
+  /**
+   * Called when mob is stuck in chasing state. Turn left or right for a moment,
+   * then go back to chasing.
+   */
+  performUnsticking(mob) {
+    if (!mob.active || mob.customData.isDead) return;
+
+    // Randomly pick left or right turn
+    const pickLeft = Phaser.Math.Between(0, 1) === 0;
+    // Current chase direction from velocity
+    const vx = mob.body.velocity.x;
+    const vy = mob.body.velocity.y;
+    const currentDir = new Phaser.Math.Vector2(vx, vy).normalize();
+
+    // Turn left: (dx, dy) -> (dy, -dx)
+    // Turn right: (dx, dy) -> (-dy, dx)
+    let turnDir;
+    if (pickLeft) {
+      turnDir = new Phaser.Math.Vector2(currentDir.y, -currentDir.x);
+    } else {
+      turnDir = new Phaser.Math.Vector2(-currentDir.y, currentDir.x);
+    }
+
+    const mobInfo = mobsData[mob.customData.id];
+    const sideSpeed = mobInfo.speed;
+
+    // Move sideways briefly
+    mob.body.setVelocity(turnDir.x * sideSpeed, turnDir.y * sideSpeed);
+
+    // Set animation for the turn
+    if (Math.abs(turnDir.x) > Math.abs(turnDir.y)) {
+      if (turnDir.x > 0) mob.anims.play("mob-walk-right", true);
+      else mob.anims.play("mob-walk-left", true);
+    } else {
+      if (turnDir.y > 0) mob.anims.play("mob-walk-down", true);
+      else mob.anims.play("mob-walk-up", true);
+    }
+
+    // After half a second, return to chasing
+    this.scene.time.addEvent({
+      delay: 500, // Duration of sideways movement in milliseconds
+      callback: () => {
+        mob.customData.state = "chasing";
+        mob.customData.isUnsticking = false;
+
+        // Reset position tracking
+        mob.customData.lastPosition.x = mob.x;
+        mob.customData.lastPosition.y = mob.y;
+      },
+    });
+  }
+
+  // --------------------------------------------------------
+  // ATTACKING LOGIC
+  // --------------------------------------------------------
+
+  updateAttacking(mob, player, mobInfo, distanceToPlayer) {
+    if (distanceToPlayer > mobInfo.attackRange) {
+      mob.customData.state = "chasing";
+      console.log(`Mob "${mob.customData.id}" resumes chasing player.`);
+      return;
+    }
+    // Otherwise, continue attacking
+    this.mobAttackPlayer(mob, mobInfo);
   }
 
   /**
@@ -267,35 +456,27 @@ export default class MobManager {
       const evaded = this.isAttackEvaded(meleeEvasion);
 
       if (evaded) {
-        console.log(
-          `Player evaded melee attack from Mob "${mob.customData.id}".`
-        );
-        return; // Prevent further execution
+        console.log(`Player evaded melee attack from Mob "${mob.customData.id}".`);
+        return;
       }
 
       damage = calculateMeleeDamage(mobStats, playerStats);
-      console.log(
-        `Mob "${mob.customData.id}" attacks player for ${damage} melee damage.`
-      );
+      console.log(`Mob "${mob.customData.id}" attacks player for ${damage} melee damage.`);
     } else {
       // Magic
       const magicEvasion = playerStats.magicEvasion || 0;
       const evaded = this.isAttackEvaded(magicEvasion);
 
       if (evaded) {
-        console.log(
-          `Player evaded magic attack from Mob "${mob.customData.id}".`
-        );
-        return; // Prevent further execution
+        console.log(`Player evaded magic attack from Mob "${mob.customData.id}".`);
+        return;
       }
 
       damage = calculateMagicDamage(mobStats, playerStats);
-      console.log(
-        `Mob "${mob.customData.id}" casts magic on player for ${damage} magic damage.`
-      );
+      console.log(`Mob "${mob.customData.id}" casts magic on player for ${damage} magic damage.`);
     }
 
-    // Apply damage only if not evaded
+    // Apply damage
     this.scene.playerManager.currentHealth = Math.max(
       0,
       this.scene.playerManager.currentHealth - damage
@@ -306,6 +487,10 @@ export default class MobManager {
       this.scene.handlePlayerDeath();
     }
   }
+
+  // --------------------------------------------------------
+  // DEATH / RESPAWN / DAMAGE
+  // --------------------------------------------------------
 
   /**
    * Called when a mob's HP reaches 0
@@ -337,7 +522,7 @@ export default class MobManager {
       );
     } else {
       console.log(
-        `Player is too high level or difference is too large (difference=${difference}). No EXP awarded.`
+        `Player is too high level or difference too large (difference=${difference}). No EXP awarded.`
       );
     }
 
@@ -358,57 +543,36 @@ export default class MobManager {
   }
 
   /**
-   * Returns the final EXP after applying the level difference rules.
-   * @param {number} baseExp - The mob's base EXP reward
-   * @param {number} difference - (mobLevel - playerLevel)
-   * @returns {number} finalExp
+   * Returns the final EXP after applying level difference rules.
    */
   calculateModifiedExp(baseExp, difference) {
-    // difference = mobLevel - playerLevel
-    // For example rules:
-    //   >= +5 => 120%
-    //   +4 => 115%
-    //   +3 => 110%
-    //   +2 => 105%
-    //   +1 => 103%
-    //   0 => 100%
-    //   -1 => 97%
-    //   -2 => 90%
-    //   -3 => 80%
-    //   -4 => 75%
-    //   -5 => 50%
-    //   below -5 => 0
-
-    let multiplier = 1.0; // default
-
+    let multiplier = 1.0;
     if (difference >= 5) {
-      multiplier = expModifierRules.mobAtLeast5Higher; // 1.2 => 120%
+      multiplier = expModifierRules.mobAtLeast5Higher; // e.g. 1.2
     } else if (difference === 4) {
-      multiplier = expModifierRules.mob4Higher; // 1.15
+      multiplier = expModifierRules.mob4Higher; // e.g. 1.15
     } else if (difference === 3) {
-      multiplier = expModifierRules.mob3Higher; // 1.1
+      multiplier = expModifierRules.mob3Higher; // e.g. 1.1
     } else if (difference === 2) {
-      multiplier = expModifierRules.mob2Higher; // 1.05
+      multiplier = expModifierRules.mob2Higher; // e.g. 1.05
     } else if (difference === 1) {
-      multiplier = expModifierRules.mob1Higher; // 1.03
+      multiplier = expModifierRules.mob1Higher; // e.g. 1.03
     } else if (difference === 0) {
-      multiplier = expModifierRules.equalLevel; // 1.0
+      multiplier = expModifierRules.equalLevel; // e.g. 1.0
     } else if (difference === -1) {
-      multiplier = expModifierRules.player1Higher; // 0.97
+      multiplier = expModifierRules.player1Higher; // e.g. 0.97
     } else if (difference === -2) {
-      multiplier = expModifierRules.player2Higher; // 0.9
+      multiplier = expModifierRules.player2Higher; // e.g. 0.9
     } else if (difference === -3) {
-      multiplier = expModifierRules.player3Higher; // 0.8
+      multiplier = expModifierRules.player3Higher; // e.g. 0.8
     } else if (difference === -4) {
-      multiplier = expModifierRules.player4Higher; // 0.75
+      multiplier = expModifierRules.player4Higher; // e.g. 0.75
     } else if (difference === -5) {
-      multiplier = expModifierRules.player5Higher; // 0.5
+      multiplier = expModifierRules.player5Higher; // e.g. 0.5
     } else if (difference < -5) {
       multiplier = expModifierRules.none; // 0 => no exp
     }
-
-    const finalExp = Math.floor(baseExp * multiplier);
-    return finalExp;
+    return Math.floor(baseExp * multiplier);
   }
 
   /**
@@ -437,10 +601,8 @@ export default class MobManager {
     mob.anims.play("mob-walk-down");
     mob.clearTint();
 
-    console.log(
-      `Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}).`
-    );
-    this.assignRandomIdleMovement(mob);
+    console.log(`Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}).`);
+    this.assignRandomIdleOrWander(mob);
   }
 
   /**
@@ -460,19 +622,13 @@ export default class MobManager {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
         console.log(`Mob "${mob.customData.id}" became enemy.`);
-        this.chasePlayer(
-          mob,
-          this.scene.playerManager.player,
-          mobsData[mob.customData.id]
-        );
+        this.chasePlayer(mob, this.scene.playerManager.player, mobsData[mob.customData.id]);
       }
     }
   }
 
   /**
    * Retrieve stats of a given mob
-   * @param {Phaser.GameObjects.Sprite} mob
-   * @returns {Object} mobStats
    */
   getStats(mob) {
     return {
@@ -484,7 +640,7 @@ export default class MobManager {
   }
 
   /**
-   * Cycle through available targets within range.
+   * Cycle through available targets within range (TAB targeting).
    */
   cycleTarget(player, range, callback) {
     const mobsInRange = this.mobs.getChildren().filter((mob) => {
@@ -503,24 +659,14 @@ export default class MobManager {
       return;
     }
 
-    // Sort mobs by distance from the player (closest first)
+    // Sort by distance (closest first)
     mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(
-        player.x,
-        player.y,
-        a.x,
-        a.y
-      );
-      const distanceB = Phaser.Math.Distance.Between(
-        player.x,
-        player.y,
-        b.x,
-        b.y
-      );
+      const distanceA = Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y);
+      const distanceB = Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y);
       return distanceA - distanceB;
     });
 
-    // Cycle to the next target
+    // Cycle to next target
     this.scene.currentTargetIndex =
       (this.scene.currentTargetIndex + 1) % mobsInRange.length;
 
@@ -541,7 +687,6 @@ export default class MobManager {
   highlightMob(mob) {
     // Clear previous tints
     this.mobs.getChildren().forEach((m) => m.clearTint());
-
     // Apply a tint to the targeted mob
     mob.setTint(0xff0000);
   }
@@ -557,13 +702,13 @@ export default class MobManager {
 
     // Re-compute the sorted list
     const player = this.scene.playerManager.player;
-    const mobsInRange = this.mobs.getChildren().filter((mob) => {
-      if (mob.customData.isDead) return false;
+    const mobsInRange = this.mobs.getChildren().filter((mobItem) => {
+      if (mobItem.customData.isDead) return false;
       const distance = Phaser.Math.Distance.Between(
         player.x,
         player.y,
-        mob.x,
-        mob.y
+        mobItem.x,
+        mobItem.y
       );
       return distance <= TAB_TARGET_RANGE;
     });
