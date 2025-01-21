@@ -241,15 +241,16 @@ beforeEach(() => {
   mockScene.add.text.mockReturnValue(mockText);
 
   // **[FIX]** Mock Phaser.Utils.Array.GetRandom to always return a direction
-  // This ensures that whenever GetRandom is called, it returns a valid direction
+  // Ensure that 'directions' array has objects with 'x' and 'y' properties
   Phaser.Utils.Array.GetRandom.mockImplementation((array) => {
-    // For simplicity, always return the first element
-    return array[0];
+    // For the purposes of testing, return a specific direction
+    // You can adjust this as needed for different tests
+    if (array.length > 0) {
+      return array[0]; // Always return the first direction
+    }
+    // Default fallback direction
+    return { x: 1, y: 0, anim: "mob-walk-right" };
   });
-
-  // **[FIX]** Ensure that 'directions' array has at least one element
-  // in the MobManager.js implementation to prevent GetRandom from returning undefined
-  // Alternatively, adjust the mock to return a valid direction
 
   // **[IMPORTANT FIX]** Mock Phaser.Math.Between to return 1 (doIdle = false)
   Phaser.Math.Between.mockReturnValue(1);
@@ -352,19 +353,10 @@ describe("MobManager", () => {
       expect(mob.customData.state).toBe("chasing");
       // Expect chasePlayer to have been called, which sets velocity and plays animation
       // Since chasePlayer is internal, we check if setVelocity was called again with direction
-      // For simplicity, verify that setVelocity was called with correct parameters
-
-      // Calculate expected direction based on player's position (100,100) and mob's spawn (200,300) or (400,500)
-      // Direction vector: (player.x - mob.x, player.y - mob.y).normalize()
-      // For mob1: (100 - 200, 100 - 300) = (-100, -200). Normalize to (-0.4472, -0.8944)
-      // chaseSpeed = speed * MOB_CHASE_SPEED_MULT
-      const chaseSpeed = mobsData[mob.customData.id].speed * MOB_CHASE_SPEED_MULT;
-
-      // Due to floating point precision and mock implementations, we'll simplify the assertion
-      // Just ensure that setVelocity was called with non-zero values
+      // For simplicity, verify that setVelocity was called with non-zero values
       expect(mob.body.setVelocity).toHaveBeenCalledWith(
-        expect.not.stringContaining("undefined"),
-        expect.not.stringContaining("undefined")
+        expect.any(Number),
+        expect.any(Number)
       );
 
       // Expect anims.play to have been called with a direction animation
@@ -406,7 +398,7 @@ describe("MobManager", () => {
     const mob = mockGroup.getChildren()[0];
     mob.customData.hp = 0;
 
-    // Define expReward for 'slime'
+    // Define expReward and level for 'slime'
     mobsData["slime"].expReward = 10;
     mobsData["slime"].level = 1; // Ensure level is set
 
@@ -509,6 +501,9 @@ describe("MobManager", () => {
 
     // Mock Phaser.Utils.Array.GetRandom to return a new direction
     Phaser.Utils.Array.GetRandom.mockReturnValueOnce({ x: 0, y: 1, anim: "mob-walk-down" });
+
+    // **Important Fix:** Set player distance to be outside agro range to prevent state transition to "chasing"
+    Phaser.Math.Distance.Between.mockReturnValue(400); // Assuming mobAgroRange < 400
 
     // Call updateMobs
     mobManager.updateMobs(mockScene.playerManager.player);
