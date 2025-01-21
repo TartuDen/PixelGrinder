@@ -366,3 +366,84 @@ td:empty::after {
   z-index: 3000; /* Above all other UI elements */
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
+
+/* The inventory table reuses the same color scheme or you can customize: */
+#inventory-menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000;
+  background-color: rgba(34, 34, 34, 0.95);
+  padding: 20px;
+  border-radius: 10px;
+  color: #f1c40f;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 0 20px rgba(0,0,0,0.7);
+}
+
+#inventory-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#inventory-content td {
+  width: 80px;
+  height: 80px;
+  text-align: center;
+  vertical-align: middle;
+  border: 1px solid #f1c40f;
+  cursor: pointer;
+  position: relative;
+}
+
+#inventory-content td.closed-cell {
+  background-color: #555;
+  color: #aaa;
+  cursor: default;
+}
+
+#inventory-content td.open-cell {
+  background-color: #333;
+  color: #fff;
+}
+
+#inventory-context-menu {
+  background-color: rgba(0, 0, 0, 0.85);
+  border: 1px solid #f1c40f;
+  border-radius: 5px;
+  padding: 10px;
+  z-index: 3000;
+}
+
+.inventory-context-menu .menu-option {
+  margin: 5px 0;
+  color: #f1c40f;
+  cursor: pointer;
+}
+
+.inventory-context-menu .menu-option:hover {
+  text-decoration: underline;
+}
+
+/* Example for the close button in the inventory. You can reuse or style similarly to stats. */
+#close-inventory {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #c0392b;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+#close-inventory:hover {
+  background-color: #e74c3c;
+}

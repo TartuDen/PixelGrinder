@@ -66,8 +66,10 @@ const statWeights = {
 };
 
 // --- Weapons ---
+// Added a unique 'id' field
 const weaponItems = [
   {
+    id: 1,
     name: "basic_staff",
     type: "staff",
     health: 0,
@@ -81,6 +83,7 @@ const weaponItems = [
     speed: 0, // Default speed modifier
   },
   {
+    id: 2,
     name: "green_branch",
     type: "staff",
     health: 0,
@@ -97,8 +100,10 @@ const weaponItems = [
 ];
 
 // --- Armors ---
+// Added a unique 'id' field; for clarity, start them at 100+
 const armorItems = [
   {
+    id: 100,
     name: "common_robe_chest",
     type: "robe",
     health: 10,
@@ -112,6 +117,7 @@ const armorItems = [
     speed: 0, // Default speed modifier
   },
   {
+    id: 101,
     name: "common_robe_pants",
     type: "robe",
     health: 3,
@@ -125,6 +131,7 @@ const armorItems = [
     speed: 0, // Default speed modifier
   },
   {
+    id: 102,
     name: "light_boots",
     type: "boots",
     health: 2,
@@ -138,6 +145,7 @@ const armorItems = [
     speed: 5, // Increases player speed
   },
   {
+    id: 103,
     name: "swift_gauntlets",
     type: "gauntlets",
     health: 1,
@@ -164,20 +172,23 @@ const playerEquippedItems = {
 };
 
 // --- Player Backpack / Inventory ---
+//  - null => cell is "closed"
+//  - 0 => cell is "open" but "empty"
+//  - anything else => item ID
 const playerBackpack = {
-  cell_0_0: 0,
-  cell_0_1: 0,
-  cell_0_2: 0,
+  cell_0_0: 1,   // Example: item with ID=1 (basic_staff)
+  cell_0_1: 2,   // item ID=2
+  cell_0_2: 0,   // empty open cell
   cell_0_3: 0,
   cell_0_4: 0,
-  cell_1_0: 0,
+  cell_1_0: 103,
   cell_1_1: 0,
   cell_1_2: 0,
   cell_1_3: 0,
   cell_1_4: 0,
-  cell_2_0: null,
-  cell_2_1: null,
-  cell_2_2: null,
+  cell_2_0: null, // closed
+  cell_2_1: null, // closed
+  cell_2_2: null, // closed
   cell_2_3: null,
   cell_2_4: null,
   cell_3_0: null,
@@ -196,6 +207,13 @@ const playerBackpack = {
   cell_5_3: null,
   cell_5_4: null,
 };
+
+// Combine weapons + armor into one list so we can quickly look them up by ID
+const allItems = [...weaponItems, ...armorItems];
+const itemsMap = {};
+allItems.forEach((item) => {
+  itemsMap[item.id] = item;
+});
 
 // --- Skills / Attacks ---
 const playerSkills = [
@@ -241,7 +259,6 @@ const playerSkills = [
 ];
 
 // --- Mobs Data ---
-// Added `level` property to each mob
 const mobsData = {
   slime: {
     name: "Slime",
@@ -250,7 +267,7 @@ const mobsData = {
     health: 50,
     mana: 0,
     magicAttack: 0,
-    meleeAttack: 2,
+    meleeAttack: 20,
     magicDefense: 2,
     meleeDefense: 30,
     magicEvasion: 1,
@@ -283,23 +300,18 @@ const mobsData = {
 };
 
 // Example approach to define how experience is modified based on level difference
-// We'll interpret "mobLevel - playerLevel = difference" and then determine a multiplier.
 const expModifierRules = {
-  // If mob is >= 5 levels above player
-  mobAtLeast5Higher: 1.2, // => 120%
-  // 4 levels higher
-  mob4Higher: 1.15,       // => 115%
-  mob3Higher: 1.1,        // => 110%
-  mob2Higher: 1.05,       // => 105%
-  mob1Higher: 1.03,       // => 103%
-  equalLevel: 1.0,        // => 100%
-  // Player is higher level:
-  player1Higher: 0.97,    // => 97%
-  player2Higher: 0.9,     // => 90%
-  player3Higher: 0.8,     // => 80%
-  player4Higher: 0.75,    // => 75%
-  player5Higher: 0.5,     // => 50%
-  // More than 5 levels higher => 0
+  mobAtLeast5Higher: 1.2,
+  mob4Higher: 1.15,
+  mob3Higher: 1.1,
+  mob2Higher: 1.05,
+  mob1Higher: 1.03,
+  equalLevel: 1.0,
+  player1Higher: 0.97,
+  player2Higher: 0.9,
+  player3Higher: 0.8,
+  player4Higher: 0.75,
+  player5Higher: 0.5,
   none: 0.0,
 };
 
@@ -329,5 +341,7 @@ export {
   TAB_TARGET_RANGE,
   MOB_CHASE_SPEED_MULT,
   SKILL_RANGE_EXTENDER,
-  expModifierRules, // <- make sure to export it
+  expModifierRules,
+  allItems,
+  itemsMap,
 };

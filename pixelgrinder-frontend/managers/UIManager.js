@@ -1,5 +1,7 @@
 // managers/UIManager.js
 
+import { playerBackpack, itemsMap } from "../data/MOCKdata.js";
+
 export default class UIManager {
   /**
    * @param {Phaser.Scene} scene - The Phaser scene instance.
@@ -21,44 +23,43 @@ export default class UIManager {
     this.healthText = document.getElementById("health-text");
     this.manaText = document.getElementById("mana-text");
 
+    // Stats Menu
     this.statsMenu = document.getElementById("stats-menu");
     this.statsContent = document.getElementById("stats-content");
     this.closeStatsButton = document.getElementById("close-stats");
 
+    // Inventory Menu
+    this.inventoryMenu = document.getElementById("inventory-menu");
+    this.inventoryContent = document.getElementById("inventory-content");
+    this.closeInventoryButton = document.getElementById("close-inventory");
+
     // Casting bar container
     this.castingBar = document.getElementById("casting-bar");
-    console.log("castingBar:", this.castingBar);
 
     // Casting Progress Elements
-    this.castingProgressContainer = document.getElementById(
-      "casting-progress-container"
-    );
+    this.castingProgressContainer = document.getElementById("casting-progress-container");
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
     if (!document.getElementById("casting-progress-container")) {
-      // Create container
+      // Create container if not found
       this.castingProgressContainer = document.createElement("div");
       this.castingProgressContainer.id = "casting-progress-container";
 
-      // Create skill name display
       this.castingSkillName = document.createElement("div");
       this.castingSkillName.id = "casting-skill-name";
       this.castingProgressContainer.appendChild(this.castingSkillName);
 
-      // Create progress fill
       this.castingProgressFill = document.createElement("div");
       this.castingProgressFill.id = "casting-progress-fill";
       this.castingProgressContainer.appendChild(this.castingProgressFill);
 
-      // Append to body or a specific UI container
       document.body.appendChild(this.castingProgressContainer);
     }
   }
 
   /**
    * Initialize UIManager with a callback for closing the stats menu
-   * @param {Function} onCloseStatsCallback - Function to call when stats menu is closed
    */
   init(onCloseStatsCallback) {
     // Hook up close button for stats
@@ -71,6 +72,13 @@ export default class UIManager {
       });
     }
 
+    // Hook up close button for inventory
+    if (this.closeInventoryButton) {
+      this.closeInventoryButton.addEventListener("click", () => {
+        this.closeInventory();
+      });
+    }
+
     // Listen for stats updates
     if (this.scene.events) {
       this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
@@ -79,7 +87,6 @@ export default class UIManager {
 
   /**
    * Handle stats updates and check for level-up to show notification.
-   * @param {Object} stats - The updated stats object.
    */
   handleStatsUpdate(stats) {
     this.updateUI(stats);
@@ -91,11 +98,9 @@ export default class UIManager {
     }
   }
 
-  /**
-   * Show the casting progress bar.
-   * @param {string} skillName - Name of the skill being cast.
-   * @param {number} totalTime - Total casting time in seconds.
-   */
+  // ---------------------------
+  // Casting Progress
+  // ---------------------------
   showCastingProgress(skillName, totalTime) {
     if (this.castingProgressContainer) {
       this.castingSkillName.textContent = `Casting: ${skillName}`;
@@ -104,11 +109,6 @@ export default class UIManager {
     }
   }
 
-  /**
-   * Update the casting progress bar.
-   * @param {number} elapsedTime - Elapsed casting time in seconds.
-   * @param {number} totalTime - Total casting time in seconds.
-   */
   updateCastingProgress(elapsedTime, totalTime) {
     if (this.castingProgressFill) {
       const progressPercent = (elapsedTime / totalTime) * 100;
@@ -116,9 +116,6 @@ export default class UIManager {
     }
   }
 
-  /**
-   * Hide the casting progress bar.
-   */
   hideCastingProgress() {
     if (this.castingProgressContainer) {
       this.castingProgressContainer.style.display = "none";
@@ -127,58 +124,99 @@ export default class UIManager {
     }
   }
 
-  /**
-   * Setup skill slots with event listeners and dynamic icons.
-   * Dynamically creates casting slots based on the skills array.
-   * @param {Array} skills - Array of skill objects
-   */
+  // ---------------------------
+  // Skills Setup
+  // ---------------------------
   setupSkills(skills) {
-    // Clear existing casting slots to prevent duplicates
+    // Clear existing casting slots
     this.castingBar.innerHTML = "";
 
     skills.forEach((skill) => {
-      // Create casting-slot div
       const castingSlot = document.createElement("div");
       castingSlot.classList.add("casting-slot");
       castingSlot.setAttribute("data-skill-id", skill.id);
 
-      // Create img element for skill icon
       const img = document.createElement("img");
       img.src = skill.icon;
       img.alt = skill.name;
       castingSlot.appendChild(img);
 
-      // Create mana-cost div
       const manaCost = document.createElement("div");
       manaCost.classList.add("mana-cost");
       manaCost.textContent = skill.manaCost;
       castingSlot.appendChild(manaCost);
 
-      // Create cooldown-overlay div
       const cooldownOverlay = document.createElement("div");
       cooldownOverlay.classList.add("cooldown-overlay");
-      cooldownOverlay.style.display = "none"; // Initially hidden
+      cooldownOverlay.style.display = "none";
 
-      // Create cooldown-timer span
       const cooldownTimer = document.createElement("span");
       cooldownTimer.classList.add("cooldown-timer");
       cooldownOverlay.appendChild(cooldownTimer);
 
       castingSlot.appendChild(cooldownOverlay);
 
-      // Add click event listener to trigger skill usage
+      // Click to cast skill
       castingSlot.addEventListener("click", () => {
         this.scene.useSkill(skill);
       });
 
-      // Append the castingSlot to the castingBar
       this.castingBar.appendChild(castingSlot);
     });
   }
 
-  /**
-   * Update the top-left UI bars and text.
-   */
+  updateSkillCooldown(skillId, cooldownTime) {
+    const castingSlot = document.querySelector(
+      `.casting-slot[data-skill-id="${skillId}"]`
+    );
+    if (!castingSlot) return;
+
+    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
+    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
+
+    if (cooldownTime > 0) {
+      cooldownOverlay.style.display = "flex";
+      cooldownTimer.textContent = cooldownTime.toFixed(1);
+      this.startCooldownCountdown(cooldownTime, castingSlot);
+    } else {
+      cooldownOverlay.style.display = "none";
+      cooldownTimer.textContent = "";
+    }
+  }
+
+  startCooldownCountdown(cooldownTime, castingSlot) {
+    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
+    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
+    if (!cooldownTimer || !cooldownOverlay) return;
+
+    let remainingTime = cooldownTime;
+
+    // Clear any existing timers
+    if (castingSlot.cooldownTimerEvent) {
+      this.scene.time.removeEvent(castingSlot.cooldownTimerEvent);
+    }
+
+    castingSlot.cooldownTimerEvent = this.scene.time.addEvent({
+      delay: 100,
+      callback: () => {
+        remainingTime -= 0.1;
+        if (remainingTime <= 0) {
+          remainingTime = 0;
+          cooldownOverlay.style.display = "none";
+          cooldownTimer.textContent = "";
+          castingSlot.cooldownTimerEvent.remove(false);
+        } else {
+          cooldownTimer.textContent = remainingTime.toFixed(1);
+        }
+      },
+      callbackScope: this,
+      loop: true,
+    });
+  }
+
+  // ---------------------------
+  // Top-left UI update (HP/MP/XP)
+  // ---------------------------
   updateUI({
     name,
     currentHealth,
@@ -189,39 +227,30 @@ export default class UIManager {
     xp,
     speed,
   }) {
-    // Update health
+    // Health
     if (this.uiHealthFill && this.healthText) {
       const healthPercent = (currentHealth / maxHealth) * 100;
       this.uiHealthFill.style.width = `${healthPercent}%`;
       this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${healthPercent.toFixed(
         1
       )}%)`;
-    } else {
-      console.warn("Health elements not found in the DOM.");
     }
 
-    // Update mana
+    // Mana
     if (this.uiManaFill && this.manaText) {
       const manaPercent = (currentMana / maxMana) * 100;
       this.uiManaFill.style.width = `${manaPercent}%`;
       this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${manaPercent.toFixed(
         1
       )}%)`;
-    } else {
-      console.warn("Mana elements not found in the DOM.");
     }
 
-    // Update basic info
+    // Player name & level
     if (this.uiName) this.uiName.textContent = name;
-    else console.warn("Player name element not found.");
-
     if (this.uiLevel) this.uiLevel.textContent = `Level: ${level}`;
-    else console.warn("Player level element not found.");
-    
 
-    // Update EXP bar
+    // EXP
     if (this.uiExpFill && this.uiExpText) {
-      // Calculate EXP needed for next level
       let expForNextLevel = 100;
       let accumulatedExp = 0;
       let tempLevel = 1;
@@ -239,114 +268,40 @@ export default class UIManager {
       this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPercent.toFixed(
         1
       )}%)`;
-    } else {
-      console.warn("EXP elements not found in the DOM.");
     }
   }
 
-  /**
-   * Update skill cooldown overlay.
-   * @param {number} skillId - ID of the skill
-   * @param {number} cooldownTime - Remaining cooldown time in seconds
-   */
-  updateSkillCooldown(skillId, cooldownTime) {
-    const castingSlot = document.querySelector(
-      `.casting-slot[data-skill-id="${skillId}"]`
-    );
-    if (!castingSlot) return;
-
-    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
-    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
-
-    if (cooldownTime > 0) {
-      cooldownOverlay.style.display = "flex";
-      cooldownTimer.textContent = cooldownTime.toFixed(1);
-      // Start countdown
-      this.startCooldownCountdown(cooldownTime, castingSlot);
-    } else {
-      cooldownOverlay.style.display = "none";
-      cooldownTimer.textContent = "";
-    }
-  }
-
-  /**
-   * Start cooldown countdown for a skill.
-   * @param {number} cooldownTime - Total cooldown time in seconds
-   * @param {HTMLElement} castingSlot - The casting slot element
-   */
-  startCooldownCountdown(cooldownTime, castingSlot) {
-    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
-    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
-    if (!cooldownTimer || !cooldownOverlay) return;
-
-    let remainingTime = cooldownTime;
-
-    // Clear any existing timers
-    if (castingSlot.cooldownTimerEvent) {
-      this.scene.time.removeEvent(castingSlot.cooldownTimerEvent);
-    }
-
-    // Update the timer every 0.1 seconds
-    castingSlot.cooldownTimerEvent = this.scene.time.addEvent({
-      delay: 100, // 0.1 seconds
-      callback: () => {
-        remainingTime -= 0.1;
-        if (remainingTime <= 0) {
-          remainingTime = 0;
-          cooldownOverlay.style.display = "none";
-          cooldownTimer.textContent = "";
-          castingSlot.cooldownTimerEvent.remove(false);
-        } else {
-          cooldownTimer.textContent = remainingTime.toFixed(1);
-        }
-      },
-      callbackScope: this,
-      loop: true,
-    });
-  }
-
-  /**
-   * Show the stats menu with the provided HTML content.
-   * @param {string} htmlContent - HTML string to inject into the stats menu
-   */
+  // ---------------------------
+  // Stats Menu
+  // ---------------------------
   showStatsMenu(htmlContent) {
     if (!this.statsMenu) return;
     this.statsContent.innerHTML = htmlContent;
     this.statsMenu.style.display = "block";
   }
 
-  /**
-   * Hide the stats menu.
-   */
   hideStatsMenu() {
     if (!this.statsMenu) return;
     this.statsMenu.style.display = "none";
   }
 
-  /**
-   * Display a level-up notification.
-   * @param {number} newLevel - The new level achieved.
-   */
+  // ---------------------------
+  // Level-Up Notification
+  // ---------------------------
   showLevelUpNotification(newLevel) {
-    // Create notification elements
     const notification = document.createElement("div");
     notification.classList.add("level-up-notification");
     notification.textContent = `Level Up! Now at Level ${newLevel}!`;
-
-    // Append to body
     document.body.appendChild(notification);
 
-    // Animate the notification (fade in and out)
     notification.style.opacity = 1;
     notification.style.transform = "translateY(0)";
 
-    // After 3 seconds, remove the notification
     this.scene.time.delayedCall(
       3000,
       () => {
         notification.style.opacity = 0;
         notification.style.transform = "translateY(-20px)";
-        // Remove from DOM after transition
         setTimeout(() => {
           notification.remove();
         }, 500);
@@ -355,17 +310,164 @@ export default class UIManager {
       this
     );
   }
-  /**
-   * Handle stats updates and check for level-up to show notification.
-   * @param {Object} stats - The updated stats object.
-   */
-  handleStatsUpdate(stats) {
-    this.updateUI(stats);
 
-    // Check if level has increased to show notification
-    if (stats.level > (this.previousLevel || 1)) {
-      this.showLevelUpNotification(stats.level);
-      this.previousLevel = stats.level;
+  // -------------------------------------------
+  // Inventory Menu
+  // -------------------------------------------
+  toggleInventory() {
+    if (!this.inventoryMenu) return;
+
+    if (this.inventoryMenu.style.display === "block") {
+      this.closeInventory();
+    } else {
+      this.openInventory();
     }
+  }
+
+  openInventory() {
+    this.renderInventoryGrid();
+    this.inventoryMenu.style.display = "block";
+  }
+
+  closeInventory() {
+    if (!this.inventoryMenu) return;
+    this.inventoryMenu.style.display = "none";
+  }
+
+  /**
+   * Builds a 5×6 grid from playerBackpack. 
+   *  - null => closed cell
+   *  - 0 => empty cell
+   *  - item ID => show item name & ID
+   */
+  renderInventoryGrid() {
+    if (!this.inventoryContent) return;
+
+    // Clear previous content
+    this.inventoryContent.innerHTML = "";
+
+    // Create a table for the inventory
+    const table = document.createElement("table");
+    table.classList.add("inventory-table");
+
+    // We know we want 6 rows, 5 columns (or 5 wide x 6 tall)
+    // For each row r from 0..5
+    for (let r = 0; r < 6; r++) {
+      const row = document.createElement("tr");
+
+      for (let c = 0; c < 5; c++) {
+        const cell = document.createElement("td");
+
+        const key = `cell_${r}_${c}`;
+        const value = playerBackpack[key]; // either null, 0, or item ID
+
+        if (value === null) {
+          // "closed" cell
+          cell.classList.add("closed-cell");
+          cell.textContent = "X"; 
+        } else if (value === 0) {
+          // "empty" cell
+          cell.classList.add("open-cell");
+          cell.textContent = "Empty";
+          // Add click listener to show a context menu with no item? We can show a "No item" placeholder.
+          cell.addEventListener("click", (e) => {
+            this.showItemContextMenu(e, key, null);
+          });
+        } else {
+          // We have an item ID
+          const itemData = itemsMap[value];
+          cell.classList.add("open-cell");
+          if (itemData) {
+            cell.textContent = `ID: ${itemData.id}\n${itemData.name}`;
+          } else {
+            cell.textContent = `??? (ID: ${value})`;
+          }
+
+          cell.addEventListener("click", (e) => {
+            this.showItemContextMenu(e, key, itemData);
+          });
+        }
+
+        row.appendChild(cell);
+      }
+
+      table.appendChild(row);
+    }
+
+    this.inventoryContent.appendChild(table);
+  }
+
+  /**
+   * Show a small placeholder context menu with "Equip"/"Delete"
+   */
+  showItemContextMenu(event, cellKey, itemData) {
+    // Remove any existing context menu first
+    const existingMenu = document.getElementById("inventory-context-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    // Create a new context menu
+    const menu = document.createElement("div");
+    menu.id = "inventory-context-menu";
+    menu.classList.add("inventory-context-menu");
+    menu.style.position = "absolute";
+    menu.style.top = `${event.clientY}px`;
+    menu.style.left = `${event.clientX}px`;
+
+    // If itemData is null => "No item"
+    if (!itemData) {
+      const noItemLabel = document.createElement("div");
+      noItemLabel.textContent = "No item in this cell.";
+      menu.appendChild(noItemLabel);
+    } else {
+      // Equip
+      const equipOption = document.createElement("div");
+      equipOption.textContent = "Equip";
+      equipOption.classList.add("menu-option");
+      equipOption.addEventListener("click", () => {
+        console.log(`Equip item ID=${itemData.id} name=${itemData.name}`);
+        // Implement your actual equip logic here...
+        // e.g. this.scene.playerManager.equipItem(...)
+        menu.remove();
+      });
+      menu.appendChild(equipOption);
+
+      // Delete
+      const deleteOption = document.createElement("div");
+      deleteOption.textContent = "Delete";
+      deleteOption.classList.add("menu-option");
+      deleteOption.addEventListener("click", () => {
+        console.log(`Delete item from cell=${cellKey}`);
+        // Set the backpack cell to 0 (becomes empty)
+        playerBackpack[cellKey] = 0;
+        this.renderInventoryGrid();
+        menu.remove();
+      });
+      menu.appendChild(deleteOption);
+    }
+
+    // Add a simple "Cancel" or "Close" option
+    const closeOption = document.createElement("div");
+    closeOption.textContent = "Close";
+    closeOption.classList.add("menu-option");
+    closeOption.addEventListener("click", () => {
+      menu.remove();
+    });
+    menu.appendChild(closeOption);
+
+    // Append the menu to document body
+    document.body.appendChild(menu);
+
+    // Remove menu if user clicks elsewhere
+    document.addEventListener(
+      "click",
+      (e2) => {
+        if (e2.target !== menu && !menu.contains(e2.target)) {
+          menu.remove();
+        }
+      },
+      { once: true }
+    );
   }
 }

@@ -11,7 +11,9 @@ export default class InputManager {
   }
 
   setupControls(playerSkills) {
-    // Movement keys
+    // ---------------------------------------------
+    // 1) MOVEMENT KEYS (W, A, S, D)
+    // ---------------------------------------------
     this.cursors = this.scene.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
       down: Phaser.Input.Keyboard.KeyCodes.S,
@@ -19,7 +21,9 @@ export default class InputManager {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
 
-    // Numeric keys 1-9 for skills
+    // ---------------------------------------------
+    // 2) SKILL KEYS (1-9)
+    // ---------------------------------------------
     const skillKeyCodes = [
       Phaser.Input.Keyboard.KeyCodes.ONE,
       Phaser.Input.Keyboard.KeyCodes.TWO,
@@ -32,13 +36,12 @@ export default class InputManager {
       Phaser.Input.Keyboard.KeyCodes.NINE,
     ];
 
-    // Assign skills up to the number of available key codes (9)
     const assignableSkills = playerSkills.slice(0, skillKeyCodes.length);
-
     assignableSkills.forEach((skill, index) => {
-      if (skill && skill.name) { // Ensure skill has a name
+      if (skill && skill.name) {
         const keyCode = skillKeyCodes[index];
         const key = this.scene.input.keyboard.addKey(keyCode);
+
         if (key) {
           key.on("down", () => {
             console.log(`Skill triggered: ${skill.name}`);
@@ -57,16 +60,21 @@ export default class InputManager {
       }
     });
 
-    // Log a warning if there are more skills than available keys
+    // Warn if more than 9 skills
     if (playerSkills.length > skillKeyCodes.length) {
       console.warn(
-        `InputManager: Only the first ${skillKeyCodes.length} skills will be assigned to keys. ${
-          playerSkills.length - skillKeyCodes.length
-        } additional skills will be ignored.`
+        `InputManager: Only the first ${
+          skillKeyCodes.length
+        } skills will be assigned to keys. 
+         ${
+           playerSkills.length - skillKeyCodes.length
+         } additional skills will be ignored.`
       );
     }
 
-    // TAB key for cycling targets
+    // ---------------------------------------------
+    // 3) TAB KEY - CYCLE TARGET
+    // ---------------------------------------------
     const tabKey = this.scene.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.TAB
     );
@@ -75,14 +83,30 @@ export default class InputManager {
       this.scene.updateUI();
     });
 
-    // B key for stats logs & toggling
-    this.scene.input.keyboard.on("keydown-B", () => {
-      this.scene.summarizePlayerStats(); // Console logs
+    // Prevent default browser behavior when pressing TAB
+    this.scene.input.keyboard.addCapture("TAB");
+
+    // ---------------------------------------------
+    // 4) B KEY - TOGGLE STATS
+    // ---------------------------------------------
+    const bKey = this.scene.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.B
+    );
+    bKey.on("down", () => {
+      this.scene.summarizePlayerStats(); // Logs to console
       this.scene.toggleStatsMenu();
     });
 
-    // Capture the TAB key to prevent default browser behavior
-    this.scene.input.keyboard.addCapture("TAB");
+    // ---------------------------------------------
+    // 5) I KEY - TOGGLE INVENTORY
+    // ---------------------------------------------
+    const iKey = this.scene.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.I
+    );
+    iKey.on("down", () => {
+      console.log("I key pressed → toggling inventory");
+      this.scene.toggleInventoryMenu();
+    });
   }
 
   getInputKeys() {

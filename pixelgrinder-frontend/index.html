@@ -18,30 +18,27 @@
     <!-- Player Info Display -->
     <div id="player-info">
       <div id="player-name">Omigod</div>
-      
+
       <div id="health-bar" class="health-bar">
         <div id="health-fill"></div>
         <span id="health-text">HP: 100/100 (100%)</span>
       </div>
-      
+
       <div id="mana-bar" class="mana-bar">
         <div id="mana-fill"></div>
         <span id="mana-text">Mana: 150/150 (100%)</span>
       </div>
-      
+
       <div id="exp-bar" class="exp-bar">
         <div id="exp-fill"></div>
         <span id="exp-text">EXP: 0/100 (0%)</span>
       </div>
-      
+
       <div id="player-level">Level: 1</div>
-      <!-- <div id="player-xp">XP: 0</div> -->
     </div>
 
     <!-- Casting Bar -->
-    <div id="casting-bar">
-      <!-- Dynamic casting slots will be appended here -->
-    </div>
+    <div id="casting-bar"></div>
 
     <!-- Stats Menu -->
     <div id="stats-menu" class="stats-menu" style="display: none">
@@ -49,14 +46,19 @@
       <div id="stats-content"></div>
     </div>
 
+    <!-- Inventory Menu -->
+    <div id="inventory-menu" style="display: none" class="stats-menu">
+      <button id="close-inventory">Close</button>
+      <h2>Inventory</h2>
+      <div id="inventory-content"></div>
+    </div>
+
     <!-- Casting Progress Bar -->
     <div id="casting-progress-container">
       <div id="casting-skill-name"></div>
-      <!-- Displays the name of the skill being cast -->
       <div id="casting-progress-fill"></div>
     </div>
 
-    <!-- Put your main.js script at the bottom of body -->
     <script type="module" src="./main.js"></script>
   </body>
 </html>

@@ -14,7 +14,7 @@ import {
   playerSkills,
   TAB_TARGET_RANGE,
   playerBaseStats,
-  playerGrowthStats, // [ADDED] Make sure we import playerGrowthStats
+  playerGrowthStats,
   playerEquippedItems,
   weaponItems,
   armorItems,
@@ -120,19 +120,17 @@ export default class MainScene extends Phaser.Scene {
 
   /**
    * Helper function to calculate player's level based on total EXP.
-   * @param {number} totalExp - The total experience points of the player.
-   * @returns {Object} An object containing the current level, current EXP towards next level, and EXP required for next level.
    */
   calculatePlayerLevel(totalExp) {
-    let oldLevel = playerProfile.level; // [ADDED FOR MULTI-LEVEL DETECTION]
+    let oldLevel = playerProfile.level; 
     let level = 1;
-    let expForNextLevel = 100; // EXP required to reach level 2
+    let expForNextLevel = 100; 
     let accumulatedExp = 0;
 
     while (totalExp >= accumulatedExp + expForNextLevel && level < 50) {
       accumulatedExp += expForNextLevel;
       level += 1;
-      expForNextLevel = Math.floor(expForNextLevel * 1.5); // Increase required EXP by 50%
+      expForNextLevel = Math.floor(expForNextLevel * 1.5); 
     }
 
     const currentExp = totalExp - accumulatedExp;
@@ -140,12 +138,9 @@ export default class MainScene extends Phaser.Scene {
 
     // Check if level has changed
     if (level > oldLevel) {
-      // [ADDED FOR LEVEL-UP STAT INCREMENT]
-      // For each level gained (in case you jump multiple levels in one big EXP gain):
+      // For each level gained:
       for (let lvl = oldLevel; lvl < level; lvl++) {
-        // Increase base stats by growth stats
         for (const statKey in playerGrowthStats) {
-          // Example: playerBaseStats.health += playerGrowthStats.health
           playerBaseStats[statKey] += playerGrowthStats[statKey];
         }
       }
@@ -168,7 +163,6 @@ export default class MainScene extends Phaser.Scene {
 
   /**
    * Method to handle gaining experience.
-   * @param {number} amount - Amount of EXP to gain.
    */
   gainExperience(amount) {
     playerProfile.totalExp += amount;
@@ -205,8 +199,7 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   updateUI(stats) {
     // This method is now redundant as UI updates are handled via events.
-    // However, if you have other UI elements to update, you can keep it.
-    // For now, we'll leave it as is.
+    // We'll leave it as is if you have other UI tasks in the future.
     const playerStats = this.playerManager.getPlayerStats();
 
     const uiStats = {
@@ -229,11 +222,8 @@ export default class MainScene extends Phaser.Scene {
       this.uiManager.hideStatsMenu();
       this.scene.resume();
     } else {
-      // Generate stats HTML using the updated function
       const statsHTML = this.generateStatsHTML();
       this.uiManager.showStatsMenu(statsHTML);
-
-      // Pause the scene
       this.scene.pause();
     }
   }
@@ -245,15 +235,8 @@ export default class MainScene extends Phaser.Scene {
     const baseStats = { ...playerBaseStats };
 
     // Retrieve equipment stats
-    const equipmentSlots = [
-      "weapon",
-      "head",
-      "chest",
-      "shoulders",
-      "legs",
-      "feet",
-    ];
-    const equippedItems = equipmentSlots
+    const equipmentSlots = ["weapon", "head", "chest", "shoulders", "legs", "feet"];
+    const equippedItemsData = equipmentSlots
       .map((slot) => {
         const itemName = playerEquippedItems[slot];
         if (!itemName) return null;
@@ -280,16 +263,13 @@ export default class MainScene extends Phaser.Scene {
         <th>Base</th>
     `;
 
-    equippedItems.forEach(({ slot, item }) => {
-      const headerName = `${slot.charAt(0).toUpperCase() + slot.slice(1)}: ${
-        item.name
-      }`;
+    equippedItemsData.forEach(({ slot, item }) => {
+      const headerName = `${slot.charAt(0).toUpperCase() + slot.slice(1)}: ${item.name}`;
       headers += `<th>${headerName}</th>`;
     });
 
     headers += `<th>Derived</th></tr>`;
 
-    // Start building the table
     let tableHTML = `
       <table>
         <thead>
@@ -298,7 +278,6 @@ export default class MainScene extends Phaser.Scene {
         <tbody>
     `;
 
-    // Define the list of stats to display
     const statList = [
       { key: "health", label: "Health" },
       { key: "mana", label: "Mana" },
@@ -315,7 +294,6 @@ export default class MainScene extends Phaser.Scene {
       { key: "meleeEvasion", label: "Melee Evasion" },
     ];
 
-    // Populate table rows
     statList.forEach((stat) => {
       let row = `<tr><td>${stat.label}</td>`;
 
@@ -324,29 +302,24 @@ export default class MainScene extends Phaser.Scene {
       row += `<td>${baseValue}</td>`;
 
       // Equipment contributions
-      equippedItems.forEach(({ item }) => {
+      equippedItemsData.forEach(({ item }) => {
         const value = item[stat.key] !== undefined ? item[stat.key] : 0;
-        // Replace 0 with empty string
-        const displayValue = value !== 0 ? value : "";
-        row += `<td>${displayValue}</td>`;
+        row += `<td>${value !== 0 ? value : ""}</td>`;
       });
 
       // Derived value
-      const derivedValue =
-        derivedStats[stat.key] !== undefined ? derivedStats[stat.key] : 0;
+      const derivedValue = derivedStats[stat.key] || 0;
       row += `<td>${derivedValue}</td>`;
 
       row += `</tr>`;
       tableHTML += row;
     });
 
-    // Close the table
     tableHTML += `
         </tbody>
       </table>
     `;
 
-    // Add Player Info (Name, Class, Level) above the table
     const playerInfoHTML = `
       <div class="player-info">
         <p><strong>Name:</strong> ${name}</p>
@@ -355,59 +328,23 @@ export default class MainScene extends Phaser.Scene {
       </div>
     `;
 
-    // Combine Player Info and Table
     return `
       ${playerInfoHTML}
       ${tableHTML}
     `;
   }
 
-  generateStatsTable(title, stats) {
-    let rows = "";
-    for (const [key, value] of Object.entries(stats)) {
-      const formattedKey = key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (str) => str.toUpperCase());
-      rows += `
-        <tr>
-          <th>${formattedKey}</th>
-          <td>${value}</td>
-        </tr>
-      `;
-    }
-    return `
-      <h3>${title}</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Stat</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    `;
-  }
-
-  // --------------------------------------------------------------
-  //  Summarize Stats in Console
-  // --------------------------------------------------------------
+  // For console debugging
   summarizePlayerStats() {
     console.log("=== Player Stats Summary ===");
     console.table(this.playerManager.getPlayerStats());
     console.log("============================");
   }
 
-  // --------------------------------------------------------------
-  //  Skills
-  // --------------------------------------------------------------
+  // Skills
   useSkill(skill) {
     const result = this.skillManager.useSkill(skill);
-
     if (result.success) {
-      // Update player stats if necessary
       this.playerManager.updatePlayerStats();
     }
   }
@@ -418,16 +355,11 @@ export default class MainScene extends Phaser.Scene {
       0,
       this.playerManager.currentMana - amount
     );
-    console.log(
-      `Current Mana after deduction: ${this.playerManager.currentMana}`
-    );
-    // Update the UI to reflect mana deduction
+    console.log(`Current Mana after deduction: ${this.playerManager.currentMana}`);
     this.emitStatsUpdate();
   }
 
-  // --------------------------------------------------------------
-  //  Targeting
-  // --------------------------------------------------------------
+  // Targeting
   cycleTarget() {
     this.mobManager.cycleTarget(
       this.playerManager.player,
@@ -447,21 +379,20 @@ export default class MainScene extends Phaser.Scene {
     this.emitStatsUpdate();
   }
 
-  // --------------------------------------------------------------
-  //  Player Death
-  // --------------------------------------------------------------
+  // Player Death
   handlePlayerDeath() {
     console.log("Player died!");
-    // Implement game-over or respawn logic here
-    // For example, restart the scene after a delay
     this.time.delayedCall(2000, () => {
       this.scene.restart();
     });
   }
 
-  // --------------------------------------------------------------
-  //  Asset Loading & World Setup
-  // --------------------------------------------------------------
+  // Inventory toggle
+  toggleInventoryMenu() {
+    this.uiManager.toggleInventory();
+  }
+
+  // Asset loading & world setup
   loadAssets() {
     // Tilemap JSON
     this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
@@ -469,10 +400,8 @@ export default class MainScene extends Phaser.Scene {
     // Tileset image
     this.load.image("tmw_desert_spacing", "assets/map/tmw_desert_spacing.png");
 
-    // Other assets
+    // Player
     this.load.image("player", "assets/player.png");
-
-    // Characters sprite sheet
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
       frameHeight: 32,
@@ -500,10 +429,7 @@ export default class MainScene extends Phaser.Scene {
       "tmw_desert_spacing"
     );
 
-    // Background layer
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
-
-    // Collisions layer
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
     this.collisionLayer.setCollision([
       30, 31, 32, 37, 38, 39, 40, 45, 46, 47, 48,
