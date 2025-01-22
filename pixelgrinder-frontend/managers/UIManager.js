@@ -364,13 +364,14 @@ export default class UIManager {
         if (value === null) {
           // "closed" cell
           cell.classList.add("closed-cell");
-          cell.textContent = "X"; 
+          cell.textContent = "X";
         } else if (value === 0) {
           // "empty" cell
           cell.classList.add("open-cell");
           cell.textContent = "Empty";
-          // Add click listener to show a context menu with no item? We can show a "No item" placeholder.
-          cell.addEventListener("click", (e) => {
+          // Right-click => show context menu
+          cell.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
             this.showItemContextMenu(e, key, null);
           });
         } else {
@@ -383,7 +384,9 @@ export default class UIManager {
             cell.textContent = `??? (ID: ${value})`;
           }
 
-          cell.addEventListener("click", (e) => {
+          // Right-click => show context menu
+          cell.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
             this.showItemContextMenu(e, key, itemData);
           });
         }
@@ -398,7 +401,7 @@ export default class UIManager {
   }
 
   /**
-   * Show a small placeholder context menu with "Equip"/"Delete"
+   * Show a small placeholder context menu with "Wear"/"Delete"
    */
   showItemContextMenu(event, cellKey, itemData) {
     // Remove any existing context menu first
@@ -421,17 +424,25 @@ export default class UIManager {
       noItemLabel.textContent = "No item in this cell.";
       menu.appendChild(noItemLabel);
     } else {
-      // Equip
-      const equipOption = document.createElement("div");
-      equipOption.textContent = "Equip";
-      equipOption.classList.add("menu-option");
-      equipOption.addEventListener("click", () => {
-        console.log(`Equip item ID=${itemData.id} name=${itemData.name}`);
-        // Implement your actual equip logic here...
-        // e.g. this.scene.playerManager.equipItem(...)
+      // "Wear" option
+      const wearOption = document.createElement("div");
+      wearOption.textContent = "Wear";
+      wearOption.classList.add("menu-option");
+      wearOption.addEventListener("click", () => {
+        console.log(`Wearing item ID=${itemData.id} name=${itemData.name}`);
+
+        // Call PlayerManager to equip the item
+        this.scene.playerManager.equipItem(itemData.slot, itemData.name);
+
+        // Remove the item from backpack
+        playerBackpack[cellKey] = 0;
+
+        // Re-render the inventory
+        this.renderInventoryGrid();
+
         menu.remove();
       });
-      menu.appendChild(equipOption);
+      menu.appendChild(wearOption);
 
       // Delete
       const deleteOption = document.createElement("div");
@@ -447,7 +458,7 @@ export default class UIManager {
       menu.appendChild(deleteOption);
     }
 
-    // Add a simple "Cancel" or "Close" option
+    // Add a simple "Close" option
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");

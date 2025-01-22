@@ -1,7 +1,10 @@
 // managers/PlayerManager.js
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
-import { playerProfile } from "../data/MOCKdata.js"; // Import playerProfile to access level
+import {
+  playerProfile,
+  playerEquippedItems, // <-- Import the global object directly
+} from "../data/MOCKdata.js";
 
 export default class PlayerManager {
   constructor(scene) {
@@ -17,8 +20,15 @@ export default class PlayerManager {
   }
 
   createPlayer(tilemap) {
-    const heroStart = tilemap.findObject("GameObjects", (obj) => obj.name === "HeroStart");
-    this.player = this.scene.physics.add.sprite(heroStart.x, heroStart.y, "characters");
+    const heroStart = tilemap.findObject(
+      "GameObjects",
+      (obj) => obj.name === "HeroStart"
+    );
+    this.player = this.scene.physics.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      "characters"
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
@@ -74,8 +84,10 @@ export default class PlayerManager {
   replenishHealthAndMana() {
     this.currentHealth = this.maxHealth;
     this.currentMana = this.maxMana;
-    console.log("Player's Health and Mana have been fully replenished upon leveling up.");
-    
+    console.log(
+      "Player's Health and Mana have been fully replenished upon leveling up."
+    );
+
     // Notify MainScene to update UI
     this.scene.emitStatsUpdate();
   }
@@ -96,8 +108,7 @@ export default class PlayerManager {
       magicEvasion: calculatePlayerStats().magicEvasion,
       meleeEvasion: calculatePlayerStats().meleeEvasion,
       speed: this.playerSpeed,
-      level: playerProfile.level, // <--- Added level
-      // Add other stats if necessary
+      level: playerProfile.level,
     };
   }
 
@@ -149,11 +160,11 @@ export default class PlayerManager {
 
   /**
    * Equip an item and update stats.
-   * @param {string} itemType - Type of the item (e.g., weapon, head).
-   * @param {string} itemName - Name of the item to equip.
+   * (Uses the globally imported `playerEquippedItems`.)
    */
   equipItem(itemType, itemName) {
-    this.scene.playerEquippedItems[itemType] = itemName;
+    // Use the GLOBAL playerEquippedItems instead of this.scene.playerEquippedItems
+    playerEquippedItems[itemType] = itemName;
     console.log(`Equipped ${itemName} to ${itemType}`);
 
     // Recalculate and update player stats

@@ -66,12 +66,13 @@ const statWeights = {
 };
 
 // --- Weapons ---
-// Added a unique 'id' field
+// Added a unique 'id' field and a 'slot' property
 const weaponItems = [
   {
     id: 1,
     name: "basic_staff",
     type: "staff",
+    slot: "weapon",
     health: 0,
     mana: 10,
     magicAttack: 3,
@@ -86,6 +87,7 @@ const weaponItems = [
     id: 2,
     name: "green_branch",
     type: "staff",
+    slot: "weapon",
     health: 0,
     mana: 10,
     magicAttack: 5,
@@ -100,12 +102,13 @@ const weaponItems = [
 ];
 
 // --- Armors ---
-// Added a unique 'id' field; for clarity, start them at 100+
+// Added a unique 'id' field; also added a 'slot' property for each armor piece
 const armorItems = [
   {
     id: 100,
     name: "common_robe_chest",
     type: "robe",
+    slot: "chest",
     health: 10,
     mana: 12,
     magicAttack: 0,
@@ -120,6 +123,7 @@ const armorItems = [
     id: 101,
     name: "common_robe_pants",
     type: "robe",
+    slot: "legs",
     health: 3,
     mana: 5,
     magicAttack: 0,
@@ -134,6 +138,7 @@ const armorItems = [
     id: 102,
     name: "light_boots",
     type: "boots",
+    slot: "feet",
     health: 2,
     mana: 0,
     magicAttack: 0,
@@ -148,6 +153,7 @@ const armorItems = [
     id: 103,
     name: "swift_gauntlets",
     type: "gauntlets",
+    slot: "shoulders", // Now corrected to match "shoulders"
     health: 1,
     mana: 0,
     magicAttack: 0,
@@ -162,19 +168,17 @@ const armorItems = [
 ];
 
 // --- What the player is currently wearing ---
+// Fixed 'swift_gauntlets' so it is now in 'shoulders' slot (was in 'legs' before).
 const playerEquippedItems = {
   weapon: "basic_staff", // matches weaponItems[0].name
   head: null,
   chest: null,
-  shoulders: null,
-  legs: "swift_gauntlets",
+  shoulders: "swift_gauntlets",
+  legs: null,
   feet: "light_boots",
 };
 
 // --- Player Backpack / Inventory ---
-//  - null => cell is "closed"
-//  - 0 => cell is "open" but "empty"
-//  - anything else => item ID
 const playerBackpack = {
   cell_0_0: 1,   // Example: item with ID=1 (basic_staff)
   cell_0_1: 2,   // item ID=2
@@ -186,7 +190,7 @@ const playerBackpack = {
   cell_1_2: 0,
   cell_1_3: 0,
   cell_1_4: 0,
-  cell_2_0: null, // closed
+  cell_2_0: 0, // closed
   cell_2_1: null, // closed
   cell_2_2: null, // closed
   cell_2_3: null,
@@ -276,7 +280,7 @@ const mobsData = {
     mobAgroRange: 300,
     attackCooldown: 2000,
     speed: 20,
-    expReward: 10,
+    expReward: 10000,
   },
   goblin: {
     name: "Goblin",
