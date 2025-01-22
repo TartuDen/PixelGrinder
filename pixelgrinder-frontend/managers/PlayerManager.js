@@ -3,7 +3,9 @@
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import {
   playerProfile,
-  playerEquippedItems, // <-- Import the global object directly
+  playerEquippedItems,
+  playerBackpack,
+  allItems,
 } from "../data/MOCKdata.js";
 
 export default class PlayerManager {
@@ -50,12 +52,10 @@ export default class PlayerManager {
     this.maxHealth = stats.health;
     this.maxMana = stats.mana;
 
-    // Initialize currentHealth and currentMana to max if they are 0
     if (this.currentHealth === 0) {
       this.currentHealth = this.maxHealth;
       console.log(`Player Health Initialized to Max: ${this.currentHealth}`);
     } else {
-      // Ensure currentHealth does not exceed maxHealth
       this.currentHealth = Math.min(this.currentHealth, this.maxHealth);
     }
 
@@ -63,11 +63,9 @@ export default class PlayerManager {
       this.currentMana = this.maxMana;
       console.log(`Player Mana Initialized to Max: ${this.currentMana}`);
     } else {
-      // Ensure currentMana does not exceed maxMana
       this.currentMana = Math.min(this.currentMana, this.maxMana);
     }
 
-    // Update player speed with constraints
     const MIN_SPEED = 50;
     const MAX_SPEED = 200;
     this.playerSpeed = Phaser.Math.Clamp(stats.speed, MIN_SPEED, MAX_SPEED);
@@ -79,22 +77,67 @@ export default class PlayerManager {
   }
 
   /**
+   * Find the first empty backpack cell (where value===0).
+   * Returns the cell key (e.g. "cell_2_3") or null if none found.
+   */
+  findEmptyBackpackCell() {
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 5; c++) {
+        const key = `cell_${r}_${c}`;
+        if (playerBackpack[key] === 0) {
+          return key;
+        }
+      }
+    }
+    return null; // no empty cell found
+  }
+
+  /**
+   * Equip an item and update stats. If there's already an item in that slot,
+   * move that old item into an empty backpack cell.
+   */
+  equipItem(itemType, itemName) {
+    // 1) If we already have an item equipped in that slot, move it into inventory
+    const currentlyEquippedName = playerEquippedItems[itemType];
+    if (currentlyEquippedName) {
+      // Find the old item in allItems
+      const oldItem = allItems.find((it) => it.name === currentlyEquippedName);
+      if (oldItem) {
+        // Find an empty cell
+        const emptyCell = this.findEmptyBackpackCell();
+        if (emptyCell) {
+          // Put the old item into that backpack cell
+          playerBackpack[emptyCell] = oldItem.id;
+          console.log(
+            `Moved previously equipped "${oldItem.name}" to inventory cell=${emptyCell}.`
+          );
+        } else {
+          console.warn(
+            "No empty cell available in the backpack. The old item remains equipped or is lost!"
+          );
+        }
+      }
+    }
+
+    // 2) Now equip the new item
+    playerEquippedItems[itemType] = itemName;
+    console.log(`Equipped ${itemName} to ${itemType}`);
+
+    // 3) Recalculate and update stats
+    this.updatePlayerStats();
+    this.scene.emitStatsUpdate();
+  }
+
+  /**
    * Replenish player's Health and Mana to full.
    */
   replenishHealthAndMana() {
     this.currentHealth = this.maxHealth;
     this.currentMana = this.maxMana;
-    console.log(
-      "Player's Health and Mana have been fully replenished upon leveling up."
-    );
-
-    // Notify MainScene to update UI
+    console.log("Player's Health and Mana have been fully replenished.");
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Get current player stats, including speed and level.
-   */
   getPlayerStats() {
     return {
       currentMana: this.currentMana,
@@ -112,11 +155,6 @@ export default class PlayerManager {
     };
   }
 
-  /**
-   * Handle player movement based on input.
-   * @param {Object} cursors - The input keys.
-   * @param {boolean} isCasting - Flag indicating if a skill is being cast.
-   */
   handleMovement(cursors, isCasting) {
     if (!this.player || !this.player.body) return;
 
@@ -154,30 +192,9 @@ export default class PlayerManager {
       this.player.anims.stop();
     }
 
-    // Normalize and scale the velocity so that player can't move faster along a diagonal
     this.player.body.velocity.normalize().scale(this.playerSpeed);
   }
 
-  /**
-   * Equip an item and update stats.
-   * (Uses the globally imported `playerEquippedItems`.)
-   */
-  equipItem(itemType, itemName) {
-    // Use the GLOBAL playerEquippedItems instead of this.scene.playerEquippedItems
-    playerEquippedItems[itemType] = itemName;
-    console.log(`Equipped ${itemName} to ${itemType}`);
-
-    // Recalculate and update player stats
-    this.updatePlayerStats();
-
-    // Update the UI to reflect changes
-    this.scene.emitStatsUpdate();
-  }
-
-  /**
-   * Regenerate player stats naturally over time.
-   * Called periodically via a timed event.
-   */
   regenerateStats(regenerationData) {
     const beforeMana = this.currentMana;
     this.currentMana = Math.min(
@@ -196,15 +213,9 @@ export default class PlayerManager {
         this.currentHealth - beforeHealth
       } HP`
     );
-
-    // Update the UI to reflect regeneration
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Method to handle gaining experience.
-   * @param {number} amount - Amount of EXP to gain.
-   */
   gainExperience(amount) {
     this.scene.gainExperience(amount);
   }

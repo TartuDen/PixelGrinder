@@ -12,11 +12,11 @@ const playerProfile = {
 const playerBaseStats = {
   health: 100,
   mana: 150,
-  intellect: 3, // formerly int_stat
-  strength: 0,  // formerly str_stat
-  dexterity: 3, // formerly dex_stat
-  constitution: 4, // formerly con_stat
-  speed: 50, // Added base speed (units can be pixels per second or similar)
+  intellect: 3,
+  strength: 0,
+  dexterity: 3,
+  constitution: 4,
+  speed: 50,
 };
 
 const playerGrowthStats = {
@@ -66,7 +66,6 @@ const statWeights = {
 };
 
 // --- Weapons ---
-// Added a unique 'id' field and a 'slot' property
 const weaponItems = [
   {
     id: 1,
@@ -81,7 +80,7 @@ const weaponItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 0, // Default speed modifier
+    speed: 0,
   },
   {
     id: 2,
@@ -90,19 +89,17 @@ const weaponItems = [
     slot: "weapon",
     health: 0,
     mana: 10,
-    magicAttack: 5,
+    magicAttack: 500,
     meleeAttack: 2,
     magicDefense: 0,
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 0, // Default speed modifier
+    speed: 0,
   },
-  // Add more weapons here...
 ];
 
 // --- Armors ---
-// Added a unique 'id' field; also added a 'slot' property for each armor piece
 const armorItems = [
   {
     id: 100,
@@ -117,7 +114,7 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 0, // Default speed modifier
+    speed: 0,
   },
   {
     id: 101,
@@ -132,7 +129,7 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 0, // Default speed modifier
+    speed: 0,
   },
   {
     id: 102,
@@ -147,13 +144,13 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 0,
-    speed: 5, // Increases player speed
+    speed: 5,
   },
   {
     id: 103,
     name: "swift_gauntlets",
     type: "gauntlets",
-    slot: "shoulders", // Now corrected to match "shoulders"
+    slot: "shoulders",
     health: 1,
     mana: 0,
     magicAttack: 0,
@@ -162,15 +159,13 @@ const armorItems = [
     meleeDefense: 0,
     magicEvasion: 0,
     meleeEvasion: 5,
-    speed: 5, // Increases player speed
+    speed: 5,
   },
-  // Add more armors here...
 ];
 
 // --- What the player is currently wearing ---
-// Fixed 'swift_gauntlets' so it is now in 'shoulders' slot (was in 'legs' before).
 const playerEquippedItems = {
-  weapon: "basic_staff", // matches weaponItems[0].name
+  weapon: "basic_staff",
   head: null,
   chest: null,
   shoulders: "swift_gauntlets",
@@ -180,17 +175,17 @@ const playerEquippedItems = {
 
 // --- Player Backpack / Inventory ---
 const playerBackpack = {
-  cell_0_0: 1,   // Example: item with ID=1 (basic_staff)
-  cell_0_1: 2,   // item ID=2
-  cell_0_2: 0,   // empty open cell
+  cell_0_0: 1,    // basic_staff
+  cell_0_1: 2,    // green_branch
+  cell_0_2: 0,
   cell_0_3: 0,
   cell_0_4: 0,
-  cell_1_0: 103,
+  cell_1_0: 103,  // swift_gauntlets
   cell_1_1: 0,
   cell_1_2: 0,
   cell_1_3: 0,
   cell_1_4: 0,
-  cell_2_0: 0, // closed
+  cell_2_0: 0, // closed (null means closed, but let's keep 0 for open/empty)
   cell_2_1: null, // closed
   cell_2_2: null, // closed
   cell_2_3: null,
@@ -212,7 +207,7 @@ const playerBackpack = {
   cell_5_4: null,
 };
 
-// Combine weapons + armor into one list so we can quickly look them up by ID
+// Combine weapons + armor into one list for quick lookups by ID
 const allItems = [...weaponItems, ...armorItems];
 const itemsMap = {};
 allItems.forEach((item) => {
@@ -229,7 +224,7 @@ const playerSkills = [
     magicAttack: 2,
     meleeAttack: 0,
     castingTime: 0,
-    cooldown: 2, // in seconds
+    cooldown: 2,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
     animationSeq: [0, 7],
@@ -266,7 +261,7 @@ const playerSkills = [
 const mobsData = {
   slime: {
     name: "Slime",
-    level: 2,          // <--- mob level
+    level: 2,
     attackRange: 40,
     health: 50,
     mana: 0,
@@ -280,11 +275,11 @@ const mobsData = {
     mobAgroRange: 300,
     attackCooldown: 2000,
     speed: 20,
-    expReward: 10000,
+    expReward: 10,
   },
   goblin: {
     name: "Goblin",
-    level: 5,          // <--- mob level
+    level: 5,
     attackRange: 40,
     health: 40,
     mana: 0,
@@ -300,10 +295,9 @@ const mobsData = {
     speed: 70,
     expReward: 22,
   },
-  // Add more mobs here...
 };
 
-// Example approach to define how experience is modified based on level difference
+// Experience modifier rules
 const expModifierRules = {
   mobAtLeast5Higher: 1.2,
   mob4Higher: 1.15,
@@ -329,6 +323,18 @@ const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
 
+/**
+ * NEW: Track deleted items so we don't lose their info.
+ * We'll push an object like:
+ *  {
+ *    id: itemId,
+ *    name: itemName,
+ *    deletedAt: '2025-02-01T12:34:56.789Z',
+ *    reason: "UserDeleted"
+ *  }
+ */
+const deletedItems = [];
+
 // Export everything
 export {
   playerProfile,
@@ -348,4 +354,5 @@ export {
   expModifierRules,
   allItems,
   itemsMap,
+  deletedItems, // <--- newly exported
 };

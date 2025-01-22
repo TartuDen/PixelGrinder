@@ -1,13 +1,10 @@
 // managers/UIManager.js
 
-import { playerBackpack, itemsMap } from "../data/MOCKdata.js";
+import { playerBackpack, itemsMap, deletedItems } from "../data/MOCKdata.js";
 
 export default class UIManager {
-  /**
-   * @param {Phaser.Scene} scene - The Phaser scene instance.
-   */
   constructor(scene) {
-    this.scene = scene; // Store the scene reference
+    this.scene = scene;
 
     // Existing UI element references
     this.uiName = document.getElementById("player-name");
@@ -16,7 +13,6 @@ export default class UIManager {
     this.uiLevel = document.getElementById("player-level");
     this.uiXP = document.getElementById("player-xp");
 
-    // New EXP elements
     this.uiExpFill = document.getElementById("exp-fill");
     this.uiExpText = document.getElementById("exp-text");
 
@@ -33,16 +29,17 @@ export default class UIManager {
     this.inventoryContent = document.getElementById("inventory-content");
     this.closeInventoryButton = document.getElementById("close-inventory");
 
-    // Casting bar container
+    // Casting bar
     this.castingBar = document.getElementById("casting-bar");
 
-    // Casting Progress Elements
-    this.castingProgressContainer = document.getElementById("casting-progress-container");
+    // Casting Progress
+    this.castingProgressContainer = document.getElementById(
+      "casting-progress-container"
+    );
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
     if (!document.getElementById("casting-progress-container")) {
-      // Create container if not found
       this.castingProgressContainer = document.createElement("div");
       this.castingProgressContainer.id = "casting-progress-container";
 
@@ -58,11 +55,7 @@ export default class UIManager {
     }
   }
 
-  /**
-   * Initialize UIManager with a callback for closing the stats menu
-   */
   init(onCloseStatsCallback) {
-    // Hook up close button for stats
     if (this.closeStatsButton) {
       this.closeStatsButton.addEventListener("click", () => {
         this.hideStatsMenu();
@@ -72,26 +65,21 @@ export default class UIManager {
       });
     }
 
-    // Hook up close button for inventory
     if (this.closeInventoryButton) {
       this.closeInventoryButton.addEventListener("click", () => {
         this.closeInventory();
       });
     }
 
-    // Listen for stats updates
     if (this.scene.events) {
       this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
     }
   }
 
-  /**
-   * Handle stats updates and check for level-up to show notification.
-   */
   handleStatsUpdate(stats) {
     this.updateUI(stats);
 
-    // Check if level has increased to show notification
+    // If player level changed, show a notification
     if (stats.level > (this.previousLevel || 1)) {
       this.showLevelUpNotification(stats.level);
       this.previousLevel = stats.level;
@@ -128,7 +116,6 @@ export default class UIManager {
   // Skills Setup
   // ---------------------------
   setupSkills(skills) {
-    // Clear existing casting slots
     this.castingBar.innerHTML = "";
 
     skills.forEach((skill) => {
@@ -335,23 +322,19 @@ export default class UIManager {
   }
 
   /**
-   * Builds a 5×6 grid from playerBackpack. 
-   *  - null => closed cell
-   *  - 0 => empty cell
-   *  - item ID => show item name & ID
+   * Builds a 5×6 grid from playerBackpack.
+   *  - null => cell is closed (X)
+   *  - 0 => cell is open but empty
+   *  - item ID => item in cell
    */
   renderInventoryGrid() {
     if (!this.inventoryContent) return;
 
-    // Clear previous content
     this.inventoryContent.innerHTML = "";
 
-    // Create a table for the inventory
     const table = document.createElement("table");
     table.classList.add("inventory-table");
 
-    // We know we want 6 rows, 5 columns (or 5 wide x 6 tall)
-    // For each row r from 0..5
     for (let r = 0; r < 6; r++) {
       const row = document.createElement("tr");
 
@@ -359,14 +342,12 @@ export default class UIManager {
         const cell = document.createElement("td");
 
         const key = `cell_${r}_${c}`;
-        const value = playerBackpack[key]; // either null, 0, or item ID
+        const value = playerBackpack[key];
 
         if (value === null) {
-          // "closed" cell
           cell.classList.add("closed-cell");
           cell.textContent = "X";
         } else if (value === 0) {
-          // "empty" cell
           cell.classList.add("open-cell");
           cell.textContent = "Empty";
           // Right-click => show context menu
@@ -384,7 +365,6 @@ export default class UIManager {
             cell.textContent = `??? (ID: ${value})`;
           }
 
-          // Right-click => show context menu
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, itemData);
@@ -401,16 +381,14 @@ export default class UIManager {
   }
 
   /**
-   * Show a small placeholder context menu with "Wear"/"Delete"
+   * Show a small context menu with "Wear" / "Delete"
    */
   showItemContextMenu(event, cellKey, itemData) {
-    // Remove any existing context menu first
     const existingMenu = document.getElementById("inventory-context-menu");
     if (existingMenu) {
       existingMenu.remove();
     }
 
-    // Create a new context menu
     const menu = document.createElement("div");
     menu.id = "inventory-context-menu";
     menu.classList.add("inventory-context-menu");
@@ -418,26 +396,26 @@ export default class UIManager {
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
 
-    // If itemData is null => "No item"
     if (!itemData) {
+      // No item
       const noItemLabel = document.createElement("div");
       noItemLabel.textContent = "No item in this cell.";
       menu.appendChild(noItemLabel);
     } else {
-      // "Wear" option
+      // Wear
       const wearOption = document.createElement("div");
       wearOption.textContent = "Wear";
       wearOption.classList.add("menu-option");
       wearOption.addEventListener("click", () => {
         console.log(`Wearing item ID=${itemData.id} name=${itemData.name}`);
 
-        // Call PlayerManager to equip the item
+        // Actually equip the item
         this.scene.playerManager.equipItem(itemData.slot, itemData.name);
 
-        // Remove the item from backpack
+        // Remove from the backpack
         playerBackpack[cellKey] = 0;
 
-        // Re-render the inventory
+        // Re-render inventory
         this.renderInventoryGrid();
 
         menu.remove();
@@ -449,16 +427,28 @@ export default class UIManager {
       deleteOption.textContent = "Delete";
       deleteOption.classList.add("menu-option");
       deleteOption.addEventListener("click", () => {
-        console.log(`Delete item from cell=${cellKey}`);
-        // Set the backpack cell to 0 (becomes empty)
+        console.log(`Delete item ID=${itemData.id} from cell=${cellKey}`);
+
+        // 1) Record it in deletedItems
+        deletedItems.push({
+          id: itemData.id,
+          name: itemData.name,
+          deletedAt: new Date().toISOString(),
+          reason: "UserDeleted",
+        });
+
+        // 2) Remove it from backpack
         playerBackpack[cellKey] = 0;
+
+        // Re-render the inventory
         this.renderInventoryGrid();
+
         menu.remove();
       });
       menu.appendChild(deleteOption);
     }
 
-    // Add a simple "Close" option
+    // Close
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -467,10 +457,9 @@ export default class UIManager {
     });
     menu.appendChild(closeOption);
 
-    // Append the menu to document body
     document.body.appendChild(menu);
 
-    // Remove menu if user clicks elsewhere
+    // Remove the menu if user clicks outside
     document.addEventListener(
       "click",
       (e2) => {
