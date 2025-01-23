@@ -129,6 +129,43 @@ export default class PlayerManager {
   }
 
   /**
+   * Un-equip an item from the given slot and place it into an empty backpack cell.
+   * @param {string} slot - e.g. "weapon", "head", "chest", "shoulders", "legs", "feet"
+   */
+  unequipItem(slot) {
+    const equippedItemName = playerEquippedItems[slot];
+    if (!equippedItemName) {
+      console.log(`No item is currently equipped in slot: ${slot}`);
+      return;
+    }
+
+    // Find empty cell
+    const emptyCell = this.findEmptyBackpackCell();
+    if (!emptyCell) {
+      console.warn("No empty cell available in the backpack. Cannot un-equip!");
+      return;
+    }
+
+    // Find the item by name
+    const itemData = allItems.find((i) => i.name === equippedItemName);
+    if (!itemData) {
+      console.warn(`Could not find item data for equipped item: ${equippedItemName}`);
+      return;
+    }
+
+    // Place in backpack
+    playerBackpack[emptyCell] = itemData.id;
+
+    // Remove from equipped
+    playerEquippedItems[slot] = null;
+    console.log(`Un-equipped "${equippedItemName}" from slot ${slot} → moved to cell ${emptyCell}`);
+
+    // Update stats
+    this.updatePlayerStats();
+    this.scene.emitStatsUpdate();
+  }
+
+  /**
    * Replenish player's Health and Mana to full.
    */
   replenishHealthAndMana() {

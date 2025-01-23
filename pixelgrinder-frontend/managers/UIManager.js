@@ -1,6 +1,11 @@
 // managers/UIManager.js
 
-import { playerBackpack, itemsMap, deletedItems } from "../data/MOCKdata.js";
+import { 
+  playerBackpack, 
+  itemsMap, 
+  deletedItems, 
+  playerEquippedItems 
+} from "../data/MOCKdata.js";
 
 export default class UIManager {
   constructor(scene) {
@@ -39,6 +44,7 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
+    // If for some reason the elements didn't exist in HTML, create them
     if (!document.getElementById("casting-progress-container")) {
       this.castingProgressContainer = document.createElement("div");
       this.castingProgressContainer.id = "casting-progress-container";
@@ -312,7 +318,9 @@ export default class UIManager {
   }
 
   openInventory() {
+    // Render both backpack grid + equipment window
     this.renderInventoryGrid();
+    this.renderEquipmentWindow();
     this.inventoryMenu.style.display = "block";
   }
 
@@ -330,6 +338,7 @@ export default class UIManager {
   renderInventoryGrid() {
     if (!this.inventoryContent) return;
 
+    // Clear old content
     this.inventoryContent.innerHTML = "";
 
     const table = document.createElement("table");
@@ -381,7 +390,54 @@ export default class UIManager {
   }
 
   /**
-   * Show a small context menu with "Wear" / "Delete"
+   * Renders a "paper doll" style layout with equipment slots 
+   * (weapon, head, chest, shoulders, legs, feet).
+   */
+  renderEquipmentWindow() {
+    let equipmentContainer = document.getElementById("equipment-container");
+    if (!equipmentContainer) {
+      equipmentContainer = document.createElement("div");
+      equipmentContainer.id = "equipment-container";
+      equipmentContainer.classList.add("equipment-container");
+      this.inventoryContent.appendChild(equipmentContainer);
+    } else {
+      equipmentContainer.innerHTML = "";
+    }
+
+    // Optional silhouette placeholder or background
+    const silhouetteImg = document.createElement("div");
+    silhouetteImg.classList.add("silhouette-placeholder");
+    equipmentContainer.appendChild(silhouetteImg);
+
+    const slots = ["weapon", "head", "chest", "shoulders", "legs", "feet"];
+
+    slots.forEach((slot) => {
+      const slotDiv = document.createElement("div");
+      slotDiv.classList.add("equipment-slot");
+      slotDiv.dataset.slot = slot;
+
+      const equippedItemName = playerEquippedItems[slot];
+      if (equippedItemName) {
+        slotDiv.textContent = equippedItemName;
+        // RIGHT-CLICK => un-equip
+        slotDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          this.showEquipmentContextMenu(e, slot, equippedItemName);
+        });
+      } else {
+        slotDiv.textContent = "Empty";
+        slotDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          this.showEquipmentContextMenu(e, slot, null);
+        });
+      }
+
+      equipmentContainer.appendChild(slotDiv);
+    });
+  }
+
+  /**
+   * Show a small context menu with "Wear" / "Delete" for items in backpack.
    */
   showItemContextMenu(event, cellKey, itemData) {
     const existingMenu = document.getElementById("inventory-context-menu");
@@ -415,8 +471,9 @@ export default class UIManager {
         // Remove from the backpack
         playerBackpack[cellKey] = 0;
 
-        // Re-render inventory
+        // Re-render inventory & equipment
         this.renderInventoryGrid();
+        this.renderEquipmentWindow();
 
         menu.remove();
       });
@@ -442,10 +499,75 @@ export default class UIManager {
 
         // Re-render the inventory
         this.renderInventoryGrid();
+        this.renderEquipmentWindow();
 
         menu.remove();
       });
       menu.appendChild(deleteOption);
+    }
+
+    // Close
+    const closeOption = document.createElement("div");
+    closeOption.textContent = "Close";
+    closeOption.classList.add("menu-option");
+    closeOption.addEventListener("click", () => {
+      menu.remove();
+    });
+    menu.appendChild(closeOption);
+
+    document.body.appendChild(menu);
+
+    // Remove the menu if user clicks outside
+    document.addEventListener(
+      "click",
+      (e2) => {
+        if (e2.target !== menu && !menu.contains(e2.target)) {
+          menu.remove();
+        }
+      },
+      { once: true }
+    );
+  }
+
+  /**
+   * Show context menu for an equipment slot. 
+   * If an item is equipped, we can "Remove" => un-equip.
+   */
+  showEquipmentContextMenu(event, slot, equippedItemName) {
+    const existingMenu = document.getElementById("equipment-context-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    const menu = document.createElement("div");
+    menu.id = "equipment-context-menu";
+    menu.classList.add("inventory-context-menu");
+    menu.style.position = "absolute";
+    menu.style.top = `${event.clientY}px`;
+    menu.style.left = `${event.clientX}px`;
+
+    if (!equippedItemName) {
+      // No item in this slot
+      const noItemLabel = document.createElement("div");
+      noItemLabel.textContent = "Nothing equipped in this slot.";
+      menu.appendChild(noItemLabel);
+    } else {
+      // "Remove"
+      const removeOption = document.createElement("div");
+      removeOption.textContent = "Remove";
+      removeOption.classList.add("menu-option");
+      removeOption.addEventListener("click", () => {
+        console.log(`Un-equipping item: ${equippedItemName} from slot ${slot}`);
+
+        this.scene.playerManager.unequipItem(slot);
+
+        // Re-render
+        this.renderInventoryGrid();
+        this.renderEquipmentWindow();
+
+        menu.remove();
+      });
+      menu.appendChild(removeOption);
     }
 
     // Close

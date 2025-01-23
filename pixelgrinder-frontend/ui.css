@@ -447,3 +447,31 @@ td:empty::after {
 #close-inventory:hover {
   background-color: #e74c3c;
 }
+
+/* Just an example, adjust to your liking */
+
+.equipment-container {
+  position: relative;
+  margin-top: 1rem;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.silhouette-placeholder {
+  width: 200px;
+  height: 300px;
+  background: url('assets/silhouette.png') no-repeat center center; 
+  background-size: contain; /* or your own custom silhouette image */
+  position: relative;
+}
+
+.equipment-slot {
+  position: relative;
+  width: 100px; /* or smaller if you like */
+  height: 24px;
+  background-color: #444;
+  color: #fff;
+  text-align: center;
+  margin: 5px auto;
+  cursor: pointer;
+}
