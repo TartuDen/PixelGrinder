@@ -1,22 +1,23 @@
 // managers/UIManager.js
 
-import { 
-  playerBackpack, 
-  itemsMap, 
-  deletedItems, 
-  playerEquippedItems 
+import {
+  playerBackpack,
+  itemsMap,
+  deletedItems,
+  playerEquippedItems,
 } from "../data/MOCKdata.js";
+
+import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 export default class UIManager {
   constructor(scene) {
     this.scene = scene;
 
-    // Existing UI element references
+    // UI elements
     this.uiName = document.getElementById("player-name");
     this.uiHealthFill = document.getElementById("health-fill");
     this.uiManaFill = document.getElementById("mana-fill");
     this.uiLevel = document.getElementById("player-level");
-    this.uiXP = document.getElementById("player-xp");
 
     this.uiExpFill = document.getElementById("exp-fill");
     this.uiExpText = document.getElementById("exp-text");
@@ -44,8 +45,8 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // If for some reason the elements didn't exist in HTML, create them
-    if (!document.getElementById("casting-progress-container")) {
+    // Create if missing:
+    if (!this.castingProgressContainer) {
       this.castingProgressContainer = document.createElement("div");
       this.castingProgressContainer.id = "casting-progress-container";
 
@@ -70,13 +71,11 @@ export default class UIManager {
         }
       });
     }
-
     if (this.closeInventoryButton) {
       this.closeInventoryButton.addEventListener("click", () => {
         this.closeInventory();
       });
     }
-
     if (this.scene.events) {
       this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
     }
@@ -92,9 +91,7 @@ export default class UIManager {
     }
   }
 
-  // ---------------------------
-  // Casting Progress
-  // ---------------------------
+  /* Casting Progress */
   showCastingProgress(skillName, totalTime) {
     if (this.castingProgressContainer) {
       this.castingSkillName.textContent = `Casting: ${skillName}`;
@@ -102,14 +99,12 @@ export default class UIManager {
       this.castingProgressContainer.style.display = "block";
     }
   }
-
   updateCastingProgress(elapsedTime, totalTime) {
     if (this.castingProgressFill) {
       const progressPercent = (elapsedTime / totalTime) * 100;
       this.castingProgressFill.style.width = `${progressPercent}%`;
     }
   }
-
   hideCastingProgress() {
     if (this.castingProgressContainer) {
       this.castingProgressContainer.style.display = "none";
@@ -118,9 +113,7 @@ export default class UIManager {
     }
   }
 
-  // ---------------------------
-  // Skills Setup
-  // ---------------------------
+  /* Skill Setup */
   setupSkills(skills) {
     this.castingBar.innerHTML = "";
 
@@ -142,18 +135,15 @@ export default class UIManager {
       const cooldownOverlay = document.createElement("div");
       cooldownOverlay.classList.add("cooldown-overlay");
       cooldownOverlay.style.display = "none";
-
       const cooldownTimer = document.createElement("span");
       cooldownTimer.classList.add("cooldown-timer");
       cooldownOverlay.appendChild(cooldownTimer);
 
       castingSlot.appendChild(cooldownOverlay);
 
-      // Click to cast skill
       castingSlot.addEventListener("click", () => {
         this.scene.useSkill(skill);
       });
-
       this.castingBar.appendChild(castingSlot);
     });
   }
@@ -183,8 +173,6 @@ export default class UIManager {
     if (!cooldownTimer || !cooldownOverlay) return;
 
     let remainingTime = cooldownTime;
-
-    // Clear any existing timers
     if (castingSlot.cooldownTimerEvent) {
       this.scene.time.removeEvent(castingSlot.cooldownTimerEvent);
     }
@@ -207,9 +195,7 @@ export default class UIManager {
     });
   }
 
-  // ---------------------------
-  // Top-left UI update (HP/MP/XP)
-  // ---------------------------
+  /* Top-left UI (HP/MP/XP) */
   updateUI({
     name,
     currentHealth,
@@ -220,67 +206,48 @@ export default class UIManager {
     xp,
     speed,
   }) {
-    // Health
     if (this.uiHealthFill && this.healthText) {
-      const healthPercent = (currentHealth / maxHealth) * 100;
-      this.uiHealthFill.style.width = `${healthPercent}%`;
-      this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${healthPercent.toFixed(
-        1
-      )}%)`;
+      const hpPct = (currentHealth / maxHealth) * 100;
+      this.uiHealthFill.style.width = `${hpPct}%`;
+      this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${hpPct.toFixed(1)}%)`;
     }
-
-    // Mana
     if (this.uiManaFill && this.manaText) {
-      const manaPercent = (currentMana / maxMana) * 100;
-      this.uiManaFill.style.width = `${manaPercent}%`;
-      this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${manaPercent.toFixed(
-        1
-      )}%)`;
+      const mpPct = (currentMana / maxMana) * 100;
+      this.uiManaFill.style.width = `${mpPct}%`;
+      this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${mpPct.toFixed(1)}%)`;
     }
-
-    // Player name & level
     if (this.uiName) this.uiName.textContent = name;
     if (this.uiLevel) this.uiLevel.textContent = `Level: ${level}`;
 
-    // EXP
     if (this.uiExpFill && this.uiExpText) {
       let expForNextLevel = 100;
       let accumulatedExp = 0;
       let tempLevel = 1;
-
       while (xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
         accumulatedExp += expForNextLevel;
         tempLevel += 1;
         expForNextLevel = Math.floor(expForNextLevel * 1.5);
       }
-
       const currentExp = xp - accumulatedExp;
-      const expPercent = (currentExp / expForNextLevel) * 100;
+      const expPct = (currentExp / expForNextLevel) * 100;
 
-      this.uiExpFill.style.width = `${expPercent}%`;
-      this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPercent.toFixed(
-        1
-      )}%)`;
+      this.uiExpFill.style.width = `${expPct}%`;
+      this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(1)}%)`;
     }
   }
 
-  // ---------------------------
-  // Stats Menu
-  // ---------------------------
+  /* Stats Menu ("B") */
   showStatsMenu(htmlContent) {
     if (!this.statsMenu) return;
     this.statsContent.innerHTML = htmlContent;
     this.statsMenu.style.display = "block";
   }
-
   hideStatsMenu() {
     if (!this.statsMenu) return;
     this.statsMenu.style.display = "none";
   }
 
-  // ---------------------------
-  // Level-Up Notification
-  // ---------------------------
+  /* Level-Up Notification */
   showLevelUpNotification(newLevel) {
     const notification = document.createElement("div");
     notification.classList.add("level-up-notification");
@@ -304,12 +271,9 @@ export default class UIManager {
     );
   }
 
-  // -------------------------------------------
-  // Inventory Menu
-  // -------------------------------------------
+  /* Inventory Menu ("I") */
   toggleInventory() {
     if (!this.inventoryMenu) return;
-
     if (this.inventoryMenu.style.display === "block") {
       this.closeInventory();
     } else {
@@ -318,9 +282,37 @@ export default class UIManager {
   }
 
   openInventory() {
-    // Render both backpack grid + equipment window
-    this.renderInventoryGrid();
-    this.renderEquipmentWindow();
+    // Clear old content
+    this.inventoryContent.innerHTML = "";
+
+    // Create 3 columns (blocks)
+    const equippedBlock = document.createElement("div");
+    equippedBlock.id = "inventory-block-equipped";
+    equippedBlock.classList.add("inventory-column");
+
+    const statsBlock = document.createElement("div");
+    statsBlock.id = "inventory-block-stats";
+    statsBlock.classList.add("inventory-column");
+
+    const gridBlock = document.createElement("div");
+    gridBlock.id = "inventory-block-grid";
+    gridBlock.classList.add("inventory-column");
+
+    // 1) Equipped items silhouette
+    this.renderEquippedItemsBlock(equippedBlock);
+
+    // 2) Derived stats
+    this.renderDerivedStatsBlock(statsBlock);
+
+    // 3) Inventory grid
+    this.renderInventoryGrid(gridBlock);
+
+    // Append blocks
+    this.inventoryContent.appendChild(equippedBlock);
+    this.inventoryContent.appendChild(statsBlock);
+    this.inventoryContent.appendChild(gridBlock);
+
+    // Show
     this.inventoryMenu.style.display = "block";
   }
 
@@ -329,18 +321,88 @@ export default class UIManager {
     this.inventoryMenu.style.display = "none";
   }
 
-  /**
-   * Builds a 5×6 grid from playerBackpack.
-   *  - null => cell is closed (X)
-   *  - 0 => cell is open but empty
-   *  - item ID => item in cell
-   */
-  renderInventoryGrid() {
-    if (!this.inventoryContent) return;
+  renderEquippedItemsBlock(container) {
+    const heading = document.createElement("h3");
+    heading.textContent = "Equipped Items";
+    container.appendChild(heading);
 
-    // Clear old content
-    this.inventoryContent.innerHTML = "";
+    const eqContainer = document.createElement("div");
+    eqContainer.classList.add("equipment-container");
+    container.appendChild(eqContainer);
 
+    const slotsData = [
+      { slot: "head",      cssClass: "slot-head",      label: "HEAD" },
+      { slot: "shoulders", cssClass: "slot-shoulders", label: "SHOULDERS" },
+      { slot: "chest",     cssClass: "slot-chest",     label: "CHEST" },
+      { slot: "weapon",    cssClass: "slot-weapon",    label: "WEAPON" },
+      { slot: "legs",      cssClass: "slot-legs",      label: "LEGS" },
+      { slot: "feet",      cssClass: "slot-feet",      label: "FEET" },
+    ];
+    slotsData.forEach(({ slot, cssClass, label }) => {
+      const slotDiv = document.createElement("div");
+      slotDiv.classList.add("equipment-slot", cssClass);
+
+      const equippedItemName = playerEquippedItems[slot];
+      if (equippedItemName) {
+        // Show item
+        slotDiv.textContent = equippedItemName;
+        slotDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          this.showEquipmentContextMenu(e, slot, equippedItemName);
+        });
+      } else {
+        // Show slot label
+        slotDiv.textContent = label;
+        slotDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          this.showEquipmentContextMenu(e, slot, null);
+        });
+      }
+      eqContainer.appendChild(slotDiv);
+    });
+  }
+
+  renderDerivedStatsBlock(container) {
+    const heading = document.createElement("h3");
+    heading.textContent = "Final Stats";
+    container.appendChild(heading);
+
+    const derivedStats = calculatePlayerStats();
+    const statsTable = document.createElement("table");
+    statsTable.style.width = "100%";
+
+    const rowData = [
+      { label: "Health",         value: derivedStats.health },
+      { label: "Mana",           value: derivedStats.mana },
+      { label: "Magic Attack",   value: derivedStats.magicAttack },
+      { label: "Melee Attack",   value: derivedStats.meleeAttack },
+      { label: "Magic Defense",  value: derivedStats.magicDefense },
+      { label: "Melee Defense",  value: derivedStats.meleeDefense },
+      { label: "Magic Evasion",  value: derivedStats.magicEvasion },
+      { label: "Melee Evasion",  value: derivedStats.meleeEvasion },
+      { label: "Speed",          value: derivedStats.speed },
+    ];
+
+    rowData.forEach((stat) => {
+      const tr = document.createElement("tr");
+      const tdLabel = document.createElement("td");
+      tdLabel.textContent = stat.label;
+      const tdValue = document.createElement("td");
+      tdValue.textContent = stat.value;
+      tr.appendChild(tdLabel);
+      tr.appendChild(tdValue);
+      statsTable.appendChild(tr);
+    });
+
+    container.appendChild(statsTable);
+  }
+
+  renderInventoryGrid(container) {
+    const heading = document.createElement("h3");
+    heading.textContent = "Inventory";
+    container.appendChild(heading);
+
+    // This table has fixed layout & 5 columns of 64px each → 320px total
     const table = document.createElement("table");
     table.classList.add("inventory-table");
 
@@ -349,7 +411,6 @@ export default class UIManager {
 
       for (let c = 0; c < 5; c++) {
         const cell = document.createElement("td");
-
         const key = `cell_${r}_${c}`;
         const value = playerBackpack[key];
 
@@ -358,155 +419,79 @@ export default class UIManager {
           cell.textContent = "X";
         } else if (value === 0) {
           cell.classList.add("open-cell");
-          cell.textContent = "Empty";
-          // Right-click => show context menu
+          // Empty
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, null);
           });
         } else {
-          // We have an item ID
+          // we have an item
           const itemData = itemsMap[value];
           cell.classList.add("open-cell");
-          if (itemData) {
-            cell.textContent = `ID: ${itemData.id}\n${itemData.name}`;
-          } else {
-            cell.textContent = `??? (ID: ${value})`;
-          }
+
+          // .item-text div to avoid stretching the cell
+          const itemTextDiv = document.createElement("div");
+          itemTextDiv.classList.add("item-text");
+          itemTextDiv.textContent = itemData ? itemData.name : `Unknown(${value})`;
+          cell.appendChild(itemTextDiv);
 
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, itemData);
           });
         }
-
         row.appendChild(cell);
       }
-
       table.appendChild(row);
     }
-
-    this.inventoryContent.appendChild(table);
+    container.appendChild(table);
   }
 
-  /**
-   * Renders a "paper doll" style layout with equipment slots 
-   * (weapon, head, chest, shoulders, legs, feet).
-   */
-  renderEquipmentWindow() {
-    let equipmentContainer = document.getElementById("equipment-container");
-    if (!equipmentContainer) {
-      equipmentContainer = document.createElement("div");
-      equipmentContainer.id = "equipment-container";
-      equipmentContainer.classList.add("equipment-container");
-      this.inventoryContent.appendChild(equipmentContainer);
-    } else {
-      equipmentContainer.innerHTML = "";
-    }
-
-    // Optional silhouette placeholder or background
-    const silhouetteImg = document.createElement("div");
-    silhouetteImg.classList.add("silhouette-placeholder");
-    equipmentContainer.appendChild(silhouetteImg);
-
-    const slots = ["weapon", "head", "chest", "shoulders", "legs", "feet"];
-
-    slots.forEach((slot) => {
-      const slotDiv = document.createElement("div");
-      slotDiv.classList.add("equipment-slot");
-      slotDiv.dataset.slot = slot;
-
-      const equippedItemName = playerEquippedItems[slot];
-      if (equippedItemName) {
-        slotDiv.textContent = equippedItemName;
-        // RIGHT-CLICK => un-equip
-        slotDiv.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          this.showEquipmentContextMenu(e, slot, equippedItemName);
-        });
-      } else {
-        slotDiv.textContent = "Empty";
-        slotDiv.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          this.showEquipmentContextMenu(e, slot, null);
-        });
-      }
-
-      equipmentContainer.appendChild(slotDiv);
-    });
-  }
-
-  /**
-   * Show a small context menu with "Wear" / "Delete" for items in backpack.
-   */
   showItemContextMenu(event, cellKey, itemData) {
     const existingMenu = document.getElementById("inventory-context-menu");
-    if (existingMenu) {
-      existingMenu.remove();
-    }
+    if (existingMenu) existingMenu.remove();
 
     const menu = document.createElement("div");
     menu.id = "inventory-context-menu";
     menu.classList.add("inventory-context-menu");
-    menu.style.position = "absolute";
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
 
     if (!itemData) {
-      // No item
       const noItemLabel = document.createElement("div");
       noItemLabel.textContent = "No item in this cell.";
       menu.appendChild(noItemLabel);
     } else {
-      // Wear
+      // "Wear"
       const wearOption = document.createElement("div");
       wearOption.textContent = "Wear";
       wearOption.classList.add("menu-option");
       wearOption.addEventListener("click", () => {
-        console.log(`Wearing item ID=${itemData.id} name=${itemData.name}`);
-
-        // Actually equip the item
         this.scene.playerManager.equipItem(itemData.slot, itemData.name);
-
-        // Remove from the backpack
-        playerBackpack[cellKey] = 0;
-
-        // Re-render inventory & equipment
-        this.renderInventoryGrid();
-        this.renderEquipmentWindow();
-
+        playerBackpack[cellKey] = 0; // remove from backpack
+        this.openInventory();
         menu.remove();
       });
       menu.appendChild(wearOption);
 
-      // Delete
+      // "Delete"
       const deleteOption = document.createElement("div");
       deleteOption.textContent = "Delete";
       deleteOption.classList.add("menu-option");
       deleteOption.addEventListener("click", () => {
-        console.log(`Delete item ID=${itemData.id} from cell=${cellKey}`);
-
-        // 1) Record it in deletedItems
         deletedItems.push({
           id: itemData.id,
           name: itemData.name,
           deletedAt: new Date().toISOString(),
           reason: "UserDeleted",
         });
-
-        // 2) Remove it from backpack
         playerBackpack[cellKey] = 0;
-
-        // Re-render the inventory
-        this.renderInventoryGrid();
-        this.renderEquipmentWindow();
-
+        this.openInventory();
         menu.remove();
       });
       menu.appendChild(deleteOption);
     }
-
-    // Close
+    // "Close"
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -516,8 +501,6 @@ export default class UIManager {
     menu.appendChild(closeOption);
 
     document.body.appendChild(menu);
-
-    // Remove the menu if user clicks outside
     document.addEventListener(
       "click",
       (e2) => {
@@ -529,48 +512,33 @@ export default class UIManager {
     );
   }
 
-  /**
-   * Show context menu for an equipment slot. 
-   * If an item is equipped, we can "Remove" => un-equip.
-   */
   showEquipmentContextMenu(event, slot, equippedItemName) {
     const existingMenu = document.getElementById("equipment-context-menu");
-    if (existingMenu) {
-      existingMenu.remove();
-    }
+    if (existingMenu) existingMenu.remove();
 
     const menu = document.createElement("div");
     menu.id = "equipment-context-menu";
     menu.classList.add("inventory-context-menu");
-    menu.style.position = "absolute";
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
 
     if (!equippedItemName) {
-      // No item in this slot
       const noItemLabel = document.createElement("div");
-      noItemLabel.textContent = "Nothing equipped in this slot.";
+      noItemLabel.textContent = "Slot is empty.";
       menu.appendChild(noItemLabel);
     } else {
-      // "Remove"
-      const removeOption = document.createElement("div");
-      removeOption.textContent = "Remove";
-      removeOption.classList.add("menu-option");
-      removeOption.addEventListener("click", () => {
-        console.log(`Un-equipping item: ${equippedItemName} from slot ${slot}`);
-
+      // "UNEQUIP"
+      const unequipOption = document.createElement("div");
+      unequipOption.textContent = "UNEQUIP";
+      unequipOption.classList.add("menu-option");
+      unequipOption.addEventListener("click", () => {
         this.scene.playerManager.unequipItem(slot);
-
-        // Re-render
-        this.renderInventoryGrid();
-        this.renderEquipmentWindow();
-
+        this.openInventory();
         menu.remove();
       });
-      menu.appendChild(removeOption);
+      menu.appendChild(unequipOption);
     }
-
-    // Close
+    // "Close"
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -580,8 +548,6 @@ export default class UIManager {
     menu.appendChild(closeOption);
 
     document.body.appendChild(menu);
-
-    // Remove the menu if user clicks outside
     document.addEventListener(
       "click",
       (e2) => {
