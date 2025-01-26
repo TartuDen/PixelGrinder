@@ -395,10 +395,10 @@ export default class MainScene extends Phaser.Scene {
   // Asset loading & world setup
   loadAssets() {
     // Tilemap JSON
-    this.load.tilemapTiledJSON("Map0", "assets/map/map0..tmj");
+    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
 
     // Tileset image
-    this.load.image("tmw_desert_spacing", "assets/map/tmw_desert_spacing.png");
+    this.load.image("terrain", "assets/map/terrain.png");
 
     // Player
     this.load.image("player", "assets/player.png");
@@ -423,10 +423,10 @@ export default class MainScene extends Phaser.Scene {
   }
 
   createTilemap() {
-    this.map = this.make.tilemap({ key: "Map0" });
+    this.map = this.make.tilemap({ key: "Map1" });
     const tileset = this.map.addTilesetImage(
-      "tmw_desert_spacing",
-      "tmw_desert_spacing"
+      "terrain",
+      "terrain"
     );
 
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
