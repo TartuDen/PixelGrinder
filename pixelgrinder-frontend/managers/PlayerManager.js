@@ -29,7 +29,7 @@ export default class PlayerManager {
     this.player = this.scene.physics.add.sprite(
       heroStart.x,
       heroStart.y,
-      "characters"
+      "mage"
     );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
