@@ -424,16 +424,17 @@ export default class MainScene extends Phaser.Scene {
 
   createTilemap() {
     this.map = this.make.tilemap({ key: "Map1" });
-    const tileset = this.map.addTilesetImage(
-      "terrain",
-      "terrain"
-    );
+    const tileset = this.map.addTilesetImage("terrain", "terrain");
 
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
+
+    this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
+
+    // "collisions" layer fix: We will collide with all non-zero tiles
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
-    this.collisionLayer.setCollision([
-      30, 31, 32, 37, 38, 39, 40, 45, 46, 47, 48,
-    ]);
+
+    // Instead of using a hardcoded list of tile IDs, collide with any non-zero tile:
+    this.collisionLayer.setCollisionByExclusion([-1, 0]);
   }
 
   defineAnimations() {
