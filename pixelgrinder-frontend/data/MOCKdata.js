@@ -16,7 +16,7 @@ const playerBaseStats = {
   strength: 0,
   dexterity: 3,
   constitution: 4,
-  speed: 50,
+  speed: 500,
 };
 
 const playerGrowthStats = {
