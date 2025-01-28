@@ -7,7 +7,7 @@ const playerProfile = {
   class: "mage",
   name: "Omigod",
   level: 1,
-  totalExp: 9000000,
+  totalExp: 90,
 };
 
 // --- Player Base Stats ---
@@ -172,7 +172,7 @@ const weaponItems = [
     slot: "weapon",
     health: 0,
     mana: 10,
-    magicAttack: 5,
+    magicAttack: 500,
     meleeAttack: 2,
     magicDefense: 0,
     meleeDefense: 0,
@@ -189,7 +189,7 @@ const armorItems = [
     name: "common_robe_chest",
     type: "robe",
     slot: "chest",
-    health: 10,
+    health: 100,
     mana: 12,
     magicAttack: 0,
     meleeAttack: 0,
