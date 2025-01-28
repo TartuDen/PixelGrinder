@@ -89,7 +89,7 @@ const weaponItems = [
     slot: "weapon",
     health: 0,
     mana: 10,
-    magicAttack: 500,
+    magicAttack: 5,
     meleeAttack: 2,
     magicDefense: 0,
     meleeDefense: 0,
@@ -185,9 +185,9 @@ const playerBackpack = {
   cell_1_2: 0,
   cell_1_3: 0,
   cell_1_4: 0,
-  cell_2_0: 0, // closed (null means closed, but let's keep 0 for open/empty)
-  cell_2_1: null, // closed
-  cell_2_2: null, // closed
+  cell_2_0: 0, 
+  cell_2_1: null, 
+  cell_2_2: null, 
   cell_2_3: null,
   cell_2_4: null,
   cell_3_0: null,
@@ -207,14 +207,30 @@ const playerBackpack = {
   cell_5_4: null,
 };
 
-// Combine weapons + armor into one list for quick lookups by ID
-const allItems = [...weaponItems, ...armorItems];
+// --- Add new Skill Stones or items that teach a skill ---
+// Example skill stone item
+const skillStoneItem =   {
+  id: 3,
+  name: "earth_root",
+  manaCost: 20,
+  range: 150,
+  magicAttack: 5,
+  meleeAttack: 0,
+  castingTime: 5,
+  cooldown: 2,
+  icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
+  skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
+  animationSeq: [0, 7],
+}
+
+// Combine weapons + armor + skillStone into one list for quick lookups by ID
+const allItems = [...weaponItems, ...armorItems, skillStoneItem];
 const itemsMap = {};
 allItems.forEach((item) => {
   itemsMap[item.id] = item;
 });
 
-// --- Skills / Attacks ---
+// --- Skills the player currently knows ---
 const playerSkills = [
   {
     id: 1,
@@ -242,17 +258,24 @@ const playerSkills = [
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
     animationSeq: [0, 7],
   },
+
+];
+
+// --- NEW: All possible skills in the entire game (for skill stones) ---
+const allGameSkills = [
+  // The player might already know some of these,
+  // but if we pick up a stone for one we don't know, we learn it.
   {
-    id: 3,
-    name: "earth_root",
-    manaCost: 20,
+    id: 101,
+    name: "ice_shard",
+    manaCost: 8,
     range: 150,
-    magicAttack: 5,
+    magicAttack: 4,
     meleeAttack: 0,
-    castingTime: 5,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
+    castingTime: 1,
+    cooldown: 3,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_02.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/2_2.png",
     animationSeq: [0, 7],
   },
 ];
@@ -276,6 +299,14 @@ const mobsData = {
     attackCooldown: 2000,
     speed: 20,
     expReward: 10,
+
+    // NEW: Loot table for possible drops
+    lootTable: [
+      // 50% chance to drop "green_branch"
+      { itemId: 2, chance: 50 },
+      // 20% chance to drop the skill stone
+      { itemId: 3, chance: 80 },
+    ],
   },
   goblin: {
     name: "Goblin",
@@ -294,6 +325,9 @@ const mobsData = {
     attackCooldown: 1500,
     speed: 70,
     expReward: 22,
+
+    // As an example, no loot table set here. You could add one similarly.
+    lootTable: [],
   },
 };
 
@@ -354,5 +388,6 @@ export {
   expModifierRules,
   allItems,
   itemsMap,
-  deletedItems, // <--- newly exported
+  deletedItems, 
+  allGameSkills,   // <-- newly exported
 };

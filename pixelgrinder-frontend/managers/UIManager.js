@@ -5,6 +5,8 @@ import {
   itemsMap,
   deletedItems,
   playerEquippedItems,
+  playerSkills,
+  allGameSkills,
 } from "../data/MOCKdata.js";
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
@@ -60,6 +62,51 @@ export default class UIManager {
 
       document.body.appendChild(this.castingProgressContainer);
     }
+
+    // //// NEW LOOT UI ////
+    // We'll create a "loot-menu" dynamically if not found in HTML
+    this.lootMenu = document.getElementById("loot-menu");
+    if (!this.lootMenu) {
+      this.lootMenu = document.createElement("div");
+      this.lootMenu.id = "loot-menu";
+      this.lootMenu.classList.add("stats-menu"); // reuse styling
+      this.lootMenu.style.display = "none";
+      document.body.appendChild(this.lootMenu);
+    }
+
+    // Close button in the loot menu
+    this.lootCloseButton = document.createElement("button");
+    this.lootCloseButton.textContent = "Close";
+    this.lootCloseButton.addEventListener("click", () => {
+      this.lootMenu.style.display = "none";
+    });
+    this.lootMenu.appendChild(this.lootCloseButton);
+
+    // Content container for loot items
+    this.lootContent = document.createElement("div");
+    this.lootContent.id = "loot-content";
+    this.lootMenu.appendChild(this.lootContent);
+
+    // //// NEW SKILL BOOK ////
+    // We'll also create a skill book UI
+    this.skillBook = document.createElement("div");
+    this.skillBook.id = "skill-book";
+    this.skillBook.classList.add("stats-menu");
+    this.skillBook.style.display = "none";
+    document.body.appendChild(this.skillBook);
+
+    // A close button for the skill book
+    this.closeSkillBookBtn = document.createElement("button");
+    this.closeSkillBookBtn.textContent = "Close";
+    this.closeSkillBookBtn.style.marginBottom = "10px";
+    this.closeSkillBookBtn.addEventListener("click", () => {
+      this.skillBook.style.display = "none";
+    });
+    this.skillBook.appendChild(this.closeSkillBookBtn);
+
+    this.skillBookContent = document.createElement("div");
+    this.skillBookContent.id = "skill-book-content";
+    this.skillBook.appendChild(this.skillBookContent);
   }
 
   init(onCloseStatsCallback) {
@@ -209,12 +256,16 @@ export default class UIManager {
     if (this.uiHealthFill && this.healthText) {
       const hpPct = (currentHealth / maxHealth) * 100;
       this.uiHealthFill.style.width = `${hpPct}%`;
-      this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${hpPct.toFixed(1)}%)`;
+      this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${hpPct.toFixed(
+        1
+      )}%)`;
     }
     if (this.uiManaFill && this.manaText) {
       const mpPct = (currentMana / maxMana) * 100;
       this.uiManaFill.style.width = `${mpPct}%`;
-      this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${mpPct.toFixed(1)}%)`;
+      this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${mpPct.toFixed(
+        1
+      )}%)`;
     }
     if (this.uiName) this.uiName.textContent = name;
     if (this.uiLevel) this.uiLevel.textContent = `Level: ${level}`;
@@ -232,7 +283,9 @@ export default class UIManager {
       const expPct = (currentExp / expForNextLevel) * 100;
 
       this.uiExpFill.style.width = `${expPct}%`;
-      this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(1)}%)`;
+      this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(
+        1
+      )}%)`;
     }
   }
 
@@ -282,10 +335,8 @@ export default class UIManager {
   }
 
   openInventory() {
-    // Clear old content
     this.inventoryContent.innerHTML = "";
 
-    // Create 3 columns (blocks)
     const equippedBlock = document.createElement("div");
     equippedBlock.id = "inventory-block-equipped";
     equippedBlock.classList.add("inventory-column");
@@ -298,21 +349,14 @@ export default class UIManager {
     gridBlock.id = "inventory-block-grid";
     gridBlock.classList.add("inventory-column");
 
-    // 1) Equipped items silhouette
     this.renderEquippedItemsBlock(equippedBlock);
-
-    // 2) Derived stats
     this.renderDerivedStatsBlock(statsBlock);
-
-    // 3) Inventory grid
     this.renderInventoryGrid(gridBlock);
 
-    // Append blocks
     this.inventoryContent.appendChild(equippedBlock);
     this.inventoryContent.appendChild(statsBlock);
     this.inventoryContent.appendChild(gridBlock);
 
-    // Show
     this.inventoryMenu.style.display = "block";
   }
 
@@ -344,14 +388,12 @@ export default class UIManager {
 
       const equippedItemName = playerEquippedItems[slot];
       if (equippedItemName) {
-        // Show item
         slotDiv.textContent = equippedItemName;
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showEquipmentContextMenu(e, slot, equippedItemName);
         });
       } else {
-        // Show slot label
         slotDiv.textContent = label;
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
@@ -402,7 +444,6 @@ export default class UIManager {
     heading.textContent = "Inventory";
     container.appendChild(heading);
 
-    // This table has fixed layout & 5 columns of 64px each → 320px total
     const table = document.createElement("table");
     table.classList.add("inventory-table");
 
@@ -419,17 +460,14 @@ export default class UIManager {
           cell.textContent = "X";
         } else if (value === 0) {
           cell.classList.add("open-cell");
-          // Empty
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, null);
           });
         } else {
-          // we have an item
           const itemData = itemsMap[value];
           cell.classList.add("open-cell");
 
-          // .item-text div to avoid stretching the cell
           const itemTextDiv = document.createElement("div");
           itemTextDiv.classList.add("item-text");
           itemTextDiv.textContent = itemData ? itemData.name : `Unknown(${value})`;
@@ -463,16 +501,18 @@ export default class UIManager {
       menu.appendChild(noItemLabel);
     } else {
       // "Wear"
-      const wearOption = document.createElement("div");
-      wearOption.textContent = "Wear";
-      wearOption.classList.add("menu-option");
-      wearOption.addEventListener("click", () => {
-        this.scene.playerManager.equipItem(itemData.slot, itemData.name);
-        playerBackpack[cellKey] = 0; // remove from backpack
-        this.openInventory();
-        menu.remove();
-      });
-      menu.appendChild(wearOption);
+      if (itemData.type !== "skillStone") {
+        const wearOption = document.createElement("div");
+        wearOption.textContent = "Wear";
+        wearOption.classList.add("menu-option");
+        wearOption.addEventListener("click", () => {
+          this.scene.playerManager.equipItem(itemData.slot, itemData.name);
+          playerBackpack[cellKey] = 0; // remove from backpack
+          this.openInventory();
+          menu.remove();
+        });
+        menu.appendChild(wearOption);
+      }
 
       // "Delete"
       const deleteOption = document.createElement("div");
@@ -491,6 +531,7 @@ export default class UIManager {
       });
       menu.appendChild(deleteOption);
     }
+
     // "Close"
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
@@ -538,7 +579,6 @@ export default class UIManager {
       });
       menu.appendChild(unequipOption);
     }
-    // "Close"
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -557,5 +597,125 @@ export default class UIManager {
       },
       { once: true }
     );
+  }
+
+  //// NEW LOOT UI ////
+  /**
+   * Called by MobManager when a dead mob with loot is clicked.
+   */
+  openLootWindow(mob) {
+    // Show the loot window
+    this.lootContent.innerHTML = "";
+    this.lootMenu.style.display = "block";
+
+    // Title
+    const title = document.createElement("h3");
+    title.textContent = `Loot from ${mob.customData.id}`;
+    this.lootContent.appendChild(title);
+
+    // If empty
+    if (mob.customData.droppedLoot.length === 0) {
+      const noLoot = document.createElement("p");
+      noLoot.textContent = "No loot.";
+      this.lootContent.appendChild(noLoot);
+      return;
+    }
+
+    // For each item, show a "Take" button
+    mob.customData.droppedLoot.forEach((itemId, index) => {
+      const itemData = itemsMap[itemId];
+      if (!itemData) return; // fallback
+
+      const itemDiv = document.createElement("div");
+      itemDiv.textContent = itemData.name;
+      itemDiv.style.marginBottom = "5px";
+
+      const takeButton = document.createElement("button");
+      takeButton.textContent = "Take";
+      takeButton.addEventListener("click", () => {
+        // Handle picking up the item
+        this.handleLootItem(mob, index, itemData);
+      });
+      itemDiv.appendChild(takeButton);
+
+      this.lootContent.appendChild(itemDiv);
+    });
+  }
+
+  /**
+   * Move item to player's backpack, or if it's a skillStone, teach the skill.
+   */
+  handleLootItem(mob, lootIndex, itemData) {
+    // 1) If item is a skillStone, teach skill
+    if (itemData.type === "skillStone") {
+      this.learnSkillFromStone(itemData);
+      // Remove from mob's loot
+      mob.customData.droppedLoot.splice(lootIndex, 1);
+      this.openLootWindow(mob);
+      return;
+    }
+
+    // 2) If normal item (weapon/armor), attempt to put in backpack
+    const emptyCell = this.scene.playerManager.findEmptyBackpackCell();
+    if (!emptyCell) {
+      alert("No space in backpack!");
+      return;
+    }
+    // place item in backpack
+    playerBackpack[emptyCell] = itemData.id;
+
+    // Remove from mob
+    mob.customData.droppedLoot.splice(lootIndex, 1);
+    console.log(`Took "${itemData.name}", put in cell=${emptyCell}`);
+
+    // refresh the loot window
+    this.openLootWindow(mob);
+  }
+
+  /**
+   * Teach the player the skill from a skillStone,
+   * if they don't already know it.
+   */
+  learnSkillFromStone(itemData) {
+    const skillId = itemData.skillId;
+    // see if player already knows it
+    const alreadyKnown = playerSkills.find((sk) => sk.id === skillId);
+    if (alreadyKnown) {
+      alert("You already know this skill!");
+      return;
+    }
+    // otherwise, look up the skill in allGameSkills
+    const newSkill = allGameSkills.find((sk) => sk.id === skillId);
+    if (!newSkill) {
+      alert("Skill not found in the game data!");
+      return;
+    }
+    // teach it
+    playerSkills.push(newSkill);
+    alert(`You learned a new skill: ${newSkill.name}!`);
+    // Re-setup skill bar if needed
+    this.scene.setupUI();
+  }
+
+  //// NEW SKILL BOOK ////
+  /**
+   * Called by pressing "O" key to open/close the skill book
+   */
+  toggleSkillBook() {
+    if (this.skillBook.style.display === "block") {
+      this.skillBook.style.display = "none";
+      return;
+    }
+
+    // Show skill book
+    this.skillBook.style.display = "block";
+    this.skillBookContent.innerHTML = "<h3>Skill Book</h3>";
+
+    // List all skills in playerSkills
+    playerSkills.forEach((skill) => {
+      const skillDiv = document.createElement("div");
+      skillDiv.textContent = `${skill.name} (ManaCost: ${skill.manaCost}, CD: ${skill.cooldown}s)`;
+      this.skillBookContent.appendChild(skillDiv);
+    });
   }
 }
