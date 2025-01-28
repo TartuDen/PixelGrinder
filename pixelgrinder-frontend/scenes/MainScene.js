@@ -18,6 +18,8 @@ import {
   playerEquippedItems,
   weaponItems,
   armorItems,
+  // We import allGameSkills so we can preload & define animations for all potential skills
+  allGameSkills,
 } from "../data/MOCKdata.js";
 
 export default class MainScene extends Phaser.Scene {
@@ -46,6 +48,7 @@ export default class MainScene extends Phaser.Scene {
   create() {
     // Initialize previous level tracker
     this.previousLevel = playerProfile.level;
+
     this.createTilemap();
     this.defineAnimations();
 
@@ -72,7 +75,7 @@ export default class MainScene extends Phaser.Scene {
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
 
-    // Setup UI
+    // Setup the skill bar with the current playerSkills
     this.uiManager.setupSkills(playerSkills);
 
     // Initialize Input Manager
@@ -121,7 +124,6 @@ export default class MainScene extends Phaser.Scene {
   // --------------------------------------------------------------
   //  CREATE / LOAD
   // --------------------------------------------------------------
-
   loadAssets() {
     // 1) Tilemap JSON
     this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
@@ -129,13 +131,13 @@ export default class MainScene extends Phaser.Scene {
     // 2) Tileset image
     this.load.image("terrain", "assets/map/terrain.png");
 
-    // 3) Player mage sprite (new!)
+    // 3) Player mage sprite
     this.load.spritesheet("mage", "assets/mage.png", {
       frameWidth: 36, // approximated
       frameHeight: 37 // approximated
     });
 
-    // 4) Mob sprite (unchanged)
+    // 4) Mob sprite
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
       frameHeight: 32,
@@ -147,8 +149,11 @@ export default class MainScene extends Phaser.Scene {
       frameHeight: 32,
     });
 
-    // 6) Skill animations
-    playerSkills.forEach((skill) => {
+    // -------------------------------------------------------
+    //  Instead of playerSkills.forEach(...), use allGameSkills
+    //  to preload *all* possible skill sprite sheets.
+    // -------------------------------------------------------
+    allGameSkills.forEach((skill) => {
       this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
         frameWidth: 72,
         frameHeight: 72,
@@ -174,13 +179,6 @@ export default class MainScene extends Phaser.Scene {
   defineAnimations() {
     //
     // PLAYER animations (from new mage.png)
-    //
-    // The sprite is 4 rows x 7 columns; each row has 6 frames + 1 empty column
-    // So row frames are (rowIndex*7) .. (rowIndex*7 + 5)
-    // Row 0 => walk-down => frames 0..5
-    // Row 1 => walk-up   => frames 7..12
-    // Row 2 => walk-right => frames 14..19
-    // Row 3 => walk-left => frames 21..26
     //
     this.anims.create({
       key: "walk-down",
@@ -208,7 +206,7 @@ export default class MainScene extends Phaser.Scene {
     });
 
     //
-    // MOB animations (unchanged, from "characters.png")
+    // MOB animations
     //
     this.anims.create({
       key: "mob-walk-down",
@@ -257,8 +255,12 @@ export default class MainScene extends Phaser.Scene {
 
     //
     // SKILL animations
-    //
-    playerSkills.forEach((skill) => {
+    // ---------------------------------------------------------
+    //  Create animations for *all* game skills, not just the
+    //  player's current skill set. This way newly looted skills
+    //  also have their animation data ready.
+    // ---------------------------------------------------------
+    allGameSkills.forEach((skill) => {
       this.anims.create({
         key: `${skill.name}_anim`,
         frames: this.anims.generateFrameNumbers(`${skill.name}_anim`, {
@@ -288,19 +290,19 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // --------------------------------------------------------------
-  //  OTHER METHODS (same as before)
+  //  OTHER METHODS
   // --------------------------------------------------------------
 
   calculatePlayerLevel(totalExp) {
-    let oldLevel = playerProfile.level; 
+    let oldLevel = playerProfile.level;
     let level = 1;
-    let expForNextLevel = 100; 
+    let expForNextLevel = 100;
     let accumulatedExp = 0;
 
     while (totalExp >= accumulatedExp + expForNextLevel && level < 50) {
       accumulatedExp += expForNextLevel;
       level += 1;
-      expForNextLevel = Math.floor(expForNextLevel * 1.5); 
+      expForNextLevel = Math.floor(expForNextLevel * 1.5);
     }
 
     const currentExp = totalExp - accumulatedExp;
@@ -374,7 +376,9 @@ export default class MainScene extends Phaser.Scene {
 
   generateStatsHTML() {
     // same as before
-    // ...
+    return `
+      <p>This is where you'd show the player's stats in HTML form.</p>
+    `;
   }
 
   summarizePlayerStats() {
