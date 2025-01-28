@@ -1,4 +1,6 @@
+//
 // managers/PlayerManager.js
+//
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import {
@@ -93,37 +95,41 @@ export default class PlayerManager {
   }
 
   /**
-   * Equip an item and update stats. If there's already an item in that slot,
-   * move that old item into an empty backpack cell.
+   * Equip an item by ID and update stats. 
+   * If there's already an item in that slot, move that old item into an empty backpack cell.
+   * @param {string} slot - e.g. "weapon", "head", "chest", "shoulders", "legs", "feet"
+   * @param {number} itemId - The item ID from the data.
    */
-  equipItem(itemType, itemName) {
-    // 1) If we already have an item equipped in that slot, move it into inventory
-    const currentlyEquippedName = playerEquippedItems[itemType];
-    if (currentlyEquippedName) {
-      // Find the old item in allItems
-      const oldItem = allItems.find((it) => it.name === currentlyEquippedName);
+  equipItem(slot, itemId) {
+    // 1) If we already have an item in that slot, move it into inventory
+    const currentlyEquippedId = playerEquippedItems[slot];
+    if (currentlyEquippedId) {
+      const oldItem = allItems.find((it) => it.id === currentlyEquippedId);
       if (oldItem) {
-        // Find an empty cell
         const emptyCell = this.findEmptyBackpackCell();
         if (emptyCell) {
-          // Put the old item into that backpack cell
           playerBackpack[emptyCell] = oldItem.id;
           console.log(
             `Moved previously equipped "${oldItem.name}" to inventory cell=${emptyCell}.`
           );
         } else {
           console.warn(
-            "No empty cell available in the backpack. The old item remains equipped or is lost!"
+            "No empty cell available in the backpack. Old item remains equipped or is lost!"
           );
         }
       }
     }
 
     // 2) Now equip the new item
-    playerEquippedItems[itemType] = itemName;
-    console.log(`Equipped ${itemName} to ${itemType}`);
+    playerEquippedItems[slot] = itemId;
+    const newItem = allItems.find((it) => it.id === itemId);
+    if (newItem) {
+      console.log(`Equipped ${newItem.name} (id=${itemId}) to slot="${slot}".`);
+    } else {
+      console.warn(`equipItem: no data found for itemId=${itemId}.`);
+    }
 
-    // 3) Recalculate and update stats
+    // 3) Recalculate stats
     this.updatePlayerStats();
     this.scene.emitStatsUpdate();
   }
@@ -133,23 +139,21 @@ export default class PlayerManager {
    * @param {string} slot - e.g. "weapon", "head", "chest", "shoulders", "legs", "feet"
    */
   unequipItem(slot) {
-    const equippedItemName = playerEquippedItems[slot];
-    if (!equippedItemName) {
+    const equippedItemId = playerEquippedItems[slot];
+    if (!equippedItemId) {
       console.log(`No item is currently equipped in slot: ${slot}`);
       return;
     }
 
-    // Find empty cell
     const emptyCell = this.findEmptyBackpackCell();
     if (!emptyCell) {
       console.warn("No empty cell available in the backpack. Cannot un-equip!");
       return;
     }
 
-    // Find the item by name
-    const itemData = allItems.find((i) => i.name === equippedItemName);
+    const itemData = allItems.find((i) => i.id === equippedItemId);
     if (!itemData) {
-      console.warn(`Could not find item data for equipped item: ${equippedItemName}`);
+      console.warn(`Could not find item data for equipped item ID=${equippedItemId}`);
       return;
     }
 
@@ -158,7 +162,9 @@ export default class PlayerManager {
 
     // Remove from equipped
     playerEquippedItems[slot] = null;
-    console.log(`Un-equipped "${equippedItemName}" from slot ${slot} → moved to cell ${emptyCell}`);
+    console.log(
+      `Un-equipped "${itemData.name}" from slot=${slot} → moved to cell=${emptyCell}`
+    );
 
     // Update stats
     this.updatePlayerStats();

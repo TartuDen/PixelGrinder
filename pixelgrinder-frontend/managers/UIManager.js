@@ -1,4 +1,6 @@
+//
 // managers/UIManager.js
+//
 
 import {
   playerBackpack,
@@ -47,7 +49,7 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // Create if missing:
+    // Create if missing
     if (!this.castingProgressContainer) {
       this.castingProgressContainer = document.createElement("div");
       this.castingProgressContainer.id = "casting-progress-container";
@@ -64,17 +66,15 @@ export default class UIManager {
     }
 
     // //// NEW LOOT UI ////
-    // We'll create a "loot-menu" dynamically if not found in HTML
     this.lootMenu = document.getElementById("loot-menu");
     if (!this.lootMenu) {
       this.lootMenu = document.createElement("div");
       this.lootMenu.id = "loot-menu";
-      this.lootMenu.classList.add("stats-menu"); // reuse styling
+      this.lootMenu.classList.add("stats-menu");
       this.lootMenu.style.display = "none";
       document.body.appendChild(this.lootMenu);
     }
 
-    // Close button in the loot menu
     this.lootCloseButton = document.createElement("button");
     this.lootCloseButton.textContent = "Close";
     this.lootCloseButton.addEventListener("click", () => {
@@ -82,20 +82,17 @@ export default class UIManager {
     });
     this.lootMenu.appendChild(this.lootCloseButton);
 
-    // Content container for loot items
     this.lootContent = document.createElement("div");
     this.lootContent.id = "loot-content";
     this.lootMenu.appendChild(this.lootContent);
 
     // //// NEW SKILL BOOK ////
-    // We'll also create a skill book UI
     this.skillBook = document.createElement("div");
     this.skillBook.id = "skill-book";
     this.skillBook.classList.add("stats-menu");
     this.skillBook.style.display = "none";
     document.body.appendChild(this.skillBook);
 
-    // A close button for the skill book
     this.closeSkillBookBtn = document.createElement("button");
     this.closeSkillBookBtn.textContent = "Close";
     this.closeSkillBookBtn.style.marginBottom = "10px";
@@ -162,6 +159,7 @@ export default class UIManager {
 
   /* Skill Setup */
   setupSkills(skills) {
+    // Rebuild the skill bar
     this.castingBar.innerHTML = "";
 
     skills.forEach((skill) => {
@@ -182,6 +180,7 @@ export default class UIManager {
       const cooldownOverlay = document.createElement("div");
       cooldownOverlay.classList.add("cooldown-overlay");
       cooldownOverlay.style.display = "none";
+
       const cooldownTimer = document.createElement("span");
       cooldownTimer.classList.add("cooldown-timer");
       cooldownOverlay.appendChild(cooldownTimer);
@@ -386,12 +385,13 @@ export default class UIManager {
       const slotDiv = document.createElement("div");
       slotDiv.classList.add("equipment-slot", cssClass);
 
-      const equippedItemName = playerEquippedItems[slot];
-      if (equippedItemName) {
-        slotDiv.textContent = equippedItemName;
+      const equippedItemId = playerEquippedItems[slot];
+      if (equippedItemId) {
+        const itemData = itemsMap[equippedItemId];
+        slotDiv.textContent = itemData ? itemData.name : `Unknown(${equippedItemId})`;
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          this.showEquipmentContextMenu(e, slot, equippedItemName);
+          this.showEquipmentContextMenu(e, slot, equippedItemId);
         });
       } else {
         slotDiv.textContent = label;
@@ -501,12 +501,13 @@ export default class UIManager {
       menu.appendChild(noItemLabel);
     } else {
       // "Wear"
-      if (itemData.type !== "skillStone") {
+      const isWearable = itemData.slot && itemData.type;
+      if (isWearable) {
         const wearOption = document.createElement("div");
         wearOption.textContent = "Wear";
         wearOption.classList.add("menu-option");
         wearOption.addEventListener("click", () => {
-          this.scene.playerManager.equipItem(itemData.slot, itemData.name);
+          this.scene.playerManager.equipItem(itemData.slot, itemData.id);
           playerBackpack[cellKey] = 0; // remove from backpack
           this.openInventory();
           menu.remove();
@@ -553,7 +554,7 @@ export default class UIManager {
     );
   }
 
-  showEquipmentContextMenu(event, slot, equippedItemName) {
+  showEquipmentContextMenu(event, slot, equippedItemId) {
     const existingMenu = document.getElementById("equipment-context-menu");
     if (existingMenu) existingMenu.remove();
 
@@ -563,7 +564,7 @@ export default class UIManager {
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
 
-    if (!equippedItemName) {
+    if (!equippedItemId) {
       const noItemLabel = document.createElement("div");
       noItemLabel.textContent = "Slot is empty.";
       menu.appendChild(noItemLabel);
@@ -579,6 +580,7 @@ export default class UIManager {
       });
       menu.appendChild(unequipOption);
     }
+
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -599,21 +601,15 @@ export default class UIManager {
     );
   }
 
-  //// NEW LOOT UI ////
-  /**
-   * Called by MobManager when a dead mob with loot is clicked.
-   */
+  //// LOOT UI ////
   openLootWindow(mob) {
-    // Show the loot window
     this.lootContent.innerHTML = "";
     this.lootMenu.style.display = "block";
 
-    // Title
     const title = document.createElement("h3");
     title.textContent = `Loot from ${mob.customData.id}`;
     this.lootContent.appendChild(title);
 
-    // If empty
     if (mob.customData.droppedLoot.length === 0) {
       const noLoot = document.createElement("p");
       noLoot.textContent = "No loot.";
@@ -621,41 +617,50 @@ export default class UIManager {
       return;
     }
 
-    // For each item, show a "Take" button
     mob.customData.droppedLoot.forEach((itemId, index) => {
+      // Check if it's an item in itemsMap
       const itemData = itemsMap[itemId];
-      if (!itemData) return; // fallback
+      // Or a skill in allGameSkills
+      const skillData = allGameSkills.find((s) => s.id === itemId);
 
-      const itemDiv = document.createElement("div");
-      itemDiv.textContent = itemData.name;
-      itemDiv.style.marginBottom = "5px";
+      if (itemData) {
+        // Normal item
+        const itemDiv = document.createElement("div");
+        itemDiv.textContent = itemData.name;
+        itemDiv.style.marginBottom = "5px";
 
-      const takeButton = document.createElement("button");
-      takeButton.textContent = "Take";
-      takeButton.addEventListener("click", () => {
-        // Handle picking up the item
-        this.handleLootItem(mob, index, itemData);
-      });
-      itemDiv.appendChild(takeButton);
+        const takeButton = document.createElement("button");
+        takeButton.textContent = "Take Item";
+        takeButton.addEventListener("click", () => {
+          this.handleLootItem(mob, index, itemData);
+        });
+        itemDiv.appendChild(takeButton);
 
-      this.lootContent.appendChild(itemDiv);
+        this.lootContent.appendChild(itemDiv);
+      } else if (skillData) {
+        // It's a skill from allGameSkills
+        const skillDiv = document.createElement("div");
+        skillDiv.textContent = `${skillData.name} (Skill)`;
+        skillDiv.style.marginBottom = "5px";
+
+        const learnButton = document.createElement("button");
+        learnButton.textContent = "Learn Skill";
+        learnButton.addEventListener("click", () => {
+          this.learnSkillFromLoot(mob, index, skillData);
+        });
+        skillDiv.appendChild(learnButton);
+
+        this.lootContent.appendChild(skillDiv);
+      } else {
+        // Unknown
+        const unknownDiv = document.createElement("div");
+        unknownDiv.textContent = `Unknown loot ID: ${itemId}`;
+        this.lootContent.appendChild(unknownDiv);
+      }
     });
   }
 
-  /**
-   * Move item to player's backpack, or if it's a skillStone, teach the skill.
-   */
   handleLootItem(mob, lootIndex, itemData) {
-    // 1) If item is a skillStone, teach skill
-    if (itemData.type === "skillStone") {
-      this.learnSkillFromStone(itemData);
-      // Remove from mob's loot
-      mob.customData.droppedLoot.splice(lootIndex, 1);
-      this.openLootWindow(mob);
-      return;
-    }
-
-    // 2) If normal item (weapon/armor), attempt to put in backpack
     const emptyCell = this.scene.playerManager.findEmptyBackpackCell();
     if (!emptyCell) {
       alert("No space in backpack!");
@@ -664,54 +669,46 @@ export default class UIManager {
     // place item in backpack
     playerBackpack[emptyCell] = itemData.id;
 
-    // Remove from mob
+    // Remove from mob's loot
     mob.customData.droppedLoot.splice(lootIndex, 1);
     console.log(`Took "${itemData.name}", put in cell=${emptyCell}`);
 
-    // refresh the loot window
+    // Refresh the loot window
     this.openLootWindow(mob);
   }
 
-  /**
-   * Teach the player the skill from a skillStone,
-   * if they don't already know it.
-   */
-  learnSkillFromStone(itemData) {
-    const skillId = itemData.skillId;
+  learnSkillFromLoot(mob, lootIndex, skillData) {
     // see if player already knows it
-    const alreadyKnown = playerSkills.find((sk) => sk.id === skillId);
+    const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
     if (alreadyKnown) {
       alert("You already know this skill!");
-      return;
+    } else {
+      // teach the player this new skill
+      playerSkills.push(skillData);
+      alert(`You learned a new skill: ${skillData.name}!`);
+
+      // Refresh the skill bar
+      this.setupSkills(playerSkills);
+
+      // Also re-bind the skill hotkeys
+      this.scene.inputManager.setupControls(playerSkills);
     }
-    // otherwise, look up the skill in allGameSkills
-    const newSkill = allGameSkills.find((sk) => sk.id === skillId);
-    if (!newSkill) {
-      alert("Skill not found in the game data!");
-      return;
-    }
-    // teach it
-    playerSkills.push(newSkill);
-    alert(`You learned a new skill: ${newSkill.name}!`);
-    // Re-setup skill bar if needed
-    this.scene.setupUI();
+
+    // Remove from the mob's loot array
+    mob.customData.droppedLoot.splice(lootIndex, 1);
+    this.openLootWindow(mob);
   }
 
-  //// NEW SKILL BOOK ////
-  /**
-   * Called by pressing "O" key to open/close the skill book
-   */
+  //// SKILL BOOK ////
   toggleSkillBook() {
     if (this.skillBook.style.display === "block") {
       this.skillBook.style.display = "none";
       return;
     }
 
-    // Show skill book
     this.skillBook.style.display = "block";
     this.skillBookContent.innerHTML = "<h3>Skill Book</h3>";
 
-    // List all skills in playerSkills
     playerSkills.forEach((skill) => {
       const skillDiv = document.createElement("div");
       skillDiv.textContent = `${skill.name} (ManaCost: ${skill.manaCost}, CD: ${skill.cooldown}s)`;

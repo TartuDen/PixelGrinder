@@ -413,7 +413,7 @@ td:empty::after {
   width: 200px;
   height: 400px;
   margin: 0 auto;
-  background: url('assets/silhouette.png') no-repeat center top;
+  /* background: url('assets/silhouette.png') no-repeat center top; */
   background-size: contain;
 }
 .equipment-slot {

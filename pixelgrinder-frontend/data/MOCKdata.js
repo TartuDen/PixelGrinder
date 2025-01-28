@@ -1,11 +1,13 @@
+//
 // data/MOCKdata.js
+//
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
   class: "mage",
   name: "Omigod",
-  level: 1, // Added level for UI
-  totalExp: 90,
+  level: 1,
+  totalExp: 9000000,
 };
 
 // --- Player Base Stats ---
@@ -65,10 +67,91 @@ const statWeights = {
   },
 };
 
-// --- Weapons ---
+// --------------------------------------------------------------------
+// ALL GAME SKILLS (IDs starting at 1000)
+// --------------------------------------------------------------------
+const allGameSkills = [
+  {
+    id: 1000,
+    name: "magic_wip",
+    manaCost: 5,
+    range: 150,
+    magicAttack: 2,
+    meleeAttack: 0,
+    castingTime: 0,
+    cooldown: 2,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
+    animationSeq: [0, 7],
+  },
+  {
+    id: 1001,
+    name: "fire_ball",
+    manaCost: 10,
+    range: 150,
+    magicAttack: 3,
+    meleeAttack: 0,
+    castingTime: 1,
+    cooldown: 2,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
+    animationSeq: [0, 7],
+  },
+  {
+    id: 1002,
+    name: "earth_root",
+    manaCost: 8,
+    range: 150,
+    magicAttack: 10,
+    meleeAttack: 0,
+    castingTime: 5,
+    cooldown: 10,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1.png",
+    animationSeq: [0, 7],
+  },
+];
+
+// --------------------------------------------------------------------
+// PLAYER SKILLS (references to the above IDs)
+// --------------------------------------------------------------------
+const playerSkills = [
+  {
+    id: 1000,
+    name: "magic_wip",
+    manaCost: 5,
+    range: 150,
+    magicAttack: 2,
+    meleeAttack: 0,
+    castingTime: 0,
+    cooldown: 2,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
+    animationSeq: [0, 7],
+  },
+  {
+    id: 1001,
+    name: "fire_ball",
+    manaCost: 10,
+    range: 150,
+    magicAttack: 3,
+    meleeAttack: 0,
+    castingTime: 1,
+    cooldown: 2,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
+    animationSeq: [0, 7],
+  },
+];
+
+// --------------------------------------------------------------------
+// ITEM LISTS
+// --------------------------------------------------------------------
+
+// 3) weaponItems: IDs start at 2000
 const weaponItems = [
   {
-    id: 1,
+    id: 2000,
     name: "basic_staff",
     type: "staff",
     slot: "weapon",
@@ -83,7 +166,7 @@ const weaponItems = [
     speed: 0,
   },
   {
-    id: 2,
+    id: 2001,
     name: "green_branch",
     type: "staff",
     slot: "weapon",
@@ -99,10 +182,10 @@ const weaponItems = [
   },
 ];
 
-// --- Armors ---
+// 4) armorItems: IDs start at 3000
 const armorItems = [
   {
-    id: 100,
+    id: 3000,
     name: "common_robe_chest",
     type: "robe",
     slot: "chest",
@@ -117,7 +200,7 @@ const armorItems = [
     speed: 0,
   },
   {
-    id: 101,
+    id: 3001,
     name: "common_robe_pants",
     type: "robe",
     slot: "legs",
@@ -132,7 +215,7 @@ const armorItems = [
     speed: 0,
   },
   {
-    id: 102,
+    id: 3002,
     name: "light_boots",
     type: "boots",
     slot: "feet",
@@ -147,7 +230,7 @@ const armorItems = [
     speed: 5,
   },
   {
-    id: 103,
+    id: 3003,
     name: "swift_gauntlets",
     type: "gauntlets",
     slot: "shoulders",
@@ -163,31 +246,40 @@ const armorItems = [
   },
 ];
 
-// --- What the player is currently wearing ---
+// Combine weapons + armor into one list
+const allItems = [...weaponItems, ...armorItems];
+
+// Build a quick lookup by item.id
+const itemsMap = {};
+allItems.forEach((item) => {
+  itemsMap[item.id] = item;
+});
+
+// 5) Currently equipped: store item IDs (not names)
 const playerEquippedItems = {
-  weapon: "basic_staff",
+  weapon: 2000,   // "basic_staff" (was ID=1, now 2000)
   head: null,
   chest: null,
-  shoulders: "swift_gauntlets",
+  shoulders: 3003, // "swift_gauntlets" (was ID=103, now 3003)
   legs: null,
-  feet: "light_boots",
+  feet: 3002,     // "light_boots" (was ID=102, now 3002)
 };
 
-// --- Player Backpack / Inventory ---
+// 6) Player backpack: also store item IDs
 const playerBackpack = {
-  cell_0_0: 1,    // basic_staff
-  cell_0_1: 2,    // green_branch
+  cell_0_0: 2000, // was 1 => basic_staff
+  cell_0_1: 2001, // was 2 => green_branch
   cell_0_2: 0,
   cell_0_3: 0,
   cell_0_4: 0,
-  cell_1_0: 103,  // swift_gauntlets
+  cell_1_0: 3003, // was 103 => swift_gauntlets
   cell_1_1: 0,
   cell_1_2: 0,
   cell_1_3: 0,
   cell_1_4: 0,
-  cell_2_0: 0, 
-  cell_2_1: null, 
-  cell_2_2: null, 
+  cell_2_0: 0,
+  cell_2_1: null,
+  cell_2_2: null,
   cell_2_3: null,
   cell_2_4: null,
   cell_3_0: null,
@@ -207,80 +299,12 @@ const playerBackpack = {
   cell_5_4: null,
 };
 
-// --- Add new Skill Stones or items that teach a skill ---
-// Example skill stone item
-const skillStoneItem =   {
-  id: 3,
-  name: "earth_root",
-  manaCost: 20,
-  range: 150,
-  magicAttack: 5,
-  meleeAttack: 0,
-  castingTime: 5,
-  cooldown: 2,
-  icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
-  skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1_2.png",
-  animationSeq: [0, 7],
-}
+// Track deleted items
+const deletedItems = [];
 
-// Combine weapons + armor + skillStone into one list for quick lookups by ID
-const allItems = [...weaponItems, ...armorItems, skillStoneItem];
-const itemsMap = {};
-allItems.forEach((item) => {
-  itemsMap[item.id] = item;
-});
-
-// --- Skills the player currently knows ---
-const playerSkills = [
-  {
-    id: 1,
-    name: "magic_wip",
-    manaCost: 5,
-    range: 150,
-    magicAttack: 2,
-    meleeAttack: 0,
-    castingTime: 0,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
-    animationSeq: [0, 7],
-  },
-  {
-    id: 2,
-    name: "fire_ball",
-    manaCost: 10,
-    range: 150,
-    magicAttack: 3,
-    meleeAttack: 0,
-    castingTime: 1,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
-    animationSeq: [0, 7],
-  },
-
-];
-
-// --- NEW: All possible skills in the entire game (for skill stones) ---
-const allGameSkills = [
-  // The player might already know some of these,
-  // but if we pick up a stone for one we don't know, we learn it.
-  {
-    id: 101,
-    name: "ice_shard",
-    manaCost: 8,
-    range: 150,
-    magicAttack: 4,
-    meleeAttack: 0,
-    castingTime: 1,
-    cooldown: 3,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_02.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/2_2.png",
-    animationSeq: [0, 7],
-  },
-];
-
-// --- Mobs Data ---
+// --------------------------------------------------------------------
+// MOBS + LOOT
+// --------------------------------------------------------------------
 const mobsData = {
   slime: {
     name: "Slime",
@@ -299,13 +323,10 @@ const mobsData = {
     attackCooldown: 2000,
     speed: 20,
     expReward: 10,
-
-    // NEW: Loot table for possible drops
+    // Loot references: itemId=2001 => "green_branch", skillId=1002 => "ice_shard"
     lootTable: [
-      // 50% chance to drop "green_branch"
-      { itemId: 2, chance: 50 },
-      // 20% chance to drop the skill stone
-      { itemId: 3, chance: 80 },
+      { itemId: 2001, chance: 80 }, // green_branch
+      { itemId: 1002, chance: 80 }, // skill "ice_shard"
     ],
   },
   goblin: {
@@ -325,8 +346,6 @@ const mobsData = {
     attackCooldown: 1500,
     speed: 70,
     expReward: 22,
-
-    // As an example, no loot table set here. You could add one similarly.
     lootTable: [],
   },
 };
@@ -357,19 +376,6 @@ const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
 
-/**
- * NEW: Track deleted items so we don't lose their info.
- * We'll push an object like:
- *  {
- *    id: itemId,
- *    name: itemName,
- *    deletedAt: '2025-02-01T12:34:56.789Z',
- *    reason: "UserDeleted"
- *  }
- */
-const deletedItems = [];
-
-// Export everything
 export {
   playerProfile,
   playerBaseStats,
@@ -380,6 +386,7 @@ export {
   playerEquippedItems,
   playerBackpack,
   playerSkills,
+  allGameSkills,
   mobsData,
   naturalRegeneration,
   TAB_TARGET_RANGE,
@@ -388,6 +395,5 @@ export {
   expModifierRules,
   allItems,
   itemsMap,
-  deletedItems, 
-  allGameSkills,   // <-- newly exported
+  deletedItems,
 };
