@@ -19,6 +19,9 @@ const playerBaseStats = {
   dexterity: 3,
   constitution: 4,
   speed: 50,
+
+  // NEW: This determines how fast the player gathers.
+  gatherSpeed: 1,
 };
 
 const playerGrowthStats = {
@@ -31,7 +34,6 @@ const playerGrowthStats = {
   speed: 3,
 };
 
-// --- Stat Weights (How base stats affect derived stats) ---
 const statWeights = {
   intellect: {
     magicAttack: 3,
@@ -68,7 +70,7 @@ const statWeights = {
 };
 
 // --------------------------------------------------------------------
-// ALL GAME SKILLS (IDs starting at 1000)
+// ALL GAME SKILLS
 // --------------------------------------------------------------------
 const allGameSkills = [
   {
@@ -113,7 +115,7 @@ const allGameSkills = [
 ];
 
 // --------------------------------------------------------------------
-// PLAYER SKILLS (references to the above IDs)
+// PLAYER SKILLS (subset of allGameSkills for the current player)
 // --------------------------------------------------------------------
 const playerSkills = [
   {
@@ -144,11 +146,7 @@ const playerSkills = [
   },
 ];
 
-// --------------------------------------------------------------------
-// ITEM LISTS
-// --------------------------------------------------------------------
-
-// 3) weaponItems: IDs start at 2000
+// 3) Weapons
 const weaponItems = [
   {
     id: 2000,
@@ -182,7 +180,7 @@ const weaponItems = [
   },
 ];
 
-// 4) armorItems: IDs start at 3000
+// 4) Armors
 const armorItems = [
   {
     id: 3000,
@@ -246,33 +244,29 @@ const armorItems = [
   },
 ];
 
-// Combine weapons + armor into one list
 const allItems = [...weaponItems, ...armorItems];
 
-// Build a quick lookup by item.id
 const itemsMap = {};
 allItems.forEach((item) => {
   itemsMap[item.id] = item;
 });
 
-// 5) Currently equipped: store item IDs (not names)
 const playerEquippedItems = {
-  weapon: 2000,   // "basic_staff" (was ID=1, now 2000)
+  weapon: 2000,
   head: null,
   chest: null,
-  shoulders: 3003, // "swift_gauntlets" (was ID=103, now 3003)
+  shoulders: 3003,
   legs: null,
-  feet: 3002,     // "light_boots" (was ID=102, now 3002)
+  feet: 3002,
 };
 
-// 6) Player backpack: also store item IDs
 const playerBackpack = {
-  cell_0_0: 2000, // was 1 => basic_staff
-  cell_0_1: 2001, // was 2 => green_branch
+  cell_0_0: 2000,
+  cell_0_1: 2001,
   cell_0_2: 0,
   cell_0_3: 0,
   cell_0_4: 0,
-  cell_1_0: 3003, // was 103 => swift_gauntlets
+  cell_1_0: 3003,
   cell_1_1: 0,
   cell_1_2: 0,
   cell_1_3: 0,
@@ -299,12 +293,8 @@ const playerBackpack = {
   cell_5_4: null,
 };
 
-// Track deleted items
 const deletedItems = [];
 
-// --------------------------------------------------------------------
-// MOBS + LOOT
-// --------------------------------------------------------------------
 const mobsData = {
   slime: {
     name: "Slime",
@@ -323,10 +313,9 @@ const mobsData = {
     attackCooldown: 2000,
     speed: 20,
     expReward: 10,
-    // Loot references: itemId=2001 => "green_branch", skillId=1002 => "ice_shard"
     lootTable: [
-      { itemId: 2001, chance: 80 }, // green_branch
-      { itemId: 1002, chance: 80 }, // skill "ice_shard"
+      { itemId: 2001, chance: 80 },
+      { itemId: 1002, chance: 80 },
     ],
   },
   goblin: {
@@ -350,7 +339,6 @@ const mobsData = {
   },
 };
 
-// Experience modifier rules
 const expModifierRules = {
   mobAtLeast5Higher: 1.2,
   mob4Higher: 1.15,
@@ -372,9 +360,20 @@ const naturalRegeneration = {
   regenerationTime: 5000,
 };
 
+const gatherable = [
+  {
+    id: 4000,
+    name: "simple_rock",
+    type: "stone",
+  },
+]
+
 const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
+
+// NEW: Gathering range constant
+const GATHER_RANGE = 50;
 
 export {
   playerProfile,
@@ -396,4 +395,6 @@ export {
   allItems,
   itemsMap,
   deletedItems,
+  // Export the new gather range
+  GATHER_RANGE,
 };

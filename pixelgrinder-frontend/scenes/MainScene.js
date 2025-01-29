@@ -18,8 +18,9 @@ import {
   playerEquippedItems,
   weaponItems,
   armorItems,
-  // We import allGameSkills so we can preload & define animations for all potential skills
   allGameSkills,
+  // IMPORTANT: We'll use GATHER_RANGE in our gathering logic
+  GATHER_RANGE,
 } from "../data/MOCKdata.js";
 
 export default class MainScene extends Phaser.Scene {
@@ -29,7 +30,6 @@ export default class MainScene extends Phaser.Scene {
     this.currentTargetIndex = -1;
     this.targetedMob = null;
 
-    // Managers
     this.uiManager = null;
     this.skillManager = null;
     this.mobManager = null;
@@ -38,25 +38,28 @@ export default class MainScene extends Phaser.Scene {
 
     // Event emitter
     this.events = new Phaser.Events.EventEmitter();
+
+    // We'll track the tile under the cursor in gather_rock
+    this.hoveredGatherTile = null;
+
+    // For convenience, store the last pointer position
+    this.pointerScreenX = 0;
+    this.pointerScreenY = 0;
   }
 
   preload() {
-    // Load default assets (tilemap, etc.)
     this.loadAssets();
   }
 
   create() {
-    // Initialize previous level tracker
     this.previousLevel = playerProfile.level;
 
     this.createTilemap();
     this.defineAnimations();
 
-    // Initialize Player Manager before SkillManager
     this.playerManager = new PlayerManager(this);
-    this.playerManager.createPlayer(this.map); // Pass the tilemap
+    this.playerManager.createPlayer(this.map);
 
-    // Initialize SkillManager with a callback to get player stats
     this.skillManager = new SkillManager(this, () =>
       this.playerManager.getPlayerStats()
     );
@@ -64,21 +67,19 @@ export default class MainScene extends Phaser.Scene {
 
     this.setupCamera();
 
-    // Initialize UIManager
     this.uiManager = new UIManager(this);
     this.uiManager.init(() => {
       this.uiManager.hideStatsMenu();
       this.scene.resume();
     });
 
-    // Initialize MobManager
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
 
-    // Setup the skill bar with the current playerSkills
+    // Set up skill bar
     this.uiManager.setupSkills(playerSkills);
 
-    // Initialize Input Manager
+    // Input manager
     this.inputManager = new InputManager(
       this,
       this.playerManager,
@@ -86,7 +87,31 @@ export default class MainScene extends Phaser.Scene {
     );
     this.inputManager.setupControls(playerSkills);
 
-    // Emit initial stats to update the UI
+    // Create a tooltip element for "GATHER"
+    this.gatherTooltip = document.createElement("div");
+    this.gatherTooltip.style.position = "fixed";
+    this.gatherTooltip.style.background = "rgba(0, 0, 0, 0.7)";
+    this.gatherTooltip.style.color = "#f1c40f";
+    this.gatherTooltip.style.padding = "3px 5px";
+    this.gatherTooltip.style.borderRadius = "4px";
+    this.gatherTooltip.style.fontFamily = "Cinzel, serif";
+    this.gatherTooltip.style.display = "none";
+    this.gatherTooltip.innerText = "GATHER";
+    document.body.appendChild(this.gatherTooltip);
+
+    // Listen for pointer move to track position
+    this.input.on("pointermove", (pointer) => {
+      this.pointerScreenX = pointer.x;
+      this.pointerScreenY = pointer.y;
+    });
+
+    // Listen for right-click to attempt gathering
+    this.input.on("pointerdown", (pointer) => {
+      if (pointer.rightButtonDown() && this.hoveredGatherTile) {
+        this.attemptGather(this.hoveredGatherTile);
+      }
+    });
+
     this.emitStatsUpdate();
 
     // Create skill animations
@@ -100,7 +125,7 @@ export default class MainScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Calculate and log player level
+    // Initial EXP/level logs
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
@@ -112,47 +137,61 @@ export default class MainScene extends Phaser.Scene {
     const cursors = this.inputManager.getInputKeys();
     const isCasting = this.skillManager.isCasting;
 
-    // Handle player movement
+    // Handle normal movement
     this.playerManager.handleMovement(cursors, isCasting);
 
-    // Update mobs
+    // Mobs update
     this.mobManager.updateMobs(this.playerManager.player);
 
-    // UI is managed by UIManager, no need to update UI every frame
+    // ----- GATHERING TILE HOVER LOGIC -----
+    // 1) Reset hovered tile
+    this.hoveredGatherTile = null;
+    this.gatherTooltip.style.display = "none";
+
+    // Convert screen coords to world coords
+    const worldPoint = this.cameras.main.getWorldPoint(
+      this.pointerScreenX,
+      this.pointerScreenY
+    );
+
+    // 2) Check if there's a tile in "gather_rock" at those coords
+    const tile = this.gatherRockLayer.getTileAtWorldXY(worldPoint.x, worldPoint.y);
+    if (tile) {
+      // We have a gatherable tile
+      this.hoveredGatherTile = tile;
+      this.input.setDefaultCursor("pointer");
+
+      // Position the tooltip near the mouse
+      this.gatherTooltip.style.display = "block";
+      this.gatherTooltip.style.left = `${this.pointerScreenX + 10}px`;
+      this.gatherTooltip.style.top = `${this.pointerScreenY + 10}px`;
+    } else {
+      // Otherwise normal cursor
+      this.input.setDefaultCursor("default");
+    }
+    // --------------------------------------
   }
 
   // --------------------------------------------------------------
   //  CREATE / LOAD
   // --------------------------------------------------------------
   loadAssets() {
-    // 1) Tilemap JSON
+    // existing code...
     this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
-
-    // 2) Tileset image
     this.load.image("terrain", "assets/map/terrain.png");
-
-    // 3) Player mage sprite
     this.load.spritesheet("mage", "assets/mage.png", {
-      frameWidth: 36, // approximated
-      frameHeight: 37 // approximated
+      frameWidth: 36,
+      frameHeight: 37,
     });
-
-    // 4) Mob sprite
     this.load.spritesheet("characters", "assets/characters.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
-
-    // 5) Dead mob sprite
     this.load.spritesheet("$dead", "assets/$dead.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
 
-    // -------------------------------------------------------
-    //  Instead of playerSkills.forEach(...), use allGameSkills
-    //  to preload *all* possible skill sprite sheets.
-    // -------------------------------------------------------
     allGameSkills.forEach((skill) => {
       this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
         frameWidth: 72,
@@ -165,15 +204,16 @@ export default class MainScene extends Phaser.Scene {
     this.map = this.make.tilemap({ key: "Map1" });
     const tileset = this.map.addTilesetImage("terrain", "terrain");
 
-    // background layer
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
-
-    // paths layer (also just a background)
     this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
 
-    // collisions layer
+    // Collision layer
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
     this.collisionLayer.setCollisionByExclusion([-1, 0]);
+
+    // *** The new gather_rock tile layer ***
+    //    Ensure your Tiled map has a tile layer named exactly "gather_rock".
+    this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
   }
 
   defineAnimations() {
@@ -274,6 +314,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
+    // existing code...
     this.cameras.main.setBounds(
       0,
       0,
@@ -289,10 +330,108 @@ export default class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.playerManager.player);
   }
 
-  // --------------------------------------------------------------
-  //  OTHER METHODS
-  // --------------------------------------------------------------
+  // ----------------------------------------------------------------
+  // Attempt to gather from a tile in gather_rock layer
+  // ----------------------------------------------------------------
+  attemptGather(tile) {
+    // 1) Check distance from player to tile
+    const px = this.playerManager.player.x;
+    const py = this.playerManager.player.y;
 
+    // Convert tile coords back to actual world coords
+    // By default, each tile is map.tileWidth x map.tileHeight
+    // So the tile's center might be e.g. 
+    const tileWorldX = this.gatherRockLayer.tileToWorldX(tile.x) + this.map.tileWidth/2;
+    const tileWorldY = this.gatherRockLayer.tileToWorldY(tile.y) + this.map.tileHeight/2;
+
+    const distance = Phaser.Math.Distance.Between(px, py, tileWorldX, tileWorldY);
+    if (distance > GATHER_RANGE) {
+      console.log("Too far to gather this resource.");
+      return;
+    }
+
+    // If we're already gathering or casting, do nothing
+    if (this.playerManager.isGathering || this.skillManager.isCasting) {
+      return;
+    }
+
+    // 2) Start "gathering" animation 
+    //    We'll reuse the UI's casting bar concept.
+    console.log("Starting gathering...");
+
+    this.playerManager.isGathering = true;
+
+    // The gather time can be e.g. 3 seconds / gatherSpeed
+    const playerStats = this.playerManager.getPlayerStats();
+    const gatherSpeed = playerStats.gatherSpeed || 1;
+    const gatherTime = 3 / gatherSpeed; // 3 second base, scale by gatherSpeed
+
+    // Show progress bar
+    this.uiManager.showCastingProgress("Gathering...", gatherTime);
+
+    let elapsedTime = 0;
+    const updateInterval = 0.1; // every 0.1s
+    this.gatherTimer = this.time.addEvent({
+      delay: updateInterval * 1000,
+      loop: true,
+      callback: () => {
+        elapsedTime += updateInterval;
+        this.uiManager.updateCastingProgress(elapsedTime, gatherTime);
+
+        // If out of range during gathering, cancel
+        const newDist = Phaser.Math.Distance.Between(
+          this.playerManager.player.x,
+          this.playerManager.player.y,
+          tileWorldX,
+          tileWorldY
+        );
+        if (newDist > GATHER_RANGE) {
+          console.log("Gather canceled (moved out of range).");
+          this.cancelGather();
+        }
+
+        // If done
+        if (elapsedTime >= gatherTime) {
+          // complete
+          this.finishGather(tile);
+        }
+      },
+    });
+  }
+
+  // Called if we successfully finish gathering
+  finishGather(tile) {
+    console.log("Gather complete!");
+
+    // Cleanup
+    if (this.gatherTimer) {
+      this.gatherTimer.remove(false);
+      this.gatherTimer = null;
+    }
+    this.playerManager.isGathering = false;
+    this.uiManager.hideCastingProgress();
+
+    // Remove tile from the gather_rock layer
+    this.gatherRockLayer.removeTileAt(tile.x, tile.y);
+
+    // Optionally, give some item or resource, add to inventory, etc.
+    // e.g. player gets "Stone" item or something:
+    console.log("You gathered some resources!");
+  }
+
+  // Called if we must cancel the gathering
+  cancelGather() {
+    if (this.gatherTimer) {
+      this.gatherTimer.remove(false);
+      this.gatherTimer = null;
+    }
+    this.playerManager.isGathering = false;
+    this.uiManager.hideCastingProgress();
+  }
+
+  // ----------------------------------------------------------------
+  //  Other methods remain the same
+  // ----------------------------------------------------------------
   calculatePlayerLevel(totalExp) {
     let oldLevel = playerProfile.level;
     let level = 1;
@@ -375,7 +514,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   generateStatsHTML() {
-    // same as before
     return `
       <p>This is where you'd show the player's stats in HTML form.</p>
     `;
@@ -400,7 +538,9 @@ export default class MainScene extends Phaser.Scene {
       0,
       this.playerManager.currentMana - amount
     );
-    console.log(`Current Mana after deduction: ${this.playerManager.currentMana}`);
+    console.log(
+      `Current Mana after deduction: ${this.playerManager.currentMana}`
+    );
     this.emitStatsUpdate();
   }
 

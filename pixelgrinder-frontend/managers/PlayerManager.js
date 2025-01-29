@@ -21,6 +21,9 @@ export default class PlayerManager {
     this.currentHealth = 0;
     this.maxMana = 0;
     this.maxHealth = 0;
+
+    // NEW: track if the player is currently gathering
+    this.isGathering = false;
   }
 
   createPlayer(tilemap) {
@@ -42,13 +45,10 @@ export default class PlayerManager {
     // Start with a default animation
     this.player.anims.play("walk-down");
 
-    // Initialize player stats based on equipment
+    // Initialize player stats
     this.updatePlayerStats();
   }
 
-  /**
-   * Recalculates and updates player stats, including speed.
-   */
   updatePlayerStats() {
     const stats = calculatePlayerStats();
     this.maxHealth = stats.health;
@@ -78,10 +78,6 @@ export default class PlayerManager {
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Find the first empty backpack cell (where value===0).
-   * Returns the cell key (e.g. "cell_2_3") or null if none found.
-   */
   findEmptyBackpackCell() {
     for (let r = 0; r < 6; r++) {
       for (let c = 0; c < 5; c++) {
@@ -91,17 +87,10 @@ export default class PlayerManager {
         }
       }
     }
-    return null; // no empty cell found
+    return null;
   }
 
-  /**
-   * Equip an item by ID and update stats. 
-   * If there's already an item in that slot, move that old item into an empty backpack cell.
-   * @param {string} slot - e.g. "weapon", "head", "chest", "shoulders", "legs", "feet"
-   * @param {number} itemId - The item ID from the data.
-   */
   equipItem(slot, itemId) {
-    // 1) If we already have an item in that slot, move it into inventory
     const currentlyEquippedId = playerEquippedItems[slot];
     if (currentlyEquippedId) {
       const oldItem = allItems.find((it) => it.id === currentlyEquippedId);
@@ -120,7 +109,6 @@ export default class PlayerManager {
       }
     }
 
-    // 2) Now equip the new item
     playerEquippedItems[slot] = itemId;
     const newItem = allItems.find((it) => it.id === itemId);
     if (newItem) {
@@ -129,15 +117,10 @@ export default class PlayerManager {
       console.warn(`equipItem: no data found for itemId=${itemId}.`);
     }
 
-    // 3) Recalculate stats
     this.updatePlayerStats();
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Un-equip an item from the given slot and place it into an empty backpack cell.
-   * @param {string} slot - e.g. "weapon", "head", "chest", "shoulders", "legs", "feet"
-   */
   unequipItem(slot) {
     const equippedItemId = playerEquippedItems[slot];
     if (!equippedItemId) {
@@ -157,23 +140,16 @@ export default class PlayerManager {
       return;
     }
 
-    // Place in backpack
     playerBackpack[emptyCell] = itemData.id;
-
-    // Remove from equipped
     playerEquippedItems[slot] = null;
     console.log(
       `Un-equipped "${itemData.name}" from slot=${slot} → moved to cell=${emptyCell}`
     );
 
-    // Update stats
     this.updatePlayerStats();
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Replenish player's Health and Mana to full.
-   */
   replenishHealthAndMana() {
     this.currentHealth = this.maxHealth;
     this.currentMana = this.maxMana;
@@ -182,27 +158,31 @@ export default class PlayerManager {
   }
 
   getPlayerStats() {
+    const stats = calculatePlayerStats();
     return {
       currentMana: this.currentMana,
       maxMana: this.maxMana,
       currentHealth: this.currentHealth,
       maxHealth: this.maxHealth,
-      magicAttack: calculatePlayerStats().magicAttack,
-      meleeAttack: calculatePlayerStats().meleeAttack,
-      magicDefense: calculatePlayerStats().magicDefense,
-      meleeDefense: calculatePlayerStats().meleeDefense,
-      magicEvasion: calculatePlayerStats().magicEvasion,
-      meleeEvasion: calculatePlayerStats().meleeEvasion,
+      magicAttack: stats.magicAttack,
+      meleeAttack: stats.meleeAttack,
+      magicDefense: stats.magicDefense,
+      meleeDefense: stats.meleeDefense,
+      magicEvasion: stats.magicEvasion,
+      meleeEvasion: stats.meleeEvasion,
       speed: this.playerSpeed,
       level: playerProfile.level,
+
+      // Add gatherSpeed to the returned stats
+      gatherSpeed: stats.gatherSpeed || 1,
     };
   }
 
   handleMovement(cursors, isCasting) {
     if (!this.player || !this.player.body) return;
 
-    // Prevent movement if casting
-    if (isCasting) {
+    // Prevent movement if casting or if gathering
+    if (isCasting || this.isGathering) {
       this.player.body.setVelocity(0);
       this.player.anims.stop();
       return;
