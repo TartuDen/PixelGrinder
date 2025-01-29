@@ -20,7 +20,7 @@ const playerBaseStats = {
   constitution: 4,
   speed: 50,
 
-  // NEW: This determines how fast the player gathers.
+  // NEW: gatherSpeed determines how quickly we gather.
   gatherSpeed: 1,
 };
 
@@ -34,6 +34,7 @@ const playerGrowthStats = {
   speed: 3,
 };
 
+// --- Stat Weights (How base stats affect derived stats) ---
 const statWeights = {
   intellect: {
     magicAttack: 3,
@@ -146,7 +147,9 @@ const playerSkills = [
   },
 ];
 
-// 3) Weapons
+// --------------------------------------------------------------------
+// Weapon / Armor Items
+// --------------------------------------------------------------------
 const weaponItems = [
   {
     id: 2000,
@@ -180,7 +183,6 @@ const weaponItems = [
   },
 ];
 
-// 4) Armors
 const armorItems = [
   {
     id: 3000,
@@ -244,15 +246,31 @@ const armorItems = [
   },
 ];
 
-const allItems = [...weaponItems, ...armorItems];
+// NEW GATHERABLE ITEMS (ID>=4000)
+const gatherableItems = [
+  {
+    id: 4000,
+    name: "simple_rock",
+    type: "stone",
+  },
+];
 
+// Combine everything into a single array for easy lookups:
+const allItems = [
+  ...weaponItems,
+  ...armorItems,
+  ...gatherableItems, // <-- Include gatherables
+];
+
+// Build a quick lookup map
 const itemsMap = {};
 allItems.forEach((item) => {
   itemsMap[item.id] = item;
 });
 
+// 5) Currently equipped
 const playerEquippedItems = {
-  weapon: 2000,
+  weapon: 2000, 
   head: null,
   chest: null,
   shoulders: 3003,
@@ -260,8 +278,10 @@ const playerEquippedItems = {
   feet: 3002,
 };
 
+// 6) Player backpack
+//    We allow storing either 0/null or an object { id, quantity } for stacking
 const playerBackpack = {
-  cell_0_0: 2000,
+  cell_0_0: 2000, // previously storing just an item ID is still valid
   cell_0_1: 2001,
   cell_0_2: 0,
   cell_0_3: 0,
@@ -293,8 +313,12 @@ const playerBackpack = {
   cell_5_4: null,
 };
 
+// Track deleted items
 const deletedItems = [];
 
+// --------------------------------------------------------------------
+// MOBS + LOOT
+// --------------------------------------------------------------------
 const mobsData = {
   slime: {
     name: "Slime",
@@ -339,6 +363,7 @@ const mobsData = {
   },
 };
 
+// Experience modifier rules
 const expModifierRules = {
   mobAtLeast5Higher: 1.2,
   mob4Higher: 1.15,
@@ -360,20 +385,10 @@ const naturalRegeneration = {
   regenerationTime: 5000,
 };
 
-const gatherable = [
-  {
-    id: 4000,
-    name: "simple_rock",
-    type: "stone",
-  },
-]
-
 const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
-
-// NEW: Gathering range constant
-const GATHER_RANGE = 50;
+const GATHER_RANGE = 50;  // <-- used in gathering
 
 export {
   playerProfile,
@@ -395,6 +410,5 @@ export {
   allItems,
   itemsMap,
   deletedItems,
-  // Export the new gather range
   GATHER_RANGE,
 };

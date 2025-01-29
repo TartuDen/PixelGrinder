@@ -16,13 +16,12 @@ export default class PlayerManager {
     this.player = null;
     this.playerSpeed = 100;
 
-    // Player stats
     this.currentMana = 0;
     this.currentHealth = 0;
     this.maxMana = 0;
     this.maxHealth = 0;
 
-    // NEW: track if the player is currently gathering
+    // Track if we are in a "gathering" state
     this.isGathering = false;
   }
 
@@ -39,13 +38,10 @@ export default class PlayerManager {
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
-    // Collision with walls
     this.scene.physics.add.collider(this.player, this.scene.collisionLayer);
 
-    // Start with a default animation
     this.player.anims.play("walk-down");
 
-    // Initialize player stats
     this.updatePlayerStats();
   }
 
@@ -74,7 +70,6 @@ export default class PlayerManager {
 
     console.log(`Player Speed Updated: ${this.playerSpeed}`);
 
-    // Notify MainScene to update UI
     this.scene.emitStatsUpdate();
   }
 
@@ -82,12 +77,57 @@ export default class PlayerManager {
     for (let r = 0; r < 6; r++) {
       for (let c = 0; c < 5; c++) {
         const key = `cell_${r}_${c}`;
-        if (playerBackpack[key] === 0) {
+        const cellVal = playerBackpack[key];
+        // cellVal could be 0 or null => empty
+        if (cellVal === 0 || cellVal === null) {
           return key;
         }
       }
     }
     return null;
+  }
+
+  /**
+   * Adds an item to the backpack, stacking if possible.
+   *
+   * @param {number} itemId - The ID of the item
+   * @param {number} quantity - How many to add
+   * @returns {boolean} True if successful, false if no space
+   */
+  addItemToInventory(itemId, quantity = 1) {
+    // 1) Try to find if there's already a stack of this item:
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 5; c++) {
+        const key = `cell_${r}_${c}`;
+        const val = playerBackpack[key]; // val might be: 0, null, number, or { id, quantity }
+
+        if (val && typeof val === "object" && val.id === itemId) {
+          // We already have a stack here
+          val.quantity += quantity;
+          console.log(
+            `Stacked +${quantity} onto existing item in ${key}. New total: ${val.quantity}`
+          );
+          return true;
+        } else if (val !== null && typeof val === "number" && val === itemId) {
+          // We have exactly one item stored as a plain number
+          playerBackpack[key] = { id: itemId, quantity: 1 + quantity };
+          console.log(`Converted single item to stack in ${key}.`);
+          return true;
+        }
+      }
+    }
+
+    // 2) If no existing stack, find an empty cell
+    const emptyCell = this.findEmptyBackpackCell();
+    if (!emptyCell) {
+      console.warn("No empty cell available for new item!");
+      return false;
+    }
+
+    // Put a new stack in the empty cell
+    playerBackpack[emptyCell] = { id: itemId, quantity };
+    console.log(`Placed itemId=${itemId} x${quantity} into cell ${emptyCell}.`);
+    return true;
   }
 
   equipItem(slot, itemId) {
@@ -136,7 +176,9 @@ export default class PlayerManager {
 
     const itemData = allItems.find((i) => i.id === equippedItemId);
     if (!itemData) {
-      console.warn(`Could not find item data for equipped item ID=${equippedItemId}`);
+      console.warn(
+        `Could not find item data for equipped item ID=${equippedItemId}`
+      );
       return;
     }
 
@@ -173,7 +215,6 @@ export default class PlayerManager {
       speed: this.playerSpeed,
       level: playerProfile.level,
 
-      // Add gatherSpeed to the returned stats
       gatherSpeed: stats.gatherSpeed || 1,
     };
   }
@@ -181,7 +222,7 @@ export default class PlayerManager {
   handleMovement(cursors, isCasting) {
     if (!this.player || !this.player.body) return;
 
-    // Prevent movement if casting or if gathering
+    // Prevent movement if casting or gathering
     if (isCasting || this.isGathering) {
       this.player.body.setVelocity(0);
       this.player.anims.stop();

@@ -29,27 +29,22 @@ export default class UIManager {
     this.healthText = document.getElementById("health-text");
     this.manaText = document.getElementById("mana-text");
 
-    // Stats Menu
     this.statsMenu = document.getElementById("stats-menu");
     this.statsContent = document.getElementById("stats-content");
     this.closeStatsButton = document.getElementById("close-stats");
 
-    // Inventory Menu
     this.inventoryMenu = document.getElementById("inventory-menu");
     this.inventoryContent = document.getElementById("inventory-content");
     this.closeInventoryButton = document.getElementById("close-inventory");
 
-    // Casting bar
     this.castingBar = document.getElementById("casting-bar");
 
-    // Casting Progress
     this.castingProgressContainer = document.getElementById(
       "casting-progress-container"
     );
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // Create if missing
     if (!this.castingProgressContainer) {
       this.castingProgressContainer = document.createElement("div");
       this.castingProgressContainer.id = "casting-progress-container";
@@ -65,7 +60,7 @@ export default class UIManager {
       document.body.appendChild(this.castingProgressContainer);
     }
 
-    // //// NEW LOOT UI ////
+    // Loot UI
     this.lootMenu = document.getElementById("loot-menu");
     if (!this.lootMenu) {
       this.lootMenu = document.createElement("div");
@@ -86,7 +81,7 @@ export default class UIManager {
     this.lootContent.id = "loot-content";
     this.lootMenu.appendChild(this.lootContent);
 
-    // //// NEW SKILL BOOK ////
+    // Skill Book
     this.skillBook = document.createElement("div");
     this.skillBook.id = "skill-book";
     this.skillBook.classList.add("stats-menu");
@@ -159,7 +154,6 @@ export default class UIManager {
 
   /* Skill Setup */
   setupSkills(skills) {
-    // Rebuild the skill bar
     this.castingBar.innerHTML = "";
 
     skills.forEach((skill) => {
@@ -439,6 +433,9 @@ export default class UIManager {
     container.appendChild(statsTable);
   }
 
+  /**
+   * Renders the inventory grid with stacking support.
+   */
   renderInventoryGrid(container) {
     const heading = document.createElement("h3");
     heading.textContent = "Inventory";
@@ -453,7 +450,7 @@ export default class UIManager {
       for (let c = 0; c < 5; c++) {
         const cell = document.createElement("td");
         const key = `cell_${r}_${c}`;
-        const value = playerBackpack[key];
+        const value = playerBackpack[key]; // could be itemId (number) or object {id, quantity}
 
         if (value === null) {
           cell.classList.add("closed-cell");
@@ -465,17 +462,42 @@ export default class UIManager {
             this.showItemContextMenu(e, key, null);
           });
         } else {
-          const itemData = itemsMap[value];
+          // Possibly an object {id, quantity} or a plain number
+          let itemId = null;
+          let itemQuantity = 1;
+          if (typeof value === "object") {
+            itemId = value.id;
+            itemQuantity = value.quantity;
+          } else if (typeof value === "number") {
+            itemId = value;
+          }
+
+          const itemData = itemsMap[itemId];
           cell.classList.add("open-cell");
 
           const itemTextDiv = document.createElement("div");
           itemTextDiv.classList.add("item-text");
-          itemTextDiv.textContent = itemData ? itemData.name : `Unknown(${value})`;
+
+          if (itemData) {
+            if (itemQuantity > 1) {
+              itemTextDiv.textContent = `${itemData.name} (x${itemQuantity})`;
+            } else {
+              itemTextDiv.textContent = itemData.name;
+            }
+          } else {
+            itemTextDiv.textContent = `Unknown(${itemId})`;
+          }
+
           cell.appendChild(itemTextDiv);
 
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
-            this.showItemContextMenu(e, key, itemData);
+            // We pass an object with { itemId, quantity } so we know how many we have
+            const passedData = {
+              id: itemId,
+              quantity: itemQuantity,
+            };
+            this.showItemContextMenu(e, key, passedData);
           });
         }
         row.appendChild(cell);
@@ -485,7 +507,7 @@ export default class UIManager {
     container.appendChild(table);
   }
 
-  showItemContextMenu(event, cellKey, itemData) {
+  showItemContextMenu(event, cellKey, itemDataObj) {
     const existingMenu = document.getElementById("inventory-context-menu");
     if (existingMenu) existingMenu.remove();
 
@@ -495,37 +517,56 @@ export default class UIManager {
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
 
-    if (!itemData) {
+    if (!itemDataObj) {
       const noItemLabel = document.createElement("div");
       noItemLabel.textContent = "No item in this cell.";
       menu.appendChild(noItemLabel);
     } else {
-      // "Wear"
-      const isWearable = itemData.slot && itemData.type;
-      if (isWearable) {
+      const { id, quantity } = itemDataObj;
+      const itemData = itemsMap[id];
+
+      // If the item has a slot, we can attempt "Wear"
+      if (itemData && itemData.slot) {
         const wearOption = document.createElement("div");
         wearOption.textContent = "Wear";
         wearOption.classList.add("menu-option");
         wearOption.addEventListener("click", () => {
           this.scene.playerManager.equipItem(itemData.slot, itemData.id);
-          playerBackpack[cellKey] = 0; // remove from backpack
+
+          // If it was an object with quantity>1, reduce quantity by 1
+          // else remove from cell
+          if (quantity > 1) {
+            const cellVal = playerBackpack[cellKey];
+            if (typeof cellVal === "object") {
+              cellVal.quantity -= 1;
+              if (cellVal.quantity <= 0) {
+                playerBackpack[cellKey] = 0;
+              }
+            } else {
+              // was a single
+              playerBackpack[cellKey] = 0;
+            }
+          } else {
+            playerBackpack[cellKey] = 0;
+          }
           this.openInventory();
           menu.remove();
         });
         menu.appendChild(wearOption);
       }
 
-      // "Delete"
+      // Delete option
       const deleteOption = document.createElement("div");
       deleteOption.textContent = "Delete";
       deleteOption.classList.add("menu-option");
       deleteOption.addEventListener("click", () => {
         deletedItems.push({
-          id: itemData.id,
-          name: itemData.name,
+          id: id,
+          name: itemData ? itemData.name : `Unknown(${id})`,
           deletedAt: new Date().toISOString(),
           reason: "UserDeleted",
         });
+        // Remove the entire stack
         playerBackpack[cellKey] = 0;
         this.openInventory();
         menu.remove();
@@ -533,7 +574,7 @@ export default class UIManager {
       menu.appendChild(deleteOption);
     }
 
-    // "Close"
+    // Close
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -569,7 +610,6 @@ export default class UIManager {
       noItemLabel.textContent = "Slot is empty.";
       menu.appendChild(noItemLabel);
     } else {
-      // "UNEQUIP"
       const unequipOption = document.createElement("div");
       unequipOption.textContent = "UNEQUIP";
       unequipOption.classList.add("menu-option");
@@ -618,13 +658,10 @@ export default class UIManager {
     }
 
     mob.customData.droppedLoot.forEach((itemId, index) => {
-      // Check if it's an item in itemsMap
       const itemData = itemsMap[itemId];
-      // Or a skill in allGameSkills
       const skillData = allGameSkills.find((s) => s.id === itemId);
 
       if (itemData) {
-        // Normal item
         const itemDiv = document.createElement("div");
         itemDiv.textContent = itemData.name;
         itemDiv.style.marginBottom = "5px";
@@ -638,7 +675,6 @@ export default class UIManager {
 
         this.lootContent.appendChild(itemDiv);
       } else if (skillData) {
-        // It's a skill from allGameSkills
         const skillDiv = document.createElement("div");
         skillDiv.textContent = `${skillData.name} (Skill)`;
         skillDiv.style.marginBottom = "5px";
@@ -652,7 +688,6 @@ export default class UIManager {
 
         this.lootContent.appendChild(skillDiv);
       } else {
-        // Unknown
         const unknownDiv = document.createElement("div");
         unknownDiv.textContent = `Unknown loot ID: ${itemId}`;
         this.lootContent.appendChild(unknownDiv);
@@ -661,40 +696,29 @@ export default class UIManager {
   }
 
   handleLootItem(mob, lootIndex, itemData) {
-    const emptyCell = this.scene.playerManager.findEmptyBackpackCell();
-    if (!emptyCell) {
+    const success = this.scene.playerManager.addItemToInventory(itemData.id, 1);
+    if (!success) {
       alert("No space in backpack!");
       return;
     }
-    // place item in backpack
-    playerBackpack[emptyCell] = itemData.id;
-
     // Remove from mob's loot
     mob.customData.droppedLoot.splice(lootIndex, 1);
-    console.log(`Took "${itemData.name}", put in cell=${emptyCell}`);
+    console.log(`Took "${itemData.name}", added to inventory stack.`);
 
-    // Refresh the loot window
     this.openLootWindow(mob);
   }
 
   learnSkillFromLoot(mob, lootIndex, skillData) {
-    // see if player already knows it
     const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
     if (alreadyKnown) {
       alert("You already know this skill!");
     } else {
-      // teach the player this new skill
       playerSkills.push(skillData);
       alert(`You learned a new skill: ${skillData.name}!`);
-
-      // Refresh the skill bar
       this.setupSkills(playerSkills);
-
-      // Also re-bind the skill hotkeys
       this.scene.inputManager.setupControls(playerSkills);
     }
 
-    // Remove from the mob's loot array
     mob.customData.droppedLoot.splice(lootIndex, 1);
     this.openLootWindow(mob);
   }
