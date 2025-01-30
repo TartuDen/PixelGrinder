@@ -70,7 +70,9 @@ export default class PlayerManager {
     const MAX_SPEED = 200;
     this.playerSpeed = Phaser.Math.Clamp(stats.speed, MIN_SPEED, MAX_SPEED);
 
-    this.scene.chatManager.addMessage(`Player Speed Updated: ${this.playerSpeed}`);
+    this.scene.chatManager.addMessage(
+      `Player Speed Updated: ${this.playerSpeed}`
+    );
 
     this.scene.emitStatsUpdate();
   }
@@ -90,7 +92,7 @@ export default class PlayerManager {
   }
 
   /**
-   * #4: Only items with ID >= 4000 are stackable. 
+   * #4: Only items with ID >= 4000 are stackable.
    * Otherwise, treat them as unique (no stacking).
    */
   addItemToInventory(itemId, quantity = 1) {
@@ -111,7 +113,11 @@ export default class PlayerManager {
               `Stacked +${quantity} onto existing item in ${key}. New total: ${val.quantity}`
             );
             return true;
-          } else if (val !== null && typeof val === "number" && val === itemId) {
+          } else if (
+            val !== null &&
+            typeof val === "number" &&
+            val === itemId
+          ) {
             // We have exactly one item stored as a plain number
             playerBackpack[key] = { id: itemId, quantity: 1 + quantity };
             this.scene.chatManager.addMessage(
@@ -126,7 +132,9 @@ export default class PlayerManager {
     // 2) If not stackable or no existing stack found, find an empty cell
     const emptyCell = this.findEmptyBackpackCell();
     if (!emptyCell) {
-      this.scene.chatManager.addMessage("No empty cell available for new item!");
+      this.scene.chatManager.addMessage(
+        "No empty cell available for new item!"
+      );
       return false;
     }
 
@@ -216,7 +224,9 @@ export default class PlayerManager {
   replenishHealthAndMana() {
     this.currentHealth = this.maxHealth;
     this.currentMana = this.maxMana;
-    this.scene.chatManager.addMessage("Player's Health and Mana fully replenished.");
+    this.scene.chatManager.addMessage(
+      "Player's Health and Mana fully replenished."
+    );
     this.scene.emitStatsUpdate();
   }
 
@@ -282,22 +292,30 @@ export default class PlayerManager {
 
   regenerateStats(regenerationData) {
     const beforeMana = this.currentMana;
+    const beforeHealth = this.currentHealth;
+
+    // Perform the actual regen
     this.currentMana = Math.min(
       this.maxMana,
       this.currentMana + regenerationData.manaRegen
     );
-
-    const beforeHealth = this.currentHealth;
     this.currentHealth = Math.min(
       this.maxHealth,
       this.currentHealth + regenerationData.hpRegen
     );
 
-    this.scene.chatManager.addMessage(
-      `Regenerated +${this.currentMana - beforeMana} mana, +${
-        this.currentHealth - beforeHealth
-      } HP`
-    );
+    // Check how much actually got regenerated:
+    const manaRegenerated = this.currentMana - beforeMana;
+    const healthRegenerated = this.currentHealth - beforeHealth;
+
+    // Only log if at least 1 point changed
+    if (manaRegenerated > 0 || healthRegenerated > 0) {
+      this.scene.chatManager.addMessage(
+        `Regenerated +${manaRegenerated} mana, +${healthRegenerated} HP`
+      );
+    }
+
+    // Finally, emit stats update
     this.scene.emitStatsUpdate();
   }
 

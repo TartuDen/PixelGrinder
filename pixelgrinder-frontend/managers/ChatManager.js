@@ -6,7 +6,14 @@ export default class ChatManager {
     }
   
     init() {
-      // Create a container for the system chat in bottom-left corner.
+      // If an existing chat container is already in the DOM, reuse it
+      const existingChat = document.getElementById("system-chat");
+      if (existingChat) {
+        this.chatContainer = existingChat;
+        return; // Do not create a second one
+      }
+  
+      // Otherwise, create a brand new chat container
       this.chatContainer = document.createElement("div");
       this.chatContainer.id = "system-chat";
       this.chatContainer.style.position = "fixed";
@@ -21,18 +28,15 @@ export default class ChatManager {
       this.chatContainer.style.fontFamily = "Cinzel, serif";
       this.chatContainer.style.color = "#f1c40f";
       this.chatContainer.style.zIndex = 9999;
+  
       document.body.appendChild(this.chatContainer);
     }
   
-    /**
-     * Add a new message to the chat window.
-     * @param {string} msg
-     */
     addMessage(msg) {
+      if (!this.chatContainer) return;
       const messageDiv = document.createElement("div");
       messageDiv.innerText = msg;
       this.chatContainer.appendChild(messageDiv);
-      // Auto-scroll to bottom
       this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
     }
   }

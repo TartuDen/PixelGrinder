@@ -144,29 +144,54 @@ export default class MainScene extends Phaser.Scene {
 
   // Create two new on-screen buttons: "PLAYER INFO" (Inventory) and "SKILL BOOK"
   createInGameMenuButtons() {
-    // PLAYER INFO button → toggles inventory
+    // Create a container DIV to hold both buttons side by side in bottom-right corner
+    const menuContainer = document.createElement("div");
+    menuContainer.id = "game-menu-container";
+    menuContainer.style.position = "fixed";
+    menuContainer.style.bottom = "20px";
+    menuContainer.style.right = "20px";
+    menuContainer.style.zIndex = 9999;
+    // Arrange buttons horizontally with some gap
+    menuContainer.style.display = "flex";
+    menuContainer.style.gap = "10px";
+    document.body.appendChild(menuContainer);
+
+    // A small helper function to style both buttons consistently
+    function styleGameButton(btn) {
+      btn.style.padding = "10px 15px";
+      btn.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+      btn.style.border = "1px solid #f1c40f";
+      btn.style.color = "#f1c40f";
+      btn.style.fontFamily = "Cinzel, serif";
+      btn.style.fontSize = "14px";
+      btn.style.borderRadius = "5px";
+      btn.style.cursor = "pointer";
+      // If you’d like a simple hover effect:
+      btn.addEventListener("mouseenter", () => {
+        btn.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+      });
+    }
+
+    // 1) "PLAYER INFO" Button → toggles inventory
     const playerInfoBtn = document.createElement("button");
     playerInfoBtn.textContent = "PLAYER INFO";
-    playerInfoBtn.style.position = "fixed";
-    playerInfoBtn.style.top = "300px";
-    playerInfoBtn.style.left = "20px";
-    playerInfoBtn.style.zIndex = 9999;
+    styleGameButton(playerInfoBtn);
     playerInfoBtn.onclick = () => {
       this.toggleInventoryMenu();
     };
-    document.body.appendChild(playerInfoBtn);
+    menuContainer.appendChild(playerInfoBtn);
 
-    // SKILL BOOK button → toggles skill book
+    // 2) "SKILL BOOK" Button → toggles skill book
     const skillBookBtn = document.createElement("button");
     skillBookBtn.textContent = "SKILL BOOK";
-    skillBookBtn.style.position = "fixed";
-    skillBookBtn.style.top = "340px";
-    skillBookBtn.style.left = "20px";
-    skillBookBtn.style.zIndex = 9999;
+    styleGameButton(skillBookBtn);
     skillBookBtn.onclick = () => {
       this.uiManager.toggleSkillBook();
     };
-    document.body.appendChild(skillBookBtn);
+    menuContainer.appendChild(skillBookBtn);
   }
 
   update(time, delta) {
