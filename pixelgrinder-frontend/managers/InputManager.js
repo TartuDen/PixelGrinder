@@ -8,20 +8,14 @@ export default class InputManager {
 
     this.cursors = null;
     this.skillKeys = [];
-    
-    // FIX: We store references to non-skill keys so we don’t rebind them repeatedly.
+
     this.tabKey = null;
     this.bKey = null;
     this.iKey = null;
     this.oKey = null;
   }
 
-  /**
-   * Re-bind (or bind) only the movement and skill hotkeys. 
-   * Non-skill keys ("I", "B", etc.) are bound only once.
-   */
   setupControls(playerSkills) {
-    // 1) Movement keys — bound once. If already set, skip.
     if (!this.cursors) {
       this.cursors = this.scene.input.keyboard.addKeys({
         up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -31,9 +25,7 @@ export default class InputManager {
       });
     }
 
-    // 2) Skill keys (1-9). First, remove old listeners.
     this.skillKeys.forEach((key) => {
-      // Removes any existing .on("down") handlers
       key.removeAllListeners();
     });
     this.skillKeys = [];
@@ -58,34 +50,19 @@ export default class InputManager {
 
         if (key) {
           key.on("down", () => {
-            console.log(`Skill triggered: ${skill.name}`);
+            this.scene.chatManager.addMessage(`Skill triggered: ${skill.name}`);
             this.skillManager.useSkill(skill);
           });
           this.skillKeys.push(key);
         } else {
-          console.warn(
+          // If needed, we can log an error or ignore
+          this.scene.chatManager.addMessage(
             `No key found for skill "${skill.name}" at index ${index}.`
           );
         }
-      } else {
-        console.warn(
-          `Invalid skill at index ${index}. Ensure each skill has a valid "name" property.`
-        );
       }
     });
 
-    if (playerSkills.length > skillKeyCodes.length) {
-      console.warn(
-        `InputManager: Only the first ${
-          skillKeyCodes.length
-        } skills will be assigned to keys.
-         ${
-           playerSkills.length - skillKeyCodes.length
-         } additional skills will be ignored.`
-      );
-    }
-
-    // 3) TAB for cycle target — only bind once
     if (!this.tabKey) {
       this.tabKey = this.scene.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.TAB
@@ -97,7 +74,6 @@ export default class InputManager {
       this.scene.input.keyboard.addCapture("TAB");
     }
 
-    // 4) B for stats — only bind once
     if (!this.bKey) {
       this.bKey = this.scene.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.B
@@ -108,24 +84,22 @@ export default class InputManager {
       });
     }
 
-    // 5) I for inventory — only bind once
     if (!this.iKey) {
       this.iKey = this.scene.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.I
       );
       this.iKey.on("down", () => {
-        console.log("I key pressed → toggling inventory");
+        this.scene.chatManager.addMessage("I key pressed → toggling inventory");
         this.scene.toggleInventoryMenu();
       });
     }
 
-    // 6) O for skill book — only bind once
     if (!this.oKey) {
       this.oKey = this.scene.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.O
       );
       this.oKey.on("down", () => {
-        console.log("O key pressed → toggling skill book");
+        this.scene.chatManager.addMessage("O key pressed → toggling skill book");
         this.scene.uiManager.toggleSkillBook();
       });
     }

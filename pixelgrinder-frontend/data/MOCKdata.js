@@ -1,6 +1,4 @@
-//
 // data/MOCKdata.js
-//
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
@@ -270,7 +268,7 @@ allItems.forEach((item) => {
 
 // 5) Currently equipped
 const playerEquippedItems = {
-  weapon: 2000, 
+  weapon: 2000,
   head: null,
   chest: null,
   shoulders: 3003,
@@ -388,7 +386,10 @@ const naturalRegeneration = {
 const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
-const GATHER_RANGE = 50;  // <-- used in gathering
+const GATHER_RANGE = 50; // <-- used in gathering
+
+// NEW: How long a dead mob corpse remains (in milliseconds)
+const MOB_CORPSE_DURATION = 8000; // e.g. 8 seconds
 
 export {
   playerProfile,
@@ -411,4 +412,5 @@ export {
   itemsMap,
   deletedItems,
   GATHER_RANGE,
+  MOB_CORPSE_DURATION,
 };

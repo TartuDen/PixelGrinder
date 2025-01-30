@@ -1,6 +1,4 @@
-//
 // managers/PlayerManager.js
-//
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import {
@@ -52,14 +50,18 @@ export default class PlayerManager {
 
     if (this.currentHealth === 0) {
       this.currentHealth = this.maxHealth;
-      console.log(`Player Health Initialized to Max: ${this.currentHealth}`);
+      this.scene.chatManager.addMessage(
+        `Player Health Initialized to Max: ${this.currentHealth}`
+      );
     } else {
       this.currentHealth = Math.min(this.currentHealth, this.maxHealth);
     }
 
     if (this.currentMana === 0) {
       this.currentMana = this.maxMana;
-      console.log(`Player Mana Initialized to Max: ${this.currentMana}`);
+      this.scene.chatManager.addMessage(
+        `Player Mana Initialized to Max: ${this.currentMana}`
+      );
     } else {
       this.currentMana = Math.min(this.currentMana, this.maxMana);
     }
@@ -68,7 +70,7 @@ export default class PlayerManager {
     const MAX_SPEED = 200;
     this.playerSpeed = Phaser.Math.Clamp(stats.speed, MIN_SPEED, MAX_SPEED);
 
-    console.log(`Player Speed Updated: ${this.playerSpeed}`);
+    this.scene.chatManager.addMessage(`Player Speed Updated: ${this.playerSpeed}`);
 
     this.scene.emitStatsUpdate();
   }
@@ -88,45 +90,56 @@ export default class PlayerManager {
   }
 
   /**
-   * Adds an item to the backpack, stacking if possible.
-   *
-   * @param {number} itemId - The ID of the item
-   * @param {number} quantity - How many to add
-   * @returns {boolean} True if successful, false if no space
+   * #4: Only items with ID >= 4000 are stackable. 
+   * Otherwise, treat them as unique (no stacking).
    */
   addItemToInventory(itemId, quantity = 1) {
-    // 1) Try to find if there's already a stack of this item:
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 5; c++) {
-        const key = `cell_${r}_${c}`;
-        const val = playerBackpack[key]; // val might be: 0, null, number, or { id, quantity }
+    // Check if the item is stackable:
+    const isStackable = itemId >= 4000;
 
-        if (val && typeof val === "object" && val.id === itemId) {
-          // We already have a stack here
-          val.quantity += quantity;
-          console.log(
-            `Stacked +${quantity} onto existing item in ${key}. New total: ${val.quantity}`
-          );
-          return true;
-        } else if (val !== null && typeof val === "number" && val === itemId) {
-          // We have exactly one item stored as a plain number
-          playerBackpack[key] = { id: itemId, quantity: 1 + quantity };
-          console.log(`Converted single item to stack in ${key}.`);
-          return true;
+    if (isStackable) {
+      // 1) Try to find if there's already a stack of this item:
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 5; c++) {
+          const key = `cell_${r}_${c}`;
+          const val = playerBackpack[key]; // val might be: 0, null, number, or { id, quantity }
+
+          if (val && typeof val === "object" && val.id === itemId) {
+            // We already have a stack here
+            val.quantity += quantity;
+            this.scene.chatManager.addMessage(
+              `Stacked +${quantity} onto existing item in ${key}. New total: ${val.quantity}`
+            );
+            return true;
+          } else if (val !== null && typeof val === "number" && val === itemId) {
+            // We have exactly one item stored as a plain number
+            playerBackpack[key] = { id: itemId, quantity: 1 + quantity };
+            this.scene.chatManager.addMessage(
+              `Converted single item to stack in ${key}.`
+            );
+            return true;
+          }
         }
       }
     }
 
-    // 2) If no existing stack, find an empty cell
+    // 2) If not stackable or no existing stack found, find an empty cell
     const emptyCell = this.findEmptyBackpackCell();
     if (!emptyCell) {
-      console.warn("No empty cell available for new item!");
+      this.scene.chatManager.addMessage("No empty cell available for new item!");
       return false;
     }
 
-    // Put a new stack in the empty cell
-    playerBackpack[emptyCell] = { id: itemId, quantity };
-    console.log(`Placed itemId=${itemId} x${quantity} into cell ${emptyCell}.`);
+    // Put a new item in the empty cell
+    if (isStackable) {
+      playerBackpack[emptyCell] = { id: itemId, quantity };
+    } else {
+      // Store as a plain number
+      playerBackpack[emptyCell] = itemId;
+    }
+    this.scene.chatManager.addMessage(
+      `Placed itemId=${itemId} x${quantity} into cell ${emptyCell}.`
+    );
     return true;
   }
 
@@ -138,11 +151,11 @@ export default class PlayerManager {
         const emptyCell = this.findEmptyBackpackCell();
         if (emptyCell) {
           playerBackpack[emptyCell] = oldItem.id;
-          console.log(
+          this.scene.chatManager.addMessage(
             `Moved previously equipped "${oldItem.name}" to inventory cell=${emptyCell}.`
           );
         } else {
-          console.warn(
+          this.scene.chatManager.addMessage(
             "No empty cell available in the backpack. Old item remains equipped or is lost!"
           );
         }
@@ -152,9 +165,13 @@ export default class PlayerManager {
     playerEquippedItems[slot] = itemId;
     const newItem = allItems.find((it) => it.id === itemId);
     if (newItem) {
-      console.log(`Equipped ${newItem.name} (id=${itemId}) to slot="${slot}".`);
+      this.scene.chatManager.addMessage(
+        `Equipped ${newItem.name} (id=${itemId}) to slot="${slot}".`
+      );
     } else {
-      console.warn(`equipItem: no data found for itemId=${itemId}.`);
+      this.scene.chatManager.addMessage(
+        `equipItem: no data found for itemId=${itemId}.`
+      );
     }
 
     this.updatePlayerStats();
@@ -164,19 +181,23 @@ export default class PlayerManager {
   unequipItem(slot) {
     const equippedItemId = playerEquippedItems[slot];
     if (!equippedItemId) {
-      console.log(`No item is currently equipped in slot: ${slot}`);
+      this.scene.chatManager.addMessage(
+        `No item is currently equipped in slot: ${slot}`
+      );
       return;
     }
 
     const emptyCell = this.findEmptyBackpackCell();
     if (!emptyCell) {
-      console.warn("No empty cell available in the backpack. Cannot un-equip!");
+      this.scene.chatManager.addMessage(
+        "No empty cell available in the backpack. Cannot un-equip!"
+      );
       return;
     }
 
     const itemData = allItems.find((i) => i.id === equippedItemId);
     if (!itemData) {
-      console.warn(
+      this.scene.chatManager.addMessage(
         `Could not find item data for equipped item ID=${equippedItemId}`
       );
       return;
@@ -184,7 +205,7 @@ export default class PlayerManager {
 
     playerBackpack[emptyCell] = itemData.id;
     playerEquippedItems[slot] = null;
-    console.log(
+    this.scene.chatManager.addMessage(
       `Un-equipped "${itemData.name}" from slot=${slot} → moved to cell=${emptyCell}`
     );
 
@@ -195,7 +216,7 @@ export default class PlayerManager {
   replenishHealthAndMana() {
     this.currentHealth = this.maxHealth;
     this.currentMana = this.maxMana;
-    console.log("Player's Health and Mana have been fully replenished.");
+    this.scene.chatManager.addMessage("Player's Health and Mana fully replenished.");
     this.scene.emitStatsUpdate();
   }
 
@@ -272,7 +293,7 @@ export default class PlayerManager {
       this.currentHealth + regenerationData.hpRegen
     );
 
-    console.log(
+    this.scene.chatManager.addMessage(
       `Regenerated +${this.currentMana - beforeMana} mana, +${
         this.currentHealth - beforeHealth
       } HP`

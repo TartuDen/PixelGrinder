@@ -5,6 +5,7 @@ import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
 import PlayerManager from "../managers/PlayerManager.js";
 import InputManager from "../managers/InputManager.js";
+import ChatManager from "../managers/ChatManager.js"; // NEW
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
@@ -35,6 +36,8 @@ export default class MainScene extends Phaser.Scene {
     this.playerManager = null;
     this.inputManager = null;
 
+    this.chatManager = null; // NEW
+
     this.events = new Phaser.Events.EventEmitter();
 
     // For gather logic
@@ -53,8 +56,15 @@ export default class MainScene extends Phaser.Scene {
     this.createTilemap();
     this.defineAnimations();
 
+    // Setup Chat
+    this.chatManager = new ChatManager();
+    this.chatManager.init();
+
+    // Now that we have chatManager, we can pass it around or just store it in scene
     this.playerManager = new PlayerManager(this);
     this.playerManager.createPlayer(this.map);
+
+    this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
     this.skillManager = new SkillManager(this, () =>
       this.playerManager.getPlayerStats()
@@ -101,7 +111,6 @@ export default class MainScene extends Phaser.Scene {
 
     // Listen for LEFT-click to gather
     this.input.on("pointerdown", (pointer) => {
-      // LEFT button => pointer.leftButtonDown() is just pointer.button === 0
       if (pointer.button === 0 && this.hoveredGatherTile) {
         this.attemptGather(this.hoveredGatherTile);
       }
@@ -120,12 +129,44 @@ export default class MainScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Log XP/Level
+    // Show initial XP/Level in chat
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
-    console.log(`Player Level: ${level}`);
-    console.log(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+    this.chatManager.addMessage(`Player Level: ${level}`);
+    this.chatManager.addMessage(
+      `EXP: ${currentExp} / ${nextLevelExp} to next level`
+    );
+
+    // ADD In-Game Buttons for #6
+    this.createInGameMenuButtons();
+  }
+
+  // Create two new on-screen buttons: "PLAYER INFO" (Inventory) and "SKILL BOOK"
+  createInGameMenuButtons() {
+    // PLAYER INFO button → toggles inventory
+    const playerInfoBtn = document.createElement("button");
+    playerInfoBtn.textContent = "PLAYER INFO";
+    playerInfoBtn.style.position = "fixed";
+    playerInfoBtn.style.top = "300px";
+    playerInfoBtn.style.left = "20px";
+    playerInfoBtn.style.zIndex = 9999;
+    playerInfoBtn.onclick = () => {
+      this.toggleInventoryMenu();
+    };
+    document.body.appendChild(playerInfoBtn);
+
+    // SKILL BOOK button → toggles skill book
+    const skillBookBtn = document.createElement("button");
+    skillBookBtn.textContent = "SKILL BOOK";
+    skillBookBtn.style.position = "fixed";
+    skillBookBtn.style.top = "340px";
+    skillBookBtn.style.left = "20px";
+    skillBookBtn.style.zIndex = 9999;
+    skillBookBtn.onclick = () => {
+      this.uiManager.toggleSkillBook();
+    };
+    document.body.appendChild(skillBookBtn);
   }
 
   update(time, delta) {
@@ -144,10 +185,12 @@ export default class MainScene extends Phaser.Scene {
       this.pointerScreenX,
       this.pointerScreenY
     );
-    const tile = this.gatherRockLayer.getTileAtWorldXY(worldPoint.x, worldPoint.y);
+    const tile = this.gatherRockLayer.getTileAtWorldXY(
+      worldPoint.x,
+      worldPoint.y
+    );
 
     if (tile) {
-      // We have a gatherable tile
       this.hoveredGatherTile = tile;
       this.input.setDefaultCursor("pointer");
       // Show "GATHER" tooltip near the cursor
@@ -193,8 +236,11 @@ export default class MainScene extends Phaser.Scene {
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
     this.collisionLayer.setCollisionByExclusion([-1, 0]);
 
-    // The GATHER layer:
+    // GATHER layer:
     this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
+
+    // #3 Add collision so we can't walk over gatherable
+    this.gatherRockLayer.setCollisionByExclusion([-1]);
   }
 
   defineAnimations() {
@@ -309,18 +355,24 @@ export default class MainScene extends Phaser.Scene {
     const tileWorldY =
       this.gatherRockLayer.tileToWorldY(tile.y) + this.map.tileHeight / 2;
 
-    const distance = Phaser.Math.Distance.Between(px, py, tileWorldX, tileWorldY);
+    const distance = Phaser.Math.Distance.Between(
+      px,
+      py,
+      tileWorldX,
+      tileWorldY
+    );
     if (distance > GATHER_RANGE) {
-      console.log("Too far to gather this resource.");
+      this.chatManager.addMessage("Too far to gather this resource.");
       return;
     }
 
     // If we're already gathering or casting
     if (this.playerManager.isGathering || this.skillManager.isCasting) {
+      this.chatManager.addMessage("You're busy and can't gather right now.");
       return;
     }
 
-    console.log("Starting gathering...");
+    this.chatManager.addMessage("Starting gathering...");
     this.playerManager.isGathering = true;
 
     const playerStats = this.playerManager.getPlayerStats();
@@ -348,7 +400,7 @@ export default class MainScene extends Phaser.Scene {
           tileWorldY
         );
         if (newDist > GATHER_RANGE) {
-          console.log("Gather canceled (moved out of range).");
+          this.chatManager.addMessage("Gather canceled (moved out of range).");
           this.cancelGather();
         }
 
@@ -360,7 +412,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   finishGather(tile) {
-    console.log("Gather complete!");
+    this.chatManager.addMessage("Gather complete!");
 
     if (this.gatherTimer) {
       this.gatherTimer.remove(false);
@@ -375,7 +427,9 @@ export default class MainScene extends Phaser.Scene {
     // Give item to inventory (simple_rock ID=4000 as example)
     this.playerManager.addItemToInventory(4000, 1);
 
-    console.log("You gathered a 'simple_rock'. Added to inventory!");
+    this.chatManager.addMessage(
+      "You gathered a 'simple_rock'. Added to inventory!"
+    );
   }
 
   cancelGather() {
@@ -409,7 +463,9 @@ export default class MainScene extends Phaser.Scene {
         }
       }
       playerProfile.level = level;
-      console.log(`Congratulations! You've reached Level ${level}!`);
+      this.chatManager.addMessage(
+        `Congratulations! You've reached Level ${level}!`
+      );
       this.playerManager.updatePlayerStats();
       this.playerManager.replenishHealthAndMana();
     }
@@ -420,12 +476,16 @@ export default class MainScene extends Phaser.Scene {
 
   gainExperience(amount) {
     playerProfile.totalExp += amount;
-    console.log(`Gained ${amount} EXP. Total EXP: ${playerProfile.totalExp}`);
+    this.chatManager.addMessage(
+      `Gained ${amount} EXP. Total EXP: ${playerProfile.totalExp}`
+    );
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
-    console.log(`Player Level: ${level}`);
-    console.log(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+    this.chatManager.addMessage(`Player Level: ${level}`);
+    this.chatManager.addMessage(
+      `EXP: ${currentExp} / ${nextLevelExp} to next level`
+    );
   }
 
   emitStatsUpdate() {
@@ -475,9 +535,11 @@ export default class MainScene extends Phaser.Scene {
   }
 
   summarizePlayerStats() {
-    console.log("=== Player Stats Summary ===");
-    console.table(this.playerManager.getPlayerStats());
-    console.log("============================");
+    // If you truly want to remove all console logs, you could remove below;
+    // or optionally send a summary to chat.
+    this.chatManager.addMessage("=== Player Stats Summary ===");
+    const stats = this.playerManager.getPlayerStats();
+    this.chatManager.addMessage(JSON.stringify(stats, null, 2));
   }
 
   useSkill(skill) {
@@ -488,12 +550,12 @@ export default class MainScene extends Phaser.Scene {
   }
 
   deductMana(amount) {
-    console.log(`Deducting ${amount} mana.`);
+    this.chatManager.addMessage(`Deducting ${amount} mana.`);
     this.playerManager.currentMana = Math.max(
       0,
       this.playerManager.currentMana - amount
     );
-    console.log(
+    this.chatManager.addMessage(
       `Current Mana after deduction: ${this.playerManager.currentMana}`
     );
     this.emitStatsUpdate();
@@ -519,7 +581,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   handlePlayerDeath() {
-    console.log("Player died!");
+    this.chatManager.addMessage("Player died!");
     this.time.delayedCall(2000, () => {
       this.scene.restart();
     });

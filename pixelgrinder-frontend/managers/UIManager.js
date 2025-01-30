@@ -1,6 +1,4 @@
-//
 // managers/UIManager.js
-//
 
 import {
   playerBackpack,
@@ -44,21 +42,6 @@ export default class UIManager {
     );
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
-
-    if (!this.castingProgressContainer) {
-      this.castingProgressContainer = document.createElement("div");
-      this.castingProgressContainer.id = "casting-progress-container";
-
-      this.castingSkillName = document.createElement("div");
-      this.castingSkillName.id = "casting-skill-name";
-      this.castingProgressContainer.appendChild(this.castingSkillName);
-
-      this.castingProgressFill = document.createElement("div");
-      this.castingProgressFill.id = "casting-progress-fill";
-      this.castingProgressContainer.appendChild(this.castingProgressFill);
-
-      document.body.appendChild(this.castingProgressContainer);
-    }
 
     // Loot UI
     this.lootMenu = document.getElementById("loot-menu");
@@ -123,7 +106,6 @@ export default class UIManager {
   handleStatsUpdate(stats) {
     this.updateUI(stats);
 
-    // If player level changed, show a notification
     if (stats.level > (this.previousLevel || 1)) {
       this.showLevelUpNotification(stats.level);
       this.previousLevel = stats.level;
@@ -282,7 +264,7 @@ export default class UIManager {
     }
   }
 
-  /* Stats Menu ("B") */
+  /* Stats Menu */
   showStatsMenu(htmlContent) {
     if (!this.statsMenu) return;
     this.statsContent.innerHTML = htmlContent;
@@ -293,7 +275,6 @@ export default class UIManager {
     this.statsMenu.style.display = "none";
   }
 
-  /* Level-Up Notification */
   showLevelUpNotification(newLevel) {
     const notification = document.createElement("div");
     notification.classList.add("level-up-notification");
@@ -433,9 +414,6 @@ export default class UIManager {
     container.appendChild(statsTable);
   }
 
-  /**
-   * Renders the inventory grid with stacking support.
-   */
   renderInventoryGrid(container) {
     const heading = document.createElement("h3");
     heading.textContent = "Inventory";
@@ -450,7 +428,7 @@ export default class UIManager {
       for (let c = 0; c < 5; c++) {
         const cell = document.createElement("td");
         const key = `cell_${r}_${c}`;
-        const value = playerBackpack[key]; // could be itemId (number) or object {id, quantity}
+        const value = playerBackpack[key];
 
         if (value === null) {
           cell.classList.add("closed-cell");
@@ -462,7 +440,6 @@ export default class UIManager {
             this.showItemContextMenu(e, key, null);
           });
         } else {
-          // Possibly an object {id, quantity} or a plain number
           let itemId = null;
           let itemQuantity = 1;
           if (typeof value === "object") {
@@ -492,7 +469,6 @@ export default class UIManager {
 
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
-            // We pass an object with { itemId, quantity } so we know how many we have
             const passedData = {
               id: itemId,
               quantity: itemQuantity,
@@ -525,7 +501,6 @@ export default class UIManager {
       const { id, quantity } = itemDataObj;
       const itemData = itemsMap[id];
 
-      // If the item has a slot, we can attempt "Wear"
       if (itemData && itemData.slot) {
         const wearOption = document.createElement("div");
         wearOption.textContent = "Wear";
@@ -533,8 +508,6 @@ export default class UIManager {
         wearOption.addEventListener("click", () => {
           this.scene.playerManager.equipItem(itemData.slot, itemData.id);
 
-          // If it was an object with quantity>1, reduce quantity by 1
-          // else remove from cell
           if (quantity > 1) {
             const cellVal = playerBackpack[cellKey];
             if (typeof cellVal === "object") {
@@ -543,7 +516,6 @@ export default class UIManager {
                 playerBackpack[cellKey] = 0;
               }
             } else {
-              // was a single
               playerBackpack[cellKey] = 0;
             }
           } else {
@@ -555,7 +527,6 @@ export default class UIManager {
         menu.appendChild(wearOption);
       }
 
-      // Delete option
       const deleteOption = document.createElement("div");
       deleteOption.textContent = "Delete";
       deleteOption.classList.add("menu-option");
@@ -566,7 +537,6 @@ export default class UIManager {
           deletedAt: new Date().toISOString(),
           reason: "UserDeleted",
         });
-        // Remove the entire stack
         playerBackpack[cellKey] = 0;
         this.openInventory();
         menu.remove();
@@ -574,7 +544,6 @@ export default class UIManager {
       menu.appendChild(deleteOption);
     }
 
-    // Close
     const closeOption = document.createElement("div");
     closeOption.textContent = "Close";
     closeOption.classList.add("menu-option");
@@ -698,23 +667,24 @@ export default class UIManager {
   handleLootItem(mob, lootIndex, itemData) {
     const success = this.scene.playerManager.addItemToInventory(itemData.id, 1);
     if (!success) {
-      alert("No space in backpack!");
+      this.scene.chatManager.addMessage("No space in backpack!");
       return;
     }
-    // Remove from mob's loot
     mob.customData.droppedLoot.splice(lootIndex, 1);
-    console.log(`Took "${itemData.name}", added to inventory stack.`);
-
+    this.scene.chatManager.addMessage(
+      `Took "${itemData.name}", added to inventory.`
+    );
     this.openLootWindow(mob);
   }
 
   learnSkillFromLoot(mob, lootIndex, skillData) {
     const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
     if (alreadyKnown) {
-      alert("You already know this skill!");
+      this.scene.chatManager.addMessage("You already know this skill!");
     } else {
       playerSkills.push(skillData);
-      alert(`You learned a new skill: ${skillData.name}!`);
+      this.scene.chatManager.addMessage(`You learned a new skill: ${skillData.name}!`);
+
       this.setupSkills(playerSkills);
       this.scene.inputManager.setupControls(playerSkills);
     }
