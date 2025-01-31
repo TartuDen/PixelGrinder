@@ -54,14 +54,22 @@ export default class GatherManager {
   }
 
   update() {
-    // Hide tooltip by default
+    // Always hide tooltip first
     this.hoveredGatherTile = null;
     this.gatherTooltip.style.display = "none";
 
-    // Convert mouse coords to world coords
+    const pointer = this.scene.input.activePointer;
+    if (!pointer) return;
+
+    // Convert pointer.x/pointer.y into DOM coordinates
+    const canvasRect = this.scene.game.canvas.getBoundingClientRect();
+    const domX = canvasRect.left + pointer.x;
+    const domY = canvasRect.top + pointer.y;
+
+    // Check if the mouse is hovering over a gather tile
     const worldPoint = this.scene.cameras.main.getWorldPoint(
-      this.pointerScreenX,
-      this.pointerScreenY
+      pointer.x,
+      pointer.y
     );
     const tile = this.gatherRockLayer.getTileAtWorldXY(
       worldPoint.x,
@@ -69,36 +77,16 @@ export default class GatherManager {
     );
 
     if (tile) {
+      // Over gatherable tile → show "GATHER" near cursor
       this.hoveredGatherTile = tile;
       this.scene.input.setDefaultCursor("pointer");
 
-      // Compute the center of this tile in world coordinates
-      const tileCenterX =
-        this.gatherRockLayer.tileToWorldX(tile.x) +
-        this.scene.map.tileWidth / 2;
-      const tileCenterY =
-        this.gatherRockLayer.tileToWorldY(tile.y) +
-        this.scene.map.tileHeight / 2;
-
-      // Convert that world position to "screen" coords inside the Phaser canvas
-      const camera = this.scene.cameras.main;
-      const zoom = camera.zoom;
-
-      // 1) Adjust for camera scroll
-      let screenX = (tileCenterX - camera.scrollX) * zoom;
-      let screenY = (tileCenterY - camera.scrollY) * zoom;
-
-      // 2) Get the bounding rect of your <canvas> to place the tooltip in DOM
-      const canvasRect = this.scene.game.canvas.getBoundingClientRect();
-
-      screenX += canvasRect.left;
-      screenY += canvasRect.top;
-
-      // Display the tooltip in that position
       this.gatherTooltip.style.display = "block";
-      this.gatherTooltip.style.left = `${screenX}px`;
-      this.gatherTooltip.style.top = `${screenY}px`;
+      // Offset a bit so it’s not behind the actual cursor
+      this.gatherTooltip.style.left = `${domX +15}px`;
+      this.gatherTooltip.style.top = `${domY +15}px`;
     } else {
+      // Not on a gatherable tile
       this.scene.input.setDefaultCursor("default");
     }
   }
