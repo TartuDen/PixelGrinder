@@ -101,6 +101,7 @@ export default class GatherManager {
         if (newDist > GATHER_RANGE) {
           this.chatManager.addMessage("Gather canceled (moved out of range).");
           this.cancelGather();
+          return;
         }
 
         // Done?
@@ -121,12 +122,16 @@ export default class GatherManager {
     this.playerManager.isGathering = false;
     this.uiManager.hideCastingProgress();
 
-    // Remove tile from gather_rock layer
-    this.gatherRockLayer.removeTileAt(tile.x, tile.y);
-
-    // Give item to inventory
-    this.playerManager.addItemToInventory(4000, 1);
-    this.chatManager.addMessage("You gathered a 'simple_rock'. Added to inventory!");
+    // Attempt to add item "simple_rock" (id=4000)
+    const success = this.playerManager.addItemToInventory(4000, 1);
+    if (success) {
+      // If added successfully, remove tile from gather_rock layer
+      this.gatherRockLayer.removeTileAt(tile.x, tile.y);
+      this.chatManager.addMessage("You gathered a 'simple_rock'. Added to inventory!");
+    } else {
+      // Inventory was full or locked
+      this.chatManager.addMessage("Your inventory is full. The rock remains on the ground.");
+    }
   }
 
   cancelGather() {

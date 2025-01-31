@@ -656,21 +656,66 @@ export default class UIManager {
     takeAllButton.style.marginBottom = "10px";
     takeAllButton.addEventListener("click", () => {
       // Attempt to take everything in one go
+      // We'll go from the end toward the beginning so we can splice safely
+      let learnedOrUpgradedSkill = false;
+
       for (let i = mob.customData.droppedLoot.length - 1; i >= 0; i--) {
         const itemId = mob.customData.droppedLoot[i];
-        const success = this.scene.playerManager.addItemToInventory(itemId, 1);
-        if (success) {
+        const skillData = allGameSkills.find((s) => s.id === itemId);
+
+        if (skillData) {
+          // It's a skill, so learn/upgrade, do not add to inventory
+          const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
+          if (!alreadyKnown) {
+            // brand new skill
+            skillData.level = skillData.level || 1;
+            playerSkills.push(skillData);
+            this.scene.chatManager.addMessage(`You learned a new skill: ${skillData.name}!`);
+          } else {
+            // Upgrade existing
+            alreadyKnown.level = (alreadyKnown.level || 1) + 1;
+            let enh = skillEnhancements[alreadyKnown.name];
+            if (!enh) enh = skillEnhancements["default"];
+
+            for (const prop in enh) {
+              const pct = enh[prop];
+              if (typeof alreadyKnown[prop] === "number") {
+                alreadyKnown[prop] *= (1 + pct);
+                // clamp if negative
+                if ((prop === "castingTime" || prop === "cooldown") && alreadyKnown[prop] < 0) {
+                  alreadyKnown[prop] = 0;
+                }
+              }
+            }
+            this.scene.chatManager.addMessage(
+              `Upgraded skill: ${alreadyKnown.name} to level ${alreadyKnown.level}!`
+            );
+          }
           mob.customData.droppedLoot.splice(i, 1);
-          const itemData = itemsMap[itemId];
-          this.scene.chatManager.addMessage(
-            `Took "${itemData ? itemData.name : "Unknown"}" (Take All).`
-          );
+          learnedOrUpgradedSkill = true;
         } else {
-          this.scene.chatManager.addMessage(
-            `Cannot loot item (ID=${itemId}). Inventory might be full or locked cells.`
-          );
+          // It's an item
+          const success = this.scene.playerManager.addItemToInventory(itemId, 1);
+          if (success) {
+            mob.customData.droppedLoot.splice(i, 1);
+            const itemData = itemsMap[itemId];
+            this.scene.chatManager.addMessage(
+              `Took "${itemData ? itemData.name : "Unknown"}" (Take All).`
+            );
+          } else {
+            this.scene.chatManager.addMessage(
+              `Cannot loot item (ID=${itemId}). Inventory might be full or locked.`
+            );
+          }
         }
       }
+
+      // If any skill was learned or upgraded, re-setup skill bar
+      if (learnedOrUpgradedSkill) {
+        this.setupSkills(playerSkills);
+        this.scene.inputManager.setupControls(playerSkills);
+      }
+
       this.openLootWindow(mob);
     });
     this.lootContent.appendChild(takeAllButton);

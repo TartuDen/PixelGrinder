@@ -300,9 +300,9 @@ const playerEquippedItems = {
 const playerBackpack = {
   cell_0_0: 2000,
   cell_0_1: 2001,
-  cell_0_2: null,
-  cell_0_3: null,
-  cell_0_4: null,
+  cell_0_2: 0,
+  cell_0_3: 0,
+  cell_0_4: 0,
   cell_1_0: null,
   cell_1_1: null,
   cell_1_2: null,
