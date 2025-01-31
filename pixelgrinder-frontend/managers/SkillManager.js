@@ -7,109 +7,75 @@ import {
 } from "../helpers/calculatePlayerStats.js";
 
 export default class SkillManager {
-  /**
-   * @param {Phaser.Scene} scene - The Phaser scene (MainScene).
-   * @param {Function} getPlayerStatsCallback - A callback to retrieve current player stats.
-   */
   constructor(scene, getPlayerStatsCallback) {
     this.scene = scene;
     this.getPlayerStats = getPlayerStatsCallback;
 
-    this.skills = [];     // All available skills (populated in preloadSkills)
-    this.cooldowns = {};  // Track skill cooldowns
+    this.skills = [];
+    this.cooldowns = {};
     this.isCasting = false;
     this.currentCastingSkill = null;
 
-    this.castingTimer = null;      // Timer for the casting progress
-    this.rangeCheckTimer = null;   // Timer that checks distance while casting
-    this.delayedCall = null;       // Delayed call for finishing the cast
+    this.castingTimer = null;
+    this.rangeCheckTimer = null;
+    this.delayedCall = null;
   }
 
-  /**
-   * Called in Scene.create() to load the skill data from the Scene’s playerSkills.
-   */
   preloadSkills() {
-    // If you’re storing them in this.scene.playerSkills, do:
     this.skills = this.scene.playerSkills;
   }
 
-  /**
-   * Called after scene loads & creates the animations in defineAnimations.
-   * If you want any additional skill animations, place them here or in MainScene.defineAnimations.
-   */
   createSkillAnimations() {
-    // If your MainScene already defines the skill animations,
-    // you can skip or leave this method empty.
+    // If your MainScene already defines skill animations, you can do nothing here
   }
 
-  /**
-   * Returns true if an attack is evaded (based on evasionStat).
-   */
   isAttackEvaded(evasionStat) {
-    const evasionChance = 1 * evasionStat; // e.g. 1% per stat point
     const roll = Phaser.Math.FloatBetween(0, 100);
-    return roll < evasionChance;
+    return roll < evasionStat;
   }
 
-  /**
-   * Attempts to use a given skill:
-   *  - Checks if already casting or if skill is on cooldown
-   *  - Checks if enough mana
-   *  - Checks if we have a target in range
-   *  - If castingTime > 0, starts cast; else executes immediately
-   */
   useSkill(skill) {
     if (this.isCasting) {
-      this.scene.chatManager.addMessage("Currently casting another skill. Please wait.");
+      this.scene.chatManager.addMessage("Currently casting another skill.");
       return { success: false };
     }
-
-    // Cooldown check
     if (this.cooldowns[skill.id] && this.cooldowns[skill.id] > 0) {
+      const cdTime = this.cooldowns[skill.id].toFixed(1);
       this.scene.chatManager.addMessage(
-        `${skill.name} is on cooldown for ${this.cooldowns[skill.id].toFixed(1)}s.`
+        `${skill.name} is on cooldown for ${cdTime}s.`
       );
       return { success: false };
     }
 
-    // Mana check
     const playerStats = this.getPlayerStats();
-    this.scene.chatManager.addMessage(
-      `Current Mana: ${playerStats.currentMana} / ${playerStats.maxMana}`
-    );
-    if (playerStats.currentMana < skill.manaCost) {
+    const neededMana = Math.round(skill.manaCost);
+    if (playerStats.currentMana < neededMana) {
       this.scene.chatManager.addMessage("Not enough mana to use this skill.");
       return { success: false };
     }
 
-    // Must have a target
     const targetedMob = this.scene.targetedMob;
     if (!targetedMob) {
-      this.scene.chatManager.addMessage("No target selected for skill casting.");
-      return { success: false };
-    }
-
-    // Check distance to target
-    const player = this.scene.playerManager.player;
-    if (!player) {
-      this.scene.chatManager.addMessage("PlayerManager.player is undefined.");
+      this.scene.chatManager.addMessage("No target selected.");
       return { success: false };
     }
 
     const distance = Phaser.Math.Distance.Between(
-      player.x,
-      player.y,
+      this.scene.playerManager.player.x,
+      this.scene.playerManager.player.y,
       targetedMob.x,
       targetedMob.y
     );
     if (distance > skill.range) {
       this.scene.chatManager.addMessage(
-        `Target is out of range for ${skill.name}. Dist=${distance}, Range=${skill.range}.`
+        `Target out of range for ${skill.name}. Dist=${distance.toFixed(
+          1
+        )}, Range=${skill.range.toFixed(1)}.`
       );
       return { success: false };
     }
 
-    // If skill has a casting time, begin cast; else execute
+    // If there's a castingTime
     if (skill.castingTime > 0) {
       this.castSkill(skill, targetedMob);
     } else {
@@ -118,10 +84,6 @@ export default class SkillManager {
     return { success: true };
   }
 
-  /**
-   * Starts the skill’s casting process, showing a progress bar
-   * and checking if the target moves away or we get interrupted.
-   */
   castSkill(skill, targetedMob) {
     this.isCasting = true;
     this.currentCastingSkill = skill;
@@ -132,7 +94,7 @@ export default class SkillManager {
     const totalTime = skill.castingTime;
     let elapsedTime = 0;
 
-    // Update progress bar every 100ms
+    // Timer to update progress bar
     this.castingTimer = this.scene.time.addEvent({
       delay: 100,
       loop: true,
@@ -147,11 +109,10 @@ export default class SkillManager {
       },
     });
 
-    // After skill.castingTime, execute the skill
+    // Delayed call for finishing cast
     this.delayedCall = this.scene.time.delayedCall(
       skill.castingTime * 1000,
       () => {
-        // If we got canceled mid-cast, do nothing
         if (!this.isCasting) return;
 
         this.executeSkill(skill, targetedMob);
@@ -172,7 +133,7 @@ export default class SkillManager {
       }
     );
 
-    // Start range checking every 100ms
+    // Range-check loop
     this.rangeCheckTimer = this.scene.time.addEvent({
       delay: 100,
       loop: true,
@@ -184,7 +145,6 @@ export default class SkillManager {
           }
           return;
         }
-        // If target moves beyond extended range, cancel cast
         const dist = Phaser.Math.Distance.Between(
           this.scene.playerManager.player.x,
           this.scene.playerManager.player.y,
@@ -194,7 +154,7 @@ export default class SkillManager {
         const extendedRange = skill.range * SKILL_RANGE_EXTENDER;
         if (dist > extendedRange) {
           this.scene.chatManager.addMessage(
-            `Casting of ${skill.name} canceled. Target moved out of extended range.`
+            `Casting of ${skill.name} canceled. Target left extended range.`
           );
           this.cancelCasting();
         }
@@ -202,15 +162,12 @@ export default class SkillManager {
     });
   }
 
-  /**
-   * Executes the skill effect (damage/heal) and triggers the skill animation.
-   * Also sets the cooldown if needed.
-   */
   executeSkill(skill, targetedMob) {
-    // Deduct mana cost
-    this.scene.deductMana(skill.manaCost);
+    // Deduct mana
+    const manaNeeded = Math.round(skill.manaCost);
+    this.scene.deductMana(manaNeeded);
 
-    // Possibly deal magic damage
+    // If skill has magicAttack
     if (skill.magicAttack > 0 && targetedMob) {
       const playerStats = this.getPlayerStats();
       const mobStats = this.scene.mobManager.getStats(targetedMob);
@@ -221,103 +178,66 @@ export default class SkillManager {
           `${skill.name} was evaded by Mob ${targetedMob.customData.id}.`
         );
       } else {
-        // Calculate actual damage
-        const damage = calculateMagicDamage(
-          playerStats,
-          mobStats,
-          skill.magicAttack
-        );
-        // Apply damage to mob
+        let damage = calculateMagicDamage(playerStats, mobStats, skill.magicAttack);
+        damage = Math.round(damage);
         this.scene.mobManager.applyDamageToMob(targetedMob, damage);
 
         this.scene.chatManager.addMessage(
-          `${skill.name} used on Mob ${targetedMob.customData.id}, dealing ${damage} magic damage.`
+          `${skill.name} hit Mob ${targetedMob.customData.id} for ${damage} magic damage.`
         );
-
-        // **Play skill animation** on the mob’s position
         this.triggerSkillAnimation(skill, targetedMob);
-      }
-
-      // Optional: reward extra EXP if skill has "expReward"
-      if (skill.expReward && damage > 0) {
-        this.scene.playerManager.gainExperience(skill.expReward);
       }
     }
 
     // If skill has a heal property
     if (skill.heal) {
-      const amount = skill.heal;
+      const amount = Math.round(skill.heal);
       const p = this.scene.playerManager;
       p.currentHealth = Math.min(p.maxHealth, p.currentHealth + amount);
-      this.scene.chatManager.addMessage(`${skill.name} healed for ${amount} HP.`);
+      this.scene.chatManager.addMessage(`${skill.name} healed for ${amount}.`);
     }
 
-    // Start cooldown if > 0
+    // If skill has a cooldown
     if (skill.cooldown > 0) {
       this.cooldowns[skill.id] = skill.cooldown;
-      // Setup a timed event to reset the cooldown
+      this.scene.uiManager.updateSkillCooldown(skill.id, skill.cooldown);
+
       this.scene.time.addEvent({
         delay: skill.cooldown * 1000,
         callback: () => {
           this.cooldowns[skill.id] = 0;
-          this.scene.chatManager.addMessage(`${skill.name} is now off cooldown.`);
+          this.scene.chatManager.addMessage(`${skill.name} is off cooldown.`);
           this.scene.uiManager.updateSkillCooldown(skill.id, 0);
         },
       });
-      // Update UI for cooldown
-      this.scene.uiManager.updateSkillCooldown(skill.id, skill.cooldown);
     }
 
-    // Update UI (HP/Mana bars, etc.)
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Actually spawn and play the skill animation at the target’s location.
-   */
   triggerSkillAnimation(skill, targetedMob) {
-    if (!targetedMob) {
-      this.scene.chatManager.addMessage(
-        `No target found for animation of ${skill.name}.`
-      );
-      return;
-    }
+    if (!targetedMob) return;
 
     const scene = this.scene;
-    // Create a sprite at the mob’s position
-    const skillSprite = scene.add.sprite(
-      targetedMob.x,
-      targetedMob.y,
-      `${skill.name}_anim`  // The loaded texture key
-    );
+    const skillSprite = scene.add.sprite(targetedMob.x, targetedMob.y, `${skill.name}_anim`);
     skillSprite.setScale(1);
+    skillSprite.play(`${skill.name}_anim`);
 
-    // Attempt to play the animation
-    const animKey = `${skill.name}_anim`; // e.g. "magic_wip_anim"
-    // If the animation doesn't exist or fails, Phaser warns "Missing animation"
-    skillSprite.play(animKey);
-
-    // Once animation completes, fade out & destroy
     skillSprite.on("animationcomplete", () => {
       scene.tweens.add({
         targets: skillSprite,
         alpha: 0,
         duration: 500,
-        onComplete: () => {
-          skillSprite.destroy();
-        },
+        onComplete: () => skillSprite.destroy(),
       });
     });
   }
 
-  /**
-   * Cancels the current cast if we’re in the middle of one.
-   */
   cancelCasting() {
     if (!this.isCasting) return;
 
     this.scene.chatManager.addMessage(
-      `Casting of ${this.currentCastingSkill.name} has been canceled.`
+      `Casting of ${this.currentCastingSkill.name} canceled.`
     );
 
     this.isCasting = false;
@@ -339,14 +259,10 @@ export default class SkillManager {
     this.scene.uiManager.hideCastingProgress();
   }
 
-  /**
-   * Returns whether the skill can be used (not on cooldown, not casting, enough mana).
-   */
   canUseSkill(skill) {
     if (this.isCasting) return false;
     if (this.cooldowns[skill.id] && this.cooldowns[skill.id] > 0) return false;
     const playerStats = this.getPlayerStats();
-    if (playerStats.currentMana < skill.manaCost) return false;
-    return true;
+    return playerStats.currentMana >= Math.round(skill.manaCost);
   }
 }

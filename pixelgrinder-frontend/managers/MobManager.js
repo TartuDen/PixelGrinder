@@ -25,11 +25,9 @@ export default class MobManager {
 
     // Collide with scene layers
     // (Prevent pushing each other by setting pushable = false on the mobs)
-    this.scene.physics.add.collider(
-      this.mobs,
-      this.scene.playerManager.player
-    );
+    this.scene.physics.add.collider(this.mobs, this.scene.playerManager.player);
     this.scene.physics.add.collider(this.mobs, this.scene.collisionLayer);
+    this.scene.physics.add.collider(this.mobs, this.scene.gatherRockLayer);
     this.scene.physics.add.collider(this.mobs, this.mobs);
 
     // Get spawn zones from the tilemap
@@ -115,11 +113,17 @@ export default class MobManager {
 
   updateMobs(player) {
     this.mobs.getChildren().forEach((mob) => {
-      if (!mob.active || mob.customData.isDead) return;
+      if (!mob.active) return;
 
-      // Update HP text position
+      // Always update HP text position & value, even if dead
       if (mob.customData.hpText) {
         mob.customData.hpText.setPosition(mob.x, mob.y - 20);
+        mob.customData.hpText.setText(`HP: ${Math.round(mob.customData.hp)}`);
+      }
+
+      // If mob is dead, skip AI but let the text show "HP: 0"
+      if (mob.customData.isDead) {
+        return;
       }
 
       const mobKey = mob.customData.id;
@@ -173,7 +177,7 @@ export default class MobManager {
           break;
 
         case "unsticking":
-          // Do nothing special here; we handle it in performUnsticking()
+          // do nothing special here
           break;
       }
     });
@@ -309,7 +313,10 @@ export default class MobManager {
   }
 
   chasePlayer(mob, player, mobInfo) {
-    const direction = new Phaser.Math.Vector2(player.x - mob.x, player.y - mob.y).normalize();
+    const direction = new Phaser.Math.Vector2(
+      player.x - mob.x,
+      player.y - mob.y
+    ).normalize();
     const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
 
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
@@ -350,7 +357,6 @@ export default class MobManager {
 
     mob.body.setVelocity(turnDir.x * sideSpeed, turnDir.y * sideSpeed);
 
-    // Basic directional animations again
     if (Math.abs(turnDir.x) > Math.abs(turnDir.y)) {
       if (turnDir.x > 0) mob.anims.play("mob-walk-right", true);
       else mob.anims.play("mob-walk-left", true);
@@ -576,21 +582,23 @@ export default class MobManager {
 
   applyDamageToMob(mob, damage) {
     mob.customData.hp = Math.max(0, mob.customData.hp - damage);
-    mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
 
     if (mob.customData.hp <= 0) {
       this.scene.chatManager.addMessage("Mob died!");
       this.handleMobDeath(mob);
       this.scene.targetedMob = null;
     } else {
-      // If mob was friend, it becomes enemy
       if (mob.customData.currentType === "friend") {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
         this.scene.chatManager.addMessage(
           `Mob "${mob.customData.id}" became enemy (now chasing).`
         );
-        this.chasePlayer(mob, this.scene.playerManager.player, mobsData[mob.customData.id]);
+        this.chasePlayer(
+          mob,
+          this.scene.playerManager.player,
+          mobsData[mob.customData.id]
+        );
       }
     }
   }
@@ -607,7 +615,12 @@ export default class MobManager {
   cycleTarget(player, range, callback) {
     const mobsInRange = this.mobs.getChildren().filter((mob) => {
       if (mob.customData.isDead) return false;
-      const distance = Phaser.Math.Distance.Between(player.x, player.y, mob.x, mob.y);
+      const distance = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        mob.x,
+        mob.y
+      );
       return distance <= range;
     });
 
@@ -617,8 +630,18 @@ export default class MobManager {
     }
 
     mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y);
-      const distanceB = Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y);
+      const distanceA = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        b.x,
+        b.y
+      );
       return distanceA - distanceB;
     });
 
@@ -647,7 +670,9 @@ export default class MobManager {
 
     // If mob is dead and has loot, open loot UI
     if (mob.customData.isDead && mob.customData.droppedLoot.length > 0) {
-      this.scene.chatManager.addMessage("Mob corpse clicked - opening loot window...");
+      this.scene.chatManager.addMessage(
+        "Mob corpse clicked - opening loot window..."
+      );
       this.scene.uiManager.openLootWindow(mob);
       return;
     }
@@ -670,8 +695,18 @@ export default class MobManager {
     });
 
     mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y);
-      const distanceB = Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y);
+      const distanceA = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        b.x,
+        b.y
+      );
       return distanceA - distanceB;
     });
 

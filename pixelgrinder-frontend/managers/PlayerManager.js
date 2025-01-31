@@ -79,13 +79,17 @@ export default class PlayerManager {
     this.scene.emitStatsUpdate();
   }
 
+  /**
+   * Modified to treat only cellVal === 0 as an open cell.
+   * If cellVal === null => cell is locked/unavailable.
+   */
   findEmptyBackpackCell() {
     for (let r = 0; r < 6; r++) {
       for (let c = 0; c < 5; c++) {
         const key = `cell_${r}_${c}`;
         const cellVal = playerBackpack[key];
-        // cellVal could be 0 or null => empty
-        if (cellVal === 0 || cellVal === null) {
+        // Only treat 0 as empty. Null means locked / unavailable.
+        if (cellVal === 0) {
           return key;
         }
       }

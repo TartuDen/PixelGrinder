@@ -18,7 +18,6 @@ const playerBaseStats = {
   constitution: 4,
   speed: 50,
 
-  // NEW: gatherSpeed determines how quickly we gather.
   gatherSpeed: 1,
 };
 
@@ -32,7 +31,7 @@ const playerGrowthStats = {
   speed: 3,
 };
 
-// --- Stat Weights (How base stats affect derived stats) ---
+// Stat Weights
 const statWeights = {
   intellect: {
     magicAttack: 3,
@@ -69,18 +68,23 @@ const statWeights = {
 };
 
 // --------------------------------------------------------------------
-// NEW: Describes how a skill scales for each level beyond 1
-// +0.1 => +10% multiply, -0.1 => -10% multiply
-// We'll do iterative scaling each time you level it.
+// skillEnhancements => "default" applies to ANY skill not explicitly listed
 const skillEnhancements = {
-  earth_root: {
+  default: {
     manaCost: 0.1,     // +10% each level
     range: 0.1,        // +10%
     magicAttack: 0.1,  // +10%
     castingTime: -0.1, // -10%
     cooldown: -0.1,    // -10%
   },
-  // Add entries for other skills if you want them to scale similarly
+  // Example: if you want to override for a specific skill, do:
+  // earth_root: {
+  //   manaCost: 0.1,
+  //   range: 0.1,
+  //   magicAttack: 0.1,
+  //   castingTime: -0.1,
+  //   cooldown: -0.1,
+  // },
 };
 
 // --------------------------------------------------------------------
@@ -99,7 +103,6 @@ const allGameSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
     animationSeq: [0, 7],
-    // optional level
     level: 1,
   },
   {
@@ -128,13 +131,12 @@ const allGameSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1.png",
     animationSeq: [0, 7],
-    // We add level property
     level: 1,
   },
 ];
 
 // --------------------------------------------------------------------
-// PLAYER SKILLS (subset of allGameSkills for the current player)
+// PLAYER SKILLS
 // --------------------------------------------------------------------
 const playerSkills = [
   {
@@ -167,9 +169,7 @@ const playerSkills = [
   },
 ];
 
-// --------------------------------------------------------------------
-// Weapon / Armor Items
-// --------------------------------------------------------------------
+// Weapon / Armor Items ...
 const weaponItems = [
   {
     id: 2000,
@@ -266,7 +266,7 @@ const armorItems = [
   },
 ];
 
-// NEW GATHERABLE ITEMS (ID>=4000)
+// Gatherable items (ID>=4000)
 const gatherableItems = [
   {
     id: 4000,
@@ -275,20 +275,18 @@ const gatherableItems = [
   },
 ];
 
-// Combine everything into a single array for easy lookups:
+// Combine for easy lookups
 const allItems = [
   ...weaponItems,
   ...armorItems,
-  ...gatherableItems, // <-- Include gatherables
+  ...gatherableItems,
 ];
-
-// Build a quick lookup map
 const itemsMap = {};
 allItems.forEach((item) => {
   itemsMap[item.id] = item;
 });
 
-// 5) Currently equipped
+// Currently equipped
 const playerEquippedItems = {
   weapon: 2000,
   head: null,
@@ -298,19 +296,19 @@ const playerEquippedItems = {
   feet: 3002,
 };
 
-// 6) Player backpack
+// Backpack
 const playerBackpack = {
   cell_0_0: 2000,
   cell_0_1: 2001,
-  cell_0_2: 0,
-  cell_0_3: 0,
-  cell_0_4: 0,
-  cell_1_0: 3003,
-  cell_1_1: 0,
-  cell_1_2: 0,
-  cell_1_3: 0,
-  cell_1_4: 0,
-  cell_2_0: 0,
+  cell_0_2: null,
+  cell_0_3: null,
+  cell_0_4: null,
+  cell_1_0: null,
+  cell_1_1: null,
+  cell_1_2: null,
+  cell_1_3: null,
+  cell_1_4: null,
+  cell_2_0: null,
   cell_2_1: null,
   cell_2_2: null,
   cell_2_3: null,
@@ -332,7 +330,6 @@ const playerBackpack = {
   cell_5_4: null,
 };
 
-// Track deleted items
 const deletedItems = [];
 
 // Mobs + loot
@@ -357,6 +354,7 @@ const mobsData = {
     lootTable: [
       { itemId: 2001, chance: 80 },
       { itemId: 1002, chance: 80 },
+      { itemId: 1000, chance: 80 },
     ],
   },
   goblin: {
@@ -380,7 +378,6 @@ const mobsData = {
   },
 };
 
-// Experience modifier rules
 const expModifierRules = {
   mobAtLeast5Higher: 1.2,
   mob4Higher: 1.15,
@@ -406,7 +403,7 @@ const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
 const GATHER_RANGE = 50;
-const MOB_CORPSE_DURATION = 8000; // e.g. 8 seconds
+const MOB_CORPSE_DURATION = 8000; // 8 seconds
 
 export {
   playerProfile,
@@ -430,5 +427,5 @@ export {
   deletedItems,
   GATHER_RANGE,
   MOB_CORPSE_DURATION,
-  skillEnhancements,    // <--- NEW
+  skillEnhancements,
 };

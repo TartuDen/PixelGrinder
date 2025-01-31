@@ -7,9 +7,8 @@ import {
   playerEquippedItems,
   playerSkills,
   allGameSkills,
-  skillEnhancements, // <-- import the new object
+  skillEnhancements,
 } from "../data/MOCKdata.js";
-
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 export default class UIManager {
@@ -44,7 +43,7 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // ----- Loot UI -----
+    // Loot UI
     this.lootMenu = document.getElementById("loot-menu");
     if (!this.lootMenu) {
       this.lootMenu = document.createElement("div");
@@ -124,7 +123,7 @@ export default class UIManager {
     }
   }
 
-  /* Casting Progress */
+  // Casting Progress
   showCastingProgress(skillName, totalTime) {
     if (this.castingProgressContainer) {
       this.castingSkillName.textContent = `Casting: ${skillName}`;
@@ -146,7 +145,7 @@ export default class UIManager {
     }
   }
 
-  /* Skill Setup */
+  // Setup Skills (casting bar)
   setupSkills(skills) {
     this.castingBar.innerHTML = "";
 
@@ -155,31 +154,38 @@ export default class UIManager {
       castingSlot.classList.add("casting-slot");
       castingSlot.setAttribute("data-skill-id", skill.id);
 
+      // Icon
       const img = document.createElement("img");
       img.src = skill.icon;
       img.alt = skill.name;
       castingSlot.appendChild(img);
 
+      // Show skill level
+      const levelLabel = document.createElement("div");
+      levelLabel.classList.add("skill-level-label");
+      levelLabel.textContent = `L${skill.level || 1}`;
+      castingSlot.appendChild(levelLabel);
+
+      // Mana cost
       const manaCost = document.createElement("div");
       manaCost.classList.add("mana-cost");
-      manaCost.textContent = skill.manaCost.toFixed
-        ? skill.manaCost.toFixed(1)
-        : skill.manaCost;
+      manaCost.textContent = (skill.manaCost || 0).toFixed(1);
       castingSlot.appendChild(manaCost);
 
+      // Cooldown overlay
       const cooldownOverlay = document.createElement("div");
       cooldownOverlay.classList.add("cooldown-overlay");
       cooldownOverlay.style.display = "none";
-
       const cooldownTimer = document.createElement("span");
       cooldownTimer.classList.add("cooldown-timer");
       cooldownOverlay.appendChild(cooldownTimer);
-
       castingSlot.appendChild(cooldownOverlay);
 
+      // Click => skill usage
       castingSlot.addEventListener("click", () => {
         this.scene.useSkill(skill);
       });
+
       this.castingBar.appendChild(castingSlot);
     });
   }
@@ -231,7 +237,7 @@ export default class UIManager {
     });
   }
 
-  /* Top-left UI (HP/MP/XP) */
+  // Top-left UI (HP/MP/XP)
   updateUI({
     name,
     currentHealth,
@@ -242,19 +248,20 @@ export default class UIManager {
     xp,
     speed,
   }) {
+    const hpVal = Math.round(currentHealth);
+    const hpMaxVal = Math.round(maxHealth);
+    const mpVal = Math.round(currentMana);
+    const mpMaxVal = Math.round(maxMana);
+
     if (this.uiHealthFill && this.healthText) {
-      const hpPct = (currentHealth / maxHealth) * 100;
+      const hpPct = (hpVal / hpMaxVal) * 100;
       this.uiHealthFill.style.width = `${hpPct}%`;
-      this.healthText.textContent = `HP: ${currentHealth}/${maxHealth} (${hpPct.toFixed(
-        1
-      )}%)`;
+      this.healthText.textContent = `HP: ${hpVal}/${hpMaxVal} (${hpPct.toFixed(0)}%)`;
     }
     if (this.uiManaFill && this.manaText) {
-      const mpPct = (currentMana / maxMana) * 100;
+      const mpPct = (mpVal / mpMaxVal) * 100;
       this.uiManaFill.style.width = `${mpPct}%`;
-      this.manaText.textContent = `Mana: ${currentMana}/${maxMana} (${mpPct.toFixed(
-        1
-      )}%)`;
+      this.manaText.textContent = `Mana: ${mpVal}/${mpMaxVal} (${mpPct.toFixed(0)}%)`;
     }
     if (this.uiName) this.uiName.textContent = name;
     if (this.uiLevel) this.uiLevel.textContent = `Level: ${level}`;
@@ -273,12 +280,12 @@ export default class UIManager {
 
       this.uiExpFill.style.width = `${expPct}%`;
       this.uiExpText.textContent = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(
-        1
+        0
       )}%)`;
     }
   }
 
-  /* Stats Menu */
+  // Stats Menu
   showStatsMenu(htmlContent) {
     if (!this.statsMenu) return;
     this.statsContent.innerHTML = htmlContent;
@@ -312,7 +319,7 @@ export default class UIManager {
     );
   }
 
-  /* Inventory Menu ("I") */
+  // Inventory Menu ("I")
   toggleInventory() {
     if (!this.inventoryMenu) return;
     if (this.inventoryMenu.style.display === "block") {
@@ -403,15 +410,15 @@ export default class UIManager {
     statsTable.style.width = "100%";
 
     const rowData = [
-      { label: "Health",         value: derivedStats.health },
-      { label: "Mana",           value: derivedStats.mana },
-      { label: "Magic Attack",   value: derivedStats.magicAttack },
-      { label: "Melee Attack",   value: derivedStats.meleeAttack },
-      { label: "Magic Defense",  value: derivedStats.magicDefense },
-      { label: "Melee Defense",  value: derivedStats.meleeDefense },
-      { label: "Magic Evasion",  value: derivedStats.magicEvasion },
-      { label: "Melee Evasion",  value: derivedStats.meleeEvasion },
-      { label: "Speed",          value: derivedStats.speed },
+      { label: "Health",         value: Math.round(derivedStats.health) },
+      { label: "Mana",           value: Math.round(derivedStats.mana) },
+      { label: "Magic Attack",   value: Math.round(derivedStats.magicAttack) },
+      { label: "Melee Attack",   value: Math.round(derivedStats.meleeAttack) },
+      { label: "Magic Defense",  value: Math.round(derivedStats.magicDefense) },
+      { label: "Melee Defense",  value: Math.round(derivedStats.meleeDefense) },
+      { label: "Magic Evasion",  value: Math.round(derivedStats.magicEvasion) },
+      { label: "Melee Evasion",  value: Math.round(derivedStats.meleeEvasion) },
+      { label: "Speed",          value: Math.round(derivedStats.speed) },
     ];
 
     rowData.forEach((stat) => {
@@ -445,15 +452,18 @@ export default class UIManager {
         const value = playerBackpack[key];
 
         if (value === null) {
+          // Unavailable cell
           cell.classList.add("closed-cell");
           cell.textContent = "X";
         } else if (value === 0) {
+          // Available cell, but currently empty
           cell.classList.add("open-cell");
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, null);
           });
         } else {
+          // Occupied cell
           let itemId = null;
           let itemQuantity = 1;
           if (typeof value === "object") {
@@ -640,12 +650,37 @@ export default class UIManager {
       return;
     }
 
+    // NEW: "Take All" button
+    const takeAllButton = document.createElement("button");
+    takeAllButton.textContent = "Take All";
+    takeAllButton.style.marginBottom = "10px";
+    takeAllButton.addEventListener("click", () => {
+      // Attempt to take everything in one go
+      for (let i = mob.customData.droppedLoot.length - 1; i >= 0; i--) {
+        const itemId = mob.customData.droppedLoot[i];
+        const success = this.scene.playerManager.addItemToInventory(itemId, 1);
+        if (success) {
+          mob.customData.droppedLoot.splice(i, 1);
+          const itemData = itemsMap[itemId];
+          this.scene.chatManager.addMessage(
+            `Took "${itemData ? itemData.name : "Unknown"}" (Take All).`
+          );
+        } else {
+          this.scene.chatManager.addMessage(
+            `Cannot loot item (ID=${itemId}). Inventory might be full or locked cells.`
+          );
+        }
+      }
+      this.openLootWindow(mob);
+    });
+    this.lootContent.appendChild(takeAllButton);
+
     mob.customData.droppedLoot.forEach((itemId, index) => {
       const itemData = itemsMap[itemId];
       const skillData = allGameSkills.find((s) => s.id === itemId);
 
       if (itemData) {
-        // It's a regular item
+        // Regular item
         const itemDiv = document.createElement("div");
         itemDiv.textContent = itemData.name;
         itemDiv.style.marginBottom = "5px";
@@ -658,9 +693,8 @@ export default class UIManager {
         itemDiv.appendChild(takeButton);
 
         this.lootContent.appendChild(itemDiv);
-
       } else if (skillData) {
-        // It's a skill
+        // Skill
         const skillDiv = document.createElement("div");
         skillDiv.textContent = `${skillData.name} (Skill)`;
         skillDiv.style.marginBottom = "5px";
@@ -673,7 +707,6 @@ export default class UIManager {
         skillDiv.appendChild(learnButton);
 
         this.lootContent.appendChild(skillDiv);
-
       } else {
         const unknownDiv = document.createElement("div");
         unknownDiv.textContent = `Unknown loot ID: ${itemId}`;
@@ -683,47 +716,51 @@ export default class UIManager {
   }
 
   handleLootItem(mob, lootIndex, itemData) {
+    // Attempt to add item
     const success = this.scene.playerManager.addItemToInventory(itemData.id, 1);
     if (!success) {
-      this.scene.chatManager.addMessage("No space in backpack!");
+      this.scene.chatManager.addMessage(
+        "Your inventory is full or locked. Cannot loot more stuff!"
+      );
       return;
     }
+
+    // If success, remove from loot
     mob.customData.droppedLoot.splice(lootIndex, 1);
     this.scene.chatManager.addMessage(
       `Took "${itemData.name}", added to inventory.`
     );
+
     this.openLootWindow(mob);
   }
 
-  /**
-   * If skill is new: add to playerSkills.
-   * If skill is already known: level it up => apply +10% or -10% increments.
-   */
   learnSkillFromLoot(mob, lootIndex, skillData) {
-    // See if player already knows it
     const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
     if (!alreadyKnown) {
-      // New skill => just push it with level=1
+      // brand new skill
       skillData.level = skillData.level || 1;
       playerSkills.push(skillData);
 
       this.scene.chatManager.addMessage(`You learned a new skill: ${skillData.name}!`);
     } else {
-      // Already known => upgrade it
+      // Upgrade existing skill
       alreadyKnown.level = (alreadyKnown.level || 1) + 1;
 
-      // If we have skillEnhancements for it, apply them
-      const enh = skillEnhancements[alreadyKnown.name];
-      if (enh) {
-        // multiply stats by (1 +/- 0.1) for each property
-        // e.g. manaCost => +10%, so we do "alreadyKnown.manaCost *= (1 + 0.1)"
-        // if the value is negative, e.g. castingTime => -0.1 => multiply by 0.9
-        // Do it iteratively each time you loot the skill
-        // (We do *once per level-up)
-        for (const prop in enh) {
-          const pct = enh[prop];
-          if (typeof alreadyKnown[prop] === "number") {
-            alreadyKnown[prop] = alreadyKnown[prop] * (1 + pct);
+      let enh = skillEnhancements[alreadyKnown.name];
+      if (!enh) {
+        enh = skillEnhancements["default"];
+      }
+
+      // Multiply skill stats
+      for (const prop in enh) {
+        const pct = enh[prop];
+        if (typeof alreadyKnown[prop] === "number") {
+          alreadyKnown[prop] *= (1 + pct);
+          // If castingTime/cooldown => clamp to 0
+          if (prop === "castingTime" || prop === "cooldown") {
+            if (alreadyKnown[prop] < 0) {
+              alreadyKnown[prop] = 0;
+            }
           }
         }
       }
@@ -733,18 +770,17 @@ export default class UIManager {
       );
     }
 
-    // Remove from mob loot
     mob.customData.droppedLoot.splice(lootIndex, 1);
 
-    // Refresh skill bar
+    // Update skill bar
     this.setupSkills(playerSkills);
     this.scene.inputManager.setupControls(playerSkills);
 
-    // Re-open loot window to show updated loot
+    // Re-open loot window
     this.openLootWindow(mob);
   }
 
-  //// SKILL BOOK ////
+  // Skill Book
   toggleSkillBook() {
     if (this.skillBook.style.display === "block") {
       this.skillBook.style.display = "none";
@@ -752,13 +788,38 @@ export default class UIManager {
     }
 
     this.skillBook.style.display = "block";
-    this.skillBookContent.innerHTML = "<h3>Skill Book</h3>";
+    this.skillBookContent.innerHTML = `<h3>Skill Book</h3>`;
 
     playerSkills.forEach((skill) => {
       const skillDiv = document.createElement("div");
-      skillDiv.textContent = `${skill.name} Lvl:${skill.level} (ManaCost: ${skill.manaCost.toFixed(
-        1
-      )}, CD: ${skill.cooldown.toFixed(1)})`;
+      skillDiv.classList.add("skill-entry");
+
+      const title = document.createElement("h4");
+      title.textContent = `${skill.name} (Lv. ${skill.level || 1})`;
+      skillDiv.appendChild(title);
+
+      const table = document.createElement("table");
+      table.classList.add("skill-table");
+
+      const rows = [
+        ["Mana Cost", skill.manaCost.toFixed(1)],
+        ["Range", skill.range.toFixed(1)],
+        ["Magic Attack", skill.magicAttack.toFixed(1)],
+        ["Casting Time", skill.castingTime.toFixed(1)],
+        ["Cooldown", skill.cooldown.toFixed(1)],
+      ];
+      rows.forEach(([label, val]) => {
+        const tr = document.createElement("tr");
+        const td1 = document.createElement("td");
+        td1.textContent = label;
+        const td2 = document.createElement("td");
+        td2.textContent = val;
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        table.appendChild(tr);
+      });
+
+      skillDiv.appendChild(table);
       this.skillBookContent.appendChild(skillDiv);
     });
   }
