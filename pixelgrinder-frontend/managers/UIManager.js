@@ -7,6 +7,7 @@ import {
   playerEquippedItems,
   playerSkills,
   allGameSkills,
+  skillEnhancements, // <-- import the new object
 } from "../data/MOCKdata.js";
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
@@ -45,7 +46,6 @@ export default class UIManager {
 
     // ----- Loot UI -----
     this.lootMenu = document.getElementById("loot-menu");
-    // Only create + append once
     if (!this.lootMenu) {
       this.lootMenu = document.createElement("div");
       this.lootMenu.id = "loot-menu";
@@ -65,12 +65,11 @@ export default class UIManager {
       this.lootContent.id = "loot-content";
       this.lootMenu.appendChild(this.lootContent);
     } else {
-      // If it already exists (scene restarted), just re-reference its elements
       this.lootCloseButton = document.getElementById("loot-close-button");
       this.lootContent = document.getElementById("loot-content");
     }
 
-    // ----- Skill Book -----
+    // Skill Book
     this.skillBook = document.getElementById("skill-book");
     if (!this.skillBook) {
       this.skillBook = document.createElement("div");
@@ -163,7 +162,9 @@ export default class UIManager {
 
       const manaCost = document.createElement("div");
       manaCost.classList.add("mana-cost");
-      manaCost.textContent = skill.manaCost;
+      manaCost.textContent = skill.manaCost.toFixed
+        ? skill.manaCost.toFixed(1)
+        : skill.manaCost;
       castingSlot.appendChild(manaCost);
 
       const cooldownOverlay = document.createElement("div");
@@ -644,6 +645,7 @@ export default class UIManager {
       const skillData = allGameSkills.find((s) => s.id === itemId);
 
       if (itemData) {
+        // It's a regular item
         const itemDiv = document.createElement("div");
         itemDiv.textContent = itemData.name;
         itemDiv.style.marginBottom = "5px";
@@ -656,7 +658,9 @@ export default class UIManager {
         itemDiv.appendChild(takeButton);
 
         this.lootContent.appendChild(itemDiv);
+
       } else if (skillData) {
+        // It's a skill
         const skillDiv = document.createElement("div");
         skillDiv.textContent = `${skillData.name} (Skill)`;
         skillDiv.style.marginBottom = "5px";
@@ -669,6 +673,7 @@ export default class UIManager {
         skillDiv.appendChild(learnButton);
 
         this.lootContent.appendChild(skillDiv);
+
       } else {
         const unknownDiv = document.createElement("div");
         unknownDiv.textContent = `Unknown loot ID: ${itemId}`;
@@ -690,19 +695,52 @@ export default class UIManager {
     this.openLootWindow(mob);
   }
 
+  /**
+   * If skill is new: add to playerSkills.
+   * If skill is already known: level it up => apply +10% or -10% increments.
+   */
   learnSkillFromLoot(mob, lootIndex, skillData) {
+    // See if player already knows it
     const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
-    if (alreadyKnown) {
-      this.scene.chatManager.addMessage("You already know this skill!");
-    } else {
+    if (!alreadyKnown) {
+      // New skill => just push it with level=1
+      skillData.level = skillData.level || 1;
       playerSkills.push(skillData);
-      this.scene.chatManager.addMessage(`You learned a new skill: ${skillData.name}!`);
 
-      this.setupSkills(playerSkills);
-      this.scene.inputManager.setupControls(playerSkills);
+      this.scene.chatManager.addMessage(`You learned a new skill: ${skillData.name}!`);
+    } else {
+      // Already known => upgrade it
+      alreadyKnown.level = (alreadyKnown.level || 1) + 1;
+
+      // If we have skillEnhancements for it, apply them
+      const enh = skillEnhancements[alreadyKnown.name];
+      if (enh) {
+        // multiply stats by (1 +/- 0.1) for each property
+        // e.g. manaCost => +10%, so we do "alreadyKnown.manaCost *= (1 + 0.1)"
+        // if the value is negative, e.g. castingTime => -0.1 => multiply by 0.9
+        // Do it iteratively each time you loot the skill
+        // (We do *once per level-up)
+        for (const prop in enh) {
+          const pct = enh[prop];
+          if (typeof alreadyKnown[prop] === "number") {
+            alreadyKnown[prop] = alreadyKnown[prop] * (1 + pct);
+          }
+        }
+      }
+
+      this.scene.chatManager.addMessage(
+        `Upgraded skill: ${alreadyKnown.name} to level ${alreadyKnown.level}!`
+      );
     }
 
+    // Remove from mob loot
     mob.customData.droppedLoot.splice(lootIndex, 1);
+
+    // Refresh skill bar
+    this.setupSkills(playerSkills);
+    this.scene.inputManager.setupControls(playerSkills);
+
+    // Re-open loot window to show updated loot
     this.openLootWindow(mob);
   }
 
@@ -718,7 +756,9 @@ export default class UIManager {
 
     playerSkills.forEach((skill) => {
       const skillDiv = document.createElement("div");
-      skillDiv.textContent = `${skill.name} (ManaCost: ${skill.manaCost}, CD: ${skill.cooldown}s)`;
+      skillDiv.textContent = `${skill.name} Lvl:${skill.level} (ManaCost: ${skill.manaCost.toFixed(
+        1
+      )}, CD: ${skill.cooldown.toFixed(1)})`;
       this.skillBookContent.appendChild(skillDiv);
     });
   }

@@ -69,6 +69,21 @@ const statWeights = {
 };
 
 // --------------------------------------------------------------------
+// NEW: Describes how a skill scales for each level beyond 1
+// +0.1 => +10% multiply, -0.1 => -10% multiply
+// We'll do iterative scaling each time you level it.
+const skillEnhancements = {
+  earth_root: {
+    manaCost: 0.1,     // +10% each level
+    range: 0.1,        // +10%
+    magicAttack: 0.1,  // +10%
+    castingTime: -0.1, // -10%
+    cooldown: -0.1,    // -10%
+  },
+  // Add entries for other skills if you want them to scale similarly
+};
+
+// --------------------------------------------------------------------
 // ALL GAME SKILLS
 // --------------------------------------------------------------------
 const allGameSkills = [
@@ -84,6 +99,8 @@ const allGameSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
     animationSeq: [0, 7],
+    // optional level
+    level: 1,
   },
   {
     id: 1001,
@@ -97,6 +114,7 @@ const allGameSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
     animationSeq: [0, 7],
+    level: 1,
   },
   {
     id: 1002,
@@ -110,6 +128,8 @@ const allGameSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1.png",
     animationSeq: [0, 7],
+    // We add level property
+    level: 1,
   },
 ];
 
@@ -129,6 +149,7 @@ const playerSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
     animationSeq: [0, 7],
+    level: 1,
   },
   {
     id: 1001,
@@ -142,6 +163,7 @@ const playerSkills = [
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
     animationSeq: [0, 7],
+    level: 1,
   },
 ];
 
@@ -277,9 +299,8 @@ const playerEquippedItems = {
 };
 
 // 6) Player backpack
-//    We allow storing either 0/null or an object { id, quantity } for stacking
 const playerBackpack = {
-  cell_0_0: 2000, // previously storing just an item ID is still valid
+  cell_0_0: 2000,
   cell_0_1: 2001,
   cell_0_2: 0,
   cell_0_3: 0,
@@ -314,9 +335,7 @@ const playerBackpack = {
 // Track deleted items
 const deletedItems = [];
 
-// --------------------------------------------------------------------
-// MOBS + LOOT
-// --------------------------------------------------------------------
+// Mobs + loot
 const mobsData = {
   slime: {
     name: "Slime",
@@ -386,9 +405,7 @@ const naturalRegeneration = {
 const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
-const GATHER_RANGE = 50; // <-- used in gathering
-
-// NEW: How long a dead mob corpse remains (in milliseconds)
+const GATHER_RANGE = 50;
 const MOB_CORPSE_DURATION = 8000; // e.g. 8 seconds
 
 export {
@@ -413,4 +430,5 @@ export {
   deletedItems,
   GATHER_RANGE,
   MOB_CORPSE_DURATION,
+  skillEnhancements,    // <--- NEW
 };
