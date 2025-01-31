@@ -24,7 +24,11 @@ export default class MobManager {
     this.mobs = this.scene.physics.add.group({ collideWorldBounds: true });
 
     // Collide with scene layers
-    this.scene.physics.add.collider(this.mobs, this.scene.playerManager.player);
+    // (Prevent pushing each other by setting pushable = false on the mobs)
+    this.scene.physics.add.collider(
+      this.mobs,
+      this.scene.playerManager.player
+    );
     this.scene.physics.add.collider(this.mobs, this.scene.collisionLayer);
     this.scene.physics.add.collider(this.mobs, this.mobs);
 
@@ -34,10 +38,13 @@ export default class MobManager {
       .objects.filter((obj) => obj.name.startsWith("MobSpawnZone"));
 
     mobSpawns.forEach((spawnZone) => {
-      // For demonstration, we always spawn "slime" here
+      // For demonstration, always spawn "slime" here
       const mobTypeID = "slime";
       const mobInfo = mobsData[mobTypeID];
       const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
+
+      // Prevent pushing the mob
+      mob.setPushable(false);
 
       mob.customData = {
         id: mobTypeID,
@@ -101,7 +108,6 @@ export default class MobManager {
   }
 
   isAttackEvaded(evasionStat) {
-    // 1% chance to evade per evasion point, for example
     const evasionChance = 1 * evasionStat;
     const roll = Phaser.Math.FloatBetween(0, 100);
     return roll < evasionChance;
@@ -444,6 +450,9 @@ export default class MobManager {
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-dead", true);
 
+    // Disable body so it no longer blocks the player
+    mob.body.setEnable(false);
+
     // Award EXP
     const mobInfo = mobsData[mob.customData.id];
     const baseExp = mobInfo.expReward || 0;
@@ -518,7 +527,7 @@ export default class MobManager {
     } else if (difference === -5) {
       multiplier = player5Higher;
     } else if (difference < -5) {
-      multiplier = none; 
+      multiplier = none;
     }
     return Math.floor(baseExp * multiplier);
   }
@@ -565,9 +574,6 @@ export default class MobManager {
     this.assignRandomIdleOrWander(mob);
   }
 
-  /**
-   * Apply direct damage to a mob
-   */
   applyDamageToMob(mob, damage) {
     mob.customData.hp = Math.max(0, mob.customData.hp - damage);
     mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
@@ -584,18 +590,11 @@ export default class MobManager {
         this.scene.chatManager.addMessage(
           `Mob "${mob.customData.id}" became enemy (now chasing).`
         );
-        this.chasePlayer(
-          mob,
-          this.scene.playerManager.player,
-          mobsData[mob.customData.id]
-        );
+        this.chasePlayer(mob, this.scene.playerManager.player, mobsData[mob.customData.id]);
       }
     }
   }
 
-  /**
-   * Provide quick access to a mob's defensive stats
-   */
   getStats(mob) {
     return {
       magicDefense: mob.customData.magicDefense,
@@ -605,9 +604,6 @@ export default class MobManager {
     };
   }
 
-  /**
-   * Cycle through mobs in range for tab-targeting
-   */
   cycleTarget(player, range, callback) {
     const mobsInRange = this.mobs.getChildren().filter((mob) => {
       if (mob.customData.isDead) return false;
@@ -641,17 +637,11 @@ export default class MobManager {
     }
   }
 
-  /**
-   * Highlight a specific mob with a red tint
-   */
   highlightMob(mob) {
     this.mobs.getChildren().forEach((m) => m.clearTint());
     mob.setTint(0xff0000);
   }
 
-  /**
-   * When a mob is clicked:
-   */
   onMobClicked(mob) {
     if (!mob.active) return;
 
@@ -667,8 +657,6 @@ export default class MobManager {
     mob.setTint(0xff0000);
     this.scene.targetedMob = mob;
 
-    // If you want the clicked mob to reorder the TAB cycle index, we can optionally
-    // find all mobs in "TAB_TARGET_RANGE"
     const player = this.scene.playerManager.player;
     const mobsInRange = this.mobs.getChildren().filter((mobItem) => {
       if (mobItem.customData.isDead) return false;
@@ -678,7 +666,7 @@ export default class MobManager {
         mobItem.x,
         mobItem.y
       );
-      return distance <= TAB_TARGET_RANGE; // <-- REPLACED 'range' with TAB_TARGET_RANGE
+      return distance <= TAB_TARGET_RANGE;
     });
 
     mobsInRange.sort((a, b) => {
@@ -687,7 +675,7 @@ export default class MobManager {
       return distanceA - distanceB;
     });
 
-    // Update currentTargetIndex to the clicked mob’s index in that list
+    // Update currentTargetIndex to this clicked mob’s index
     this.scene.currentTargetIndex = mobsInRange.indexOf(mob);
 
     this.scene.chatManager.addMessage(

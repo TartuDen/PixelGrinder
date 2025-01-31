@@ -43,45 +43,58 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // Loot UI
+    // ----- Loot UI -----
     this.lootMenu = document.getElementById("loot-menu");
+    // Only create + append once
     if (!this.lootMenu) {
       this.lootMenu = document.createElement("div");
       this.lootMenu.id = "loot-menu";
       this.lootMenu.classList.add("stats-menu");
       this.lootMenu.style.display = "none";
       document.body.appendChild(this.lootMenu);
+
+      this.lootCloseButton = document.createElement("button");
+      this.lootCloseButton.id = "loot-close-button";
+      this.lootCloseButton.textContent = "Close";
+      this.lootCloseButton.addEventListener("click", () => {
+        this.lootMenu.style.display = "none";
+      });
+      this.lootMenu.appendChild(this.lootCloseButton);
+
+      this.lootContent = document.createElement("div");
+      this.lootContent.id = "loot-content";
+      this.lootMenu.appendChild(this.lootContent);
+    } else {
+      // If it already exists (scene restarted), just re-reference its elements
+      this.lootCloseButton = document.getElementById("loot-close-button");
+      this.lootContent = document.getElementById("loot-content");
     }
 
-    this.lootCloseButton = document.createElement("button");
-    this.lootCloseButton.textContent = "Close";
-    this.lootCloseButton.addEventListener("click", () => {
-      this.lootMenu.style.display = "none";
-    });
-    this.lootMenu.appendChild(this.lootCloseButton);
-
-    this.lootContent = document.createElement("div");
-    this.lootContent.id = "loot-content";
-    this.lootMenu.appendChild(this.lootContent);
-
-    // Skill Book
-    this.skillBook = document.createElement("div");
-    this.skillBook.id = "skill-book";
-    this.skillBook.classList.add("stats-menu");
-    this.skillBook.style.display = "none";
-    document.body.appendChild(this.skillBook);
-
-    this.closeSkillBookBtn = document.createElement("button");
-    this.closeSkillBookBtn.textContent = "Close";
-    this.closeSkillBookBtn.style.marginBottom = "10px";
-    this.closeSkillBookBtn.addEventListener("click", () => {
+    // ----- Skill Book -----
+    this.skillBook = document.getElementById("skill-book");
+    if (!this.skillBook) {
+      this.skillBook = document.createElement("div");
+      this.skillBook.id = "skill-book";
+      this.skillBook.classList.add("stats-menu");
       this.skillBook.style.display = "none";
-    });
-    this.skillBook.appendChild(this.closeSkillBookBtn);
+      document.body.appendChild(this.skillBook);
 
-    this.skillBookContent = document.createElement("div");
-    this.skillBookContent.id = "skill-book-content";
-    this.skillBook.appendChild(this.skillBookContent);
+      this.closeSkillBookBtn = document.createElement("button");
+      this.closeSkillBookBtn.id = "skill-book-close-button";
+      this.closeSkillBookBtn.textContent = "Close";
+      this.closeSkillBookBtn.style.marginBottom = "10px";
+      this.closeSkillBookBtn.addEventListener("click", () => {
+        this.skillBook.style.display = "none";
+      });
+      this.skillBook.appendChild(this.closeSkillBookBtn);
+
+      this.skillBookContent = document.createElement("div");
+      this.skillBookContent.id = "skill-book-content";
+      this.skillBook.appendChild(this.skillBookContent);
+    } else {
+      this.closeSkillBookBtn = document.getElementById("skill-book-close-button");
+      this.skillBookContent = document.getElementById("skill-book-content");
+    }
   }
 
   init(onCloseStatsCallback) {

@@ -47,7 +47,6 @@ export default class GatherManager {
 
     // Listen for LEFT-click to attempt gather
     this.scene.input.on("pointerdown", (pointer) => {
-      // pointer.button === 0 => left-click
       if (pointer.button === 0 && this.hoveredGatherTile) {
         this.attemptGather(this.hoveredGatherTile);
       }
@@ -59,20 +58,46 @@ export default class GatherManager {
     this.hoveredGatherTile = null;
     this.gatherTooltip.style.display = "none";
 
-    // Cast a ray from screen => world
+    // Convert mouse coords to world coords
     const worldPoint = this.scene.cameras.main.getWorldPoint(
       this.pointerScreenX,
       this.pointerScreenY
     );
-    const tile = this.gatherRockLayer.getTileAtWorldXY(worldPoint.x, worldPoint.y);
+    const tile = this.gatherRockLayer.getTileAtWorldXY(
+      worldPoint.x,
+      worldPoint.y
+    );
+
     if (tile) {
       this.hoveredGatherTile = tile;
       this.scene.input.setDefaultCursor("pointer");
 
-      // Position the tooltip near the mouse
+      // Compute the center of this tile in world coordinates
+      const tileCenterX =
+        this.gatherRockLayer.tileToWorldX(tile.x) +
+        this.scene.map.tileWidth / 2;
+      const tileCenterY =
+        this.gatherRockLayer.tileToWorldY(tile.y) +
+        this.scene.map.tileHeight / 2;
+
+      // Convert that world position to "screen" coords inside the Phaser canvas
+      const camera = this.scene.cameras.main;
+      const zoom = camera.zoom;
+
+      // 1) Adjust for camera scroll
+      let screenX = (tileCenterX - camera.scrollX) * zoom;
+      let screenY = (tileCenterY - camera.scrollY) * zoom;
+
+      // 2) Get the bounding rect of your <canvas> to place the tooltip in DOM
+      const canvasRect = this.scene.game.canvas.getBoundingClientRect();
+
+      screenX += canvasRect.left;
+      screenY += canvasRect.top;
+
+      // Display the tooltip in that position
       this.gatherTooltip.style.display = "block";
-      this.gatherTooltip.style.left = `${this.pointerScreenX + 10}px`;
-      this.gatherTooltip.style.top = `${this.pointerScreenY + 10}px`;
+      this.gatherTooltip.style.left = `${screenX}px`;
+      this.gatherTooltip.style.top = `${screenY}px`;
     } else {
       this.scene.input.setDefaultCursor("default");
     }
@@ -88,7 +113,12 @@ export default class GatherManager {
     const tileWorldY =
       this.gatherRockLayer.tileToWorldY(tile.y) + this.scene.map.tileHeight / 2;
 
-    const distance = Phaser.Math.Distance.Between(px, py, tileWorldX, tileWorldY);
+    const distance = Phaser.Math.Distance.Between(
+      px,
+      py,
+      tileWorldX,
+      tileWorldY
+    );
     if (distance > GATHER_RANGE) {
       this.chatManager.addMessage("Too far to gather this resource.");
       return;
@@ -155,7 +185,9 @@ export default class GatherManager {
 
     // Give item to inventory
     this.playerManager.addItemToInventory(4000, 1);
-    this.chatManager.addMessage("You gathered a 'simple_rock'. Added to inventory!");
+    this.chatManager.addMessage(
+      "You gathered a 'simple_rock'. Added to inventory!"
+    );
   }
 
   cancelGather() {

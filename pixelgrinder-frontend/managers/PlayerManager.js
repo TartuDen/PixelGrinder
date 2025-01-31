@@ -34,7 +34,9 @@ export default class PlayerManager {
       "mage"
     );
     this.player.setCollideWorldBounds(true);
-    this.player.setScale(1);
+
+    // Prevent pushing each other
+    this.player.setPushable(false);
 
     this.scene.physics.add.collider(this.player, this.scene.collisionLayer);
 
