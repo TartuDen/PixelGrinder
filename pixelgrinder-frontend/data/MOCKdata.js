@@ -72,19 +72,11 @@ const statWeights = {
 const skillEnhancements = {
   default: {
     manaCost: 0.1,     // +10% each level
-    range: 0.1,        // +10%
+    range: 0.0,        // 0%
     magicAttack: 0.1,  // +10%
     castingTime: -0.1, // -10%
     cooldown: -0.1,    // -10%
   },
-  // Example: if you want to override for a specific skill, do:
-  // earth_root: {
-  //   manaCost: 0.1,
-  //   range: 0.1,
-  //   magicAttack: 0.1,
-  //   castingTime: -0.1,
-  //   cooldown: -0.1,
-  // },
 };
 
 // --------------------------------------------------------------------
@@ -173,7 +165,8 @@ const playerSkills = [
 const weaponItems = [
   {
     id: 2000,
-    name: "basic_staff",
+    name: "basic_staff1.png", // already contains the file name
+    icon: "assets/WeaponIcons32x32/basic_staff.png", // NEW property
     type: "staff",
     slot: "weapon",
     health: 0,
@@ -188,13 +181,30 @@ const weaponItems = [
   },
   {
     id: 2001,
-    name: "green_branch",
+    name: "green_branch", // if the file is green_branch.png, then…
+    icon: "assets/WeaponIcons32x32/green_branch.png", // NEW property
     type: "staff",
     slot: "weapon",
     health: 0,
     mana: 10,
     magicAttack: 500,
     meleeAttack: 2,
+    magicDefense: 0,
+    meleeDefense: 0,
+    magicEvasion: 0,
+    meleeEvasion: 0,
+    speed: 0,
+  },
+  {
+    id: 2002,
+    name: "dark_omen", // similarly, assume dark_omen.png exists
+    icon: "assets/WeaponIcons32x32/dark_omen.png", // NEW property
+    type: "staff",
+    slot: "weapon",
+    health: 0,
+    mana: 10,
+    magicAttack: 0,
+    meleeAttack: 200,
     magicDefense: 0,
     meleeDefense: 0,
     magicEvasion: 0,
