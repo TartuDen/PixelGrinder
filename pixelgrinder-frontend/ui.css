@@ -1,19 +1,16 @@
-/* ==========================================
+/* ===============================
    1. Import Fonts & Reset
-========================================== */
+=============================== */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
-
 body {
   font-family: 'Cinzel', serif;
   margin: 0;
   padding: 0;
 }
 
-/* ==========================================
+/* ===============================
    2. General UI Components
-========================================== */
-
-/* Draggable Headers (chat, skill book, etc.) */
+=============================== */
 .drag-header {
   cursor: move;
   background-color: #222;
@@ -91,8 +88,7 @@ body {
 
 /* ==========================================
    3. Player Info & Bars
-========================================== */
-
+=============================== */
 #player-info {
   position: fixed;
   top: 20px;
@@ -104,7 +100,6 @@ body {
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
   z-index: 1000;
 }
-
 .health-bar, .mana-bar, .exp-bar {
   position: relative;
   width: 200px;
@@ -113,14 +108,12 @@ body {
   border-radius: 5px;
   margin-bottom: 10px;
 }
-
 #health-fill, #mana-fill, #exp-fill {
   height: 100%;
   width: 100%;
   border-radius: 5px;
   transition: width 0.5s ease;
 }
-
 #health-fill { background-color: #e74c3c; }
 #mana-fill   { background-color: #3498db; }
 #exp-fill    { background-color: #f39c12; }
@@ -140,8 +133,7 @@ body {
 
 /* ==========================================
    4. Casting Bar & Progress
-========================================== */
-
+=============================== */
 #casting-bar {
   position: fixed;
   bottom: 20px;
@@ -157,7 +149,6 @@ body {
   overflow-x: auto;
   box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
-
 .casting-slot {
   position: relative;
   width: 64px;
@@ -179,7 +170,6 @@ body {
   height: 100%;
   object-fit: cover;
 }
-
 .mana-cost {
   position: absolute;
   bottom: 4px;
@@ -190,8 +180,6 @@ body {
   border-radius: 4px;
   font-size: 12px;
 }
-
-/* cool-down overlay if you want to add styling */
 .cooldown-overlay {
   position: absolute;
   top: 0;
@@ -207,7 +195,6 @@ body {
   color: #f1c40f;
   font-weight: bold;
 }
-
 #casting-progress-container {
   position: fixed;
   bottom: 100px;
@@ -239,41 +226,51 @@ body {
   text-shadow: 1px 1px 2px #000;
 }
 
-/* ==========================================
-   5. Stats Menu & Generic Tables
-========================================== */
+/* ===============================
+   5. Stats Menu & Tables
+=============================== */
+.stats-menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(34,34,34,0.95);
+  padding: 20px;
+  border-radius: 10px;
+  color: #f1c40f;
+  z-index: 2000;
+  max-width: 600px;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 0 20px rgba(0,0,0,0.7);
+  display: none;
+}
 .stats-menu table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
   background-color: rgba(0,0,0,0.5);
 }
-
 .stats-menu th, .stats-menu td {
   border: 1px solid #f1c40f;
   padding: 8px;
   text-align: center;
   color: #fff;
 }
-
 .stats-menu th {
   background-color: #8e44ad;
   font-size: 16px;
 }
-
 .stats-menu tr:nth-child(even) {
   background-color: rgba(255,255,255,0.1);
 }
-
 .stats-menu tr:hover {
   background-color: rgba(255,255,255,0.2);
 }
-
 .stats-menu th:first-child, .stats-menu td:first-child {
   text-align: left;
   background-color: rgba(142,68,173,0.8);
 }
-
 .stats-menu th:nth-child(2), .stats-menu td:nth-child(2) {
   background-color: rgba(231,243,254,0.3);
 }
@@ -297,17 +294,15 @@ body {
 
 /* ==========================================
    6. Inventory & Equipped Items
-========================================== */
+=============================== */
 #inventory-menu {
-  /* Inherits .stats-menu styles plus: */
   display: none;
+  max-width: 800px;
 }
-
 #inventory-content {
   display: flex;
   gap: 20px;
 }
-
 .inventory-column {
   background-color: rgba(0,0,0,0.3);
   padding: 10px;
@@ -340,46 +335,44 @@ body {
   color: #fff;
 }
 
-/* Equipped Items Layout */
+/* Equipment Container & Slots */
 .equipment-container {
-  position: relative;
-  width: 200px;
-  height: 400px;
-  margin: 0 auto;
-  background-size: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 5px; /* Adjust this gap to "squeeze" slots closer */
+  align-items: center;
 }
-
 .equipment-slot {
-  position: absolute;
-  width: 80px;
-  height: 30px;
+  position: relative;
+  width: 64px;
+  height: 64px;
   background-color: rgba(0,0,0,0.5);
   border: 1px solid #f1c40f;
-  color: #fff;
-  text-align: center;
-  line-height: 30px;
-  font-size: 12px;
-  cursor: pointer;
   border-radius: 4px;
+  cursor: pointer;
 }
-.slot-head      { top: 20px;  left: 50%; transform: translateX(-50%); }
-.slot-shoulders { top: 70px;  left: 50%; transform: translateX(-50%); }
-.slot-chest     { top: 130px; left: 50%; transform: translateX(-50%); }
-.slot-weapon    { top: 180px; left: 10%; }
-.slot-legs      { top: 230px; left: 50%; transform: translateX(-50%); }
-.slot-feet      { top: 320px; left: 50%; transform: translateX(-50%); }
 
-/* ==========================================
-   7. Context Menus & Z-index
-========================================== */
+/* Icon container (for both inventory and equipment) */
+.icon-container {
+  width: 64px;
+  height: 64px;
+}
+.item-icon {
+  width: 64px;
+  height: 64px;
+}
+
+/* ===============================
+   7. Context Menus
+=============================== */
 .inventory-context-menu,
 #equipment-context-menu {
+  position: fixed;
   background-color: rgba(0,0,0,0.85);
   border: 1px solid #f1c40f;
   border-radius: 5px;
   padding: 10px;
   z-index: 99999;
-  position: absolute;
   color: #f1c40f;
 }
 .inventory-context-menu .menu-option,
@@ -392,9 +385,9 @@ body {
   text-decoration: underline;
 }
 
-/* ==========================================
-   8. Extra styling for Loot UI
-========================================== */
+/* ===============================
+   8. Loot UI
+=============================== */
 .loot-button {
   margin-left: 10px;
   padding: 4px 8px;
@@ -407,53 +400,39 @@ body {
 .loot-button:hover {
   background-color: #2ecc71;
 }
-
 .loot-item {
   margin: 8px 0;
 }
 
-/* ==========================================
-   9. Responsive Design
-========================================== */
-@media (max-width: 600px) {
-  #player-info {
-    width: 90%;
-    left: 5%;
-    top: 10px;
-    font-size: 14px;
-  }
-  .health-bar, .mana-bar, .exp-bar {
-    width: 100%;
-  }
-  #casting-bar {
-    flex-wrap: wrap;
-    bottom: 10px;
-    padding: 5px;
-  }
-  .casting-slot {
-    width: 48px;
-    height: 48px;
-  }
-  .mana-cost {
-    font-size: 10px;
-  }
-  .stats-menu {
-    padding: 15px;
-  }
-  .stats-menu th, .stats-menu td {
-    padding: 6px;
-    font-size: 12px;
-  }
-  .close-btn {
-    padding: 4px 8px;
-    font-size: 12px;
-  }
-  #casting-progress-container {
-    width: 80%;
-  }
-
-  
+/* ===============================
+   9. Tooltip Style
+=============================== */
+.game-tooltip {
+  position: absolute;
+  max-width: 220px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid gold;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-family: "Cinzel", serif;
+  font-size: 14px;
+  color: #f1c40f;
+  white-space: pre-line;
+  pointer-events: none;
+  z-index: 999999;
 }
-#inventory-menu {
-  max-width: 800px;
+
+/* ===============================
+   10. Responsive Design
+=============================== */
+@media (max-width: 600px) {
+  #player-info { width: 90%; left: 5%; top: 10px; font-size: 14px; }
+  .health-bar, .mana-bar, .exp-bar { width: 100%; }
+  #casting-bar { flex-wrap: wrap; bottom: 10px; padding: 5px; }
+  .casting-slot { width: 48px; height: 48px; }
+  .mana-cost { font-size: 10px; }
+  .stats-menu { padding: 15px; }
+  .stats-menu th, .stats-menu td { padding: 6px; font-size: 12px; }
+  .close-btn { padding: 4px 8px; font-size: 12px; }
+  #casting-progress-container { width: 80%; }
 }

@@ -10,9 +10,11 @@ import {
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 function makeDraggable(elmnt, dragHandle) {
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  let pos1 = 0,
+    pos2 = 0,
+    pos3 = 0,
+    pos4 = 0;
   dragHandle.onmousedown = dragMouseDown;
-
   function dragMouseDown(e) {
     e.preventDefault();
     pos3 = e.clientX;
@@ -26,8 +28,8 @@ function makeDraggable(elmnt, dragHandle) {
     pos2 = pos4 - e.clientY;
     pos3 = e.clientX;
     pos4 = e.clientY;
-    elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-    elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+    elmnt.style.top = elmnt.offsetTop - pos2 + "px";
+    elmnt.style.left = elmnt.offsetLeft - pos1 + "px";
   }
   function closeDragElement() {
     document.onmouseup = null;
@@ -74,7 +76,13 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // If no drag-header, create it for inventory
+    // Tooltip Element (single floating DIV)
+    this.tooltipEl = document.createElement("div");
+    this.tooltipEl.className = "game-tooltip";
+    this.tooltipEl.style.display = "none";
+    document.body.appendChild(this.tooltipEl);
+
+    // Create drag headers (if missing) for draggable windows
     if (this.inventoryMenu && !this.inventoryMenu.querySelector(".drag-header")) {
       const invHeader = document.createElement("div");
       invHeader.className = "drag-header";
@@ -82,8 +90,6 @@ export default class UIManager {
       this.inventoryMenu.insertBefore(invHeader, this.inventoryMenu.firstChild);
       makeDraggable(this.inventoryMenu, invHeader);
     }
-
-    // If no drag-header, create it for skillBook
     if (this.skillBook && !this.skillBook.querySelector(".drag-header")) {
       const header = document.createElement("div");
       header.className = "drag-header";
@@ -91,8 +97,6 @@ export default class UIManager {
       this.skillBook.insertBefore(header, this.skillBook.firstChild);
       makeDraggable(this.skillBook, header);
     }
-
-    // If no drag-header, create it for lootMenu
     if (this.lootMenu && !this.lootMenu.querySelector(".drag-header")) {
       const header = document.createElement("div");
       header.className = "drag-header";
@@ -100,16 +104,58 @@ export default class UIManager {
       this.lootMenu.insertBefore(header, this.lootMenu.firstChild);
       makeDraggable(this.lootMenu, header);
     }
+
+    // Tooltip follows the mouse.
+    document.addEventListener("mousemove", (ev) => {
+      this.updateTooltipPosition(ev);
+    });
+  }
+
+  // --------------------
+  // TOOLTIP METHODS
+  // --------------------
+  showTooltip(text) {
+    this.tooltipEl.innerText = text;
+    this.tooltipEl.style.display = "block";
+  }
+  hideTooltip() {
+    this.tooltipEl.style.display = "none";
+  }
+  updateTooltipPosition(ev) {
+    if (this.tooltipEl.style.display !== "none") {
+      const offset = 12;
+      this.tooltipEl.style.left = ev.pageX + offset + "px";
+      this.tooltipEl.style.top = ev.pageY + offset + "px";
+    }
+  }
+
+  // Returns a string with item details.
+  getItemTooltipText(itemData) {
+    if (!itemData) return "";
+    let text = `${this.formatItemName(itemData.name)}`;
+    if (itemData.type) text += `\nType: ${itemData.type}`;
+    if (itemData.slot) text += `\nSlot: ${itemData.slot}`;
+    let stats = [];
+    if (itemData.health) stats.push(`HP: +${itemData.health}`);
+    if (itemData.mana) stats.push(`Mana: +${itemData.mana}`);
+    if (itemData.magicAttack) stats.push(`Magic Atk: +${itemData.magicAttack}`);
+    if (itemData.meleeAttack) stats.push(`Melee Atk: +${itemData.meleeAttack}`);
+    if (itemData.magicDefense) stats.push(`Magic Def: +${itemData.magicDefense}`);
+    if (itemData.meleeDefense) stats.push(`Melee Def: +${itemData.meleeDefense}`);
+    if (itemData.magicEvasion) stats.push(`Magic Eva: +${itemData.magicEvasion}`);
+    if (itemData.meleeEvasion) stats.push(`Melee Eva: +${itemData.meleeEvasion}`);
+    if (itemData.speed) stats.push(`Speed: +${itemData.speed}`);
+    if (stats.length > 0) text += "\n" + stats.join(", ");
+    return text;
   }
 
   formatItemName(name) {
     let base = name.replace(/\.[^/.]+$/, "");
     let words = base.split(/[_-]+/);
-    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   }
 
   init(onCloseStatsCallback) {
-    // Close Stats
     if (this.closeStatsButton) {
       this.closeStatsButton.addEventListener("click", () => {
         this.hideStatsMenu();
@@ -118,29 +164,21 @@ export default class UIManager {
         }
       });
     }
-
-    // Close Inventory
     if (this.closeInventoryButton) {
       this.closeInventoryButton.addEventListener("click", () => {
         this.closeInventory();
       });
     }
-
-    // Close Skill Book
     if (this.closeSkillBookBtn) {
       this.closeSkillBookBtn.addEventListener("click", () => {
         this.skillBook.style.display = "none";
       });
     }
-
-    // Close Loot
     if (this.lootCloseButton) {
       this.lootCloseButton.addEventListener("click", () => {
         this.lootMenu.style.display = "none";
       });
     }
-
-    // Update stats
     if (this.scene.events) {
       this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
     }
@@ -148,7 +186,6 @@ export default class UIManager {
 
   handleStatsUpdate(stats) {
     this.updateUI(stats);
-    // Check for level-up
     if (stats.level > (this.previousLevel || 1)) {
       this.showLevelUpNotification(stats.level);
       this.previousLevel = stats.level;
@@ -160,36 +197,28 @@ export default class UIManager {
     const hpMaxVal = Math.round(maxHealth);
     const mpVal = Math.round(currentMana);
     const mpMaxVal = Math.round(maxMana);
-
-    // Health
     if (this.uiHealthFill && this.healthText) {
       const hpPct = (hpVal / hpMaxVal) * 100;
       this.uiHealthFill.style.width = `${hpPct}%`;
       this.healthText.innerText = `HP: ${hpVal}/${hpMaxVal} (${hpPct.toFixed(0)}%)`;
     }
-    // Mana
     if (this.uiManaFill && this.manaText) {
       const mpPct = (mpVal / mpMaxVal) * 100;
       this.uiManaFill.style.width = `${mpPct}%`;
       this.manaText.innerText = `Mana: ${mpVal}/${mpMaxVal} (${mpPct.toFixed(0)}%)`;
     }
-    // Name
     if (this.uiName) this.uiName.innerText = name;
-    // Level
     if (this.uiLevel) this.uiLevel.innerText = `Level: ${level}`;
 
-    // Experience Bar
+    let expForNextLevel = 100, accumulatedExp = 0, tempLevel = 1;
+    while (xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
+      accumulatedExp += expForNextLevel;
+      tempLevel++;
+      expForNextLevel = Math.floor(expForNextLevel * 1.5);
+    }
+    const currentExp = xp - accumulatedExp;
+    const expPct = (currentExp / expForNextLevel) * 100;
     if (this.uiExpFill && this.uiExpText) {
-      let expForNextLevel = 100;
-      let accumulatedExp = 0;
-      let tempLevel = 1;
-      while (xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
-        accumulatedExp += expForNextLevel;
-        tempLevel++;
-        expForNextLevel = Math.floor(expForNextLevel * 1.5);
-      }
-      const currentExp = xp - accumulatedExp;
-      const expPct = (currentExp / expForNextLevel) * 100;
       this.uiExpFill.style.width = `${expPct}%`;
       this.uiExpText.innerText = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(0)}%)`;
     }
@@ -213,9 +242,9 @@ export default class UIManager {
   // ============================
   toggleInventory() {
     if (!this.inventoryMenu) return;
+    this.inventoryMenu.style.display =
+      this.inventoryMenu.style.display === "block" ? "none" : "block";
     if (this.inventoryMenu.style.display === "block") {
-      this.closeInventory();
-    } else {
       this.openInventory();
     }
   }
@@ -250,6 +279,9 @@ export default class UIManager {
     this.inventoryMenu.style.display = "none";
   }
 
+  // -----------------------------
+  // Equipped Items Block
+  // -----------------------------
   renderEquippedItemsBlock(container) {
     const heading = document.createElement("h3");
     heading.innerText = "Equipped Items";
@@ -260,34 +292,31 @@ export default class UIManager {
     container.appendChild(eqContainer);
 
     const slotsData = [
-      { slot: "head",      cssClass: "slot-head",      label: "HEAD" },
-      { slot: "shoulders", cssClass: "slot-shoulders", label: "SHOULDERS" },
-      { slot: "chest",     cssClass: "slot-chest",     label: "CHEST" },
-      { slot: "weapon",    cssClass: "slot-weapon",    label: "WEAPON" },
-      { slot: "legs",      cssClass: "slot-legs",      label: "LEGS" },
-      { slot: "feet",      cssClass: "slot-feet",      label: "FEET" },
+      { slot: "head", label: "HEAD" },
+      { slot: "shoulders", label: "SHOULDERS" },
+      { slot: "chest", label: "CHEST" },
+      { slot: "weapon", label: "WEAPON" },
+      { slot: "legs", label: "LEGS" },
+      { slot: "feet", label: "FEET" },
     ];
-    slotsData.forEach(({ slot, cssClass, label }) => {
-      const slotDiv = document.createElement("div");
-      slotDiv.classList.add("equipment-slot", cssClass);
 
+    slotsData.forEach(({ slot, label }) => {
+      const slotDiv = document.createElement("div");
+      slotDiv.classList.add("equipment-slot");
       const equippedItemId = playerEquippedItems[slot];
       if (equippedItemId) {
         const itemData = itemsMap[equippedItemId];
         if (itemData && itemData.icon) {
           const iconContainer = document.createElement("div");
           iconContainer.className = "icon-container";
-          // If the item has iconCol and iconRow, assume it is an armor item (spritesheet)
           if (itemData.iconCol !== undefined && itemData.iconRow !== undefined) {
             const iconDiv = document.createElement("div");
-            iconDiv.style.width = "64px";
-            iconDiv.style.height = "64px";
+            iconDiv.classList.add("item-icon");
             iconDiv.style.backgroundImage = `url(${itemData.icon})`;
             iconDiv.style.backgroundSize = "320px 320px";
             const posX = -((itemData.iconCol - 1) * 64);
             const posY = -((itemData.iconRow - 1) * 64);
             iconDiv.style.backgroundPosition = `${posX}px ${posY}px`;
-            iconDiv.title = itemData.name;
             iconContainer.appendChild(iconDiv);
           } else {
             const img = document.createElement("img");
@@ -296,26 +325,38 @@ export default class UIManager {
             iconContainer.appendChild(img);
           }
           slotDiv.appendChild(iconContainer);
-          const nameDiv = document.createElement("div");
-          nameDiv.innerText = this.formatItemName(itemData.name);
-          slotDiv.appendChild(nameDiv);
+          // Show tooltip on hover.
+          slotDiv.addEventListener("mouseenter", () => {
+            const tipText = this.getItemTooltipText(itemData);
+            this.showTooltip(tipText);
+          });
+          slotDiv.addEventListener("mouseleave", () => {
+            this.hideTooltip();
+          });
         } else {
-          slotDiv.innerText = itemData
-            ? this.formatItemName(itemData.name)
-            : `Unknown(${equippedItemId})`;
+          slotDiv.addEventListener("mouseenter", () => {
+            this.showTooltip(`Unknown item (ID=${equippedItemId})`);
+          });
+          slotDiv.addEventListener("mouseleave", () => {
+            this.hideTooltip();
+          });
         }
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showEquipmentContextMenu(e, slot, equippedItemId);
         });
       } else {
-        slotDiv.innerText = label;
+        slotDiv.addEventListener("mouseenter", () => {
+          this.showTooltip(`${label.toUpperCase()} (empty)`);
+        });
+        slotDiv.addEventListener("mouseleave", () => {
+          this.hideTooltip();
+        });
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showEquipmentContextMenu(e, slot, null);
         });
       }
-
       eqContainer.appendChild(slotDiv);
     });
   }
@@ -324,23 +365,20 @@ export default class UIManager {
     const heading = document.createElement("h3");
     heading.innerText = "Final Stats";
     container.appendChild(heading);
-
     const derivedStats = calculatePlayerStats();
     const statsTable = document.createElement("table");
     statsTable.classList.add("derived-stats-table");
-
     const rowData = [
-      { label: "Health",         value: Math.round(derivedStats.health) },
-      { label: "Mana",           value: Math.round(derivedStats.mana) },
-      { label: "Magic Attack",   value: Math.round(derivedStats.magicAttack) },
-      { label: "Melee Attack",   value: Math.round(derivedStats.meleeAttack) },
-      { label: "Magic Defense",  value: Math.round(derivedStats.magicDefense) },
-      { label: "Melee Defense",  value: Math.round(derivedStats.meleeDefense) },
-      { label: "Magic Evasion",  value: Math.round(derivedStats.magicEvasion) },
-      { label: "Melee Evasion",  value: Math.round(derivedStats.meleeEvasion) },
-      { label: "Speed",          value: Math.round(derivedStats.speed) },
+      { label: "Health", value: Math.round(derivedStats.health) },
+      { label: "Mana", value: Math.round(derivedStats.mana) },
+      { label: "Magic Attack", value: Math.round(derivedStats.magicAttack) },
+      { label: "Melee Attack", value: Math.round(derivedStats.meleeAttack) },
+      { label: "Magic Defense", value: Math.round(derivedStats.magicDefense) },
+      { label: "Melee Defense", value: Math.round(derivedStats.meleeDefense) },
+      { label: "Magic Evasion", value: Math.round(derivedStats.magicEvasion) },
+      { label: "Melee Evasion", value: Math.round(derivedStats.meleeEvasion) },
+      { label: "Speed", value: Math.round(derivedStats.speed) },
     ];
-
     rowData.forEach((stat) => {
       const tr = document.createElement("tr");
       const tdLabel = document.createElement("td");
@@ -351,7 +389,6 @@ export default class UIManager {
       tr.appendChild(tdValue);
       statsTable.appendChild(tr);
     });
-
     container.appendChild(statsTable);
   }
 
@@ -359,17 +396,14 @@ export default class UIManager {
     const heading = document.createElement("h3");
     heading.innerText = "Inventory";
     container.appendChild(heading);
-
     const table = document.createElement("table");
     table.classList.add("inventory-table");
-
     for (let r = 0; r < 6; r++) {
       const row = document.createElement("tr");
       for (let c = 0; c < 5; c++) {
         const cell = document.createElement("td");
         const key = `cell_${r}_${c}`;
         const value = playerBackpack[key];
-
         if (value === null) {
           cell.classList.add("closed-cell");
           cell.innerText = "X";
@@ -380,15 +414,8 @@ export default class UIManager {
             this.showItemContextMenu(e, key, null);
           });
         } else {
-          let itemId = null;
-          let itemQuantity = 1;
-          if (typeof value === "object") {
-            itemId = value.id;
-            itemQuantity = value.quantity;
-          } else if (typeof value === "number") {
-            itemId = value;
-          }
-
+          let itemId = typeof value === "object" ? value.id : value;
+          let itemQuantity = typeof value === "object" ? value.quantity : 1;
           const itemData = itemsMap[itemId];
           cell.classList.add("open-cell");
           if (itemData && itemData.icon) {
@@ -396,14 +423,12 @@ export default class UIManager {
             iconContainer.className = "icon-container";
             if (itemData.iconCol !== undefined && itemData.iconRow !== undefined) {
               const iconDiv = document.createElement("div");
-              iconDiv.style.width = "64px";
-              iconDiv.style.height = "64px";
+              iconDiv.classList.add("item-icon");
               iconDiv.style.backgroundImage = `url(${itemData.icon})`;
               iconDiv.style.backgroundSize = "320px 320px";
               const posX = -((itemData.iconCol - 1) * 64);
               const posY = -((itemData.iconRow - 1) * 64);
               iconDiv.style.backgroundPosition = `${posX}px ${posY}px`;
-              iconDiv.title = itemData.name;
               iconContainer.appendChild(iconDiv);
             } else {
               const img = document.createElement("img");
@@ -415,15 +440,27 @@ export default class UIManager {
           }
           const nameDiv = document.createElement("div");
           if (itemData) {
-            nameDiv.innerText = (itemQuantity > 1)
-              ? `${this.formatItemName(itemData.name)} (x${itemQuantity})`
-              : this.formatItemName(itemData.name);
+            nameDiv.innerText =
+              itemQuantity > 1
+                ? `${this.formatItemName(itemData.name)} (x${itemQuantity})`
+                : this.formatItemName(itemData.name);
+            cell.addEventListener("mouseenter", () => {
+              const tipText = this.getItemTooltipText(itemData);
+              this.showTooltip(tipText);
+            });
+            cell.addEventListener("mouseleave", () => {
+              this.hideTooltip();
+            });
           } else {
             nameDiv.innerText = `Unknown(${itemId})`;
+            cell.addEventListener("mouseenter", () => {
+              this.showTooltip(`Unknown Item (ID=${itemId})`);
+            });
+            cell.addEventListener("mouseleave", () => {
+              this.hideTooltip();
+            });
           }
           cell.appendChild(nameDiv);
-
-          // Right-click
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             const passedData = { id: itemId, quantity: itemQuantity };
@@ -441,13 +478,11 @@ export default class UIManager {
   showItemContextMenu(event, cellKey, itemDataObj) {
     const existingMenu = document.getElementById("inventory-context-menu");
     if (existingMenu) existingMenu.remove();
-
     const menu = document.createElement("div");
     menu.id = "inventory-context-menu";
     menu.classList.add("inventory-context-menu");
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
-
     if (!itemDataObj) {
       const noItemLabel = document.createElement("div");
       noItemLabel.innerText = "No item in this cell.";
@@ -455,8 +490,6 @@ export default class UIManager {
     } else {
       const { id, quantity } = itemDataObj;
       const itemData = itemsMap[id];
-
-      // If wearable item
       if (itemData && itemData.slot) {
         const wearOption = document.createElement("div");
         wearOption.innerText = "Wear";
@@ -467,9 +500,7 @@ export default class UIManager {
             const cellVal = playerBackpack[cellKey];
             if (typeof cellVal === "object") {
               cellVal.quantity -= 1;
-              if (cellVal.quantity <= 0) {
-                playerBackpack[cellKey] = 0;
-              }
+              if (cellVal.quantity <= 0) playerBackpack[cellKey] = 0;
             } else {
               playerBackpack[cellKey] = 0;
             }
@@ -483,8 +514,6 @@ export default class UIManager {
         });
         menu.appendChild(wearOption);
       }
-
-      // Delete option
       const deleteOption = document.createElement("div");
       deleteOption.innerText = "Delete";
       deleteOption.classList.add("menu-option");
@@ -503,8 +532,6 @@ export default class UIManager {
       });
       menu.appendChild(deleteOption);
     }
-
-    // Close
     const closeOption = document.createElement("div");
     closeOption.innerText = "Close";
     closeOption.classList.add("menu-option");
@@ -512,28 +539,27 @@ export default class UIManager {
       menu.remove();
     });
     menu.appendChild(closeOption);
-
     document.body.appendChild(menu);
-
-    // Click outside => remove
-    document.addEventListener("click", (e2) => {
-      if (e2.target !== menu && !menu.contains(e2.target)) {
-        menu.remove();
-      }
-    }, { once: true });
+    document.addEventListener(
+      "click",
+      (e2) => {
+        if (e2.target !== menu && !menu.contains(e2.target)) {
+          menu.remove();
+        }
+      },
+      { once: true }
+    );
   }
 
   // Right-click on equipped item
   showEquipmentContextMenu(event, slot, equippedItemId) {
     const existingMenu = document.getElementById("equipment-context-menu");
     if (existingMenu) existingMenu.remove();
-
     const menu = document.createElement("div");
     menu.id = "equipment-context-menu";
     menu.classList.add("inventory-context-menu");
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
-
     if (!equippedItemId) {
       const noItemLabel = document.createElement("div");
       noItemLabel.innerText = "Slot is empty.";
@@ -551,8 +577,6 @@ export default class UIManager {
       });
       menu.appendChild(unequipOption);
     }
-
-    // Close
     const closeOption = document.createElement("div");
     closeOption.innerText = "Close";
     closeOption.classList.add("menu-option");
@@ -560,14 +584,16 @@ export default class UIManager {
       menu.remove();
     });
     menu.appendChild(closeOption);
-
     document.body.appendChild(menu);
-
-    document.addEventListener("click", (e2) => {
-      if (e2.target !== menu && !menu.contains(e2.target)) {
-        menu.remove();
-      }
-    }, { once: true });
+    document.addEventListener(
+      "click",
+      (e2) => {
+        if (e2.target !== menu && !menu.contains(e2.target)) {
+          menu.remove();
+        }
+      },
+      { once: true }
+    );
   }
 
   // ============================
@@ -576,14 +602,12 @@ export default class UIManager {
   updateSkillBook() {
     if (this.skillBook && this.skillBook.style.display !== "none") {
       this.skillBookContent.innerHTML = "<h3>Skill Book</h3>";
-
       for (const skill of playerSkills) {
         const skillDiv = document.createElement("div");
         skillDiv.classList.add("skill-entry");
         const title = document.createElement("h4");
         title.innerText = `${skill.name} (Lv. ${skill.level || 1})`;
         skillDiv.appendChild(title);
-
         const table = document.createElement("table");
         table.classList.add("skill-table");
         const rows = [
@@ -604,7 +628,6 @@ export default class UIManager {
           table.appendChild(tr);
         });
         skillDiv.appendChild(table);
-
         this.skillBookContent.appendChild(skillDiv);
       }
     }
@@ -647,31 +670,22 @@ export default class UIManager {
   setupSkills(skills) {
     if (!this.castingBar) return;
     this.castingBar.innerHTML = "";
-
     for (const skill of skills) {
       const castingSlot = document.createElement("div");
       castingSlot.classList.add("casting-slot");
       castingSlot.setAttribute("data-skill-id", skill.id);
-
-      // Skill icon
       const img = document.createElement("img");
       img.src = skill.icon;
       img.alt = skill.name;
       castingSlot.appendChild(img);
-
-      // (Optional) Show skill level
       const levelLabel = document.createElement("div");
       levelLabel.classList.add("skill-level-label");
       levelLabel.innerText = `L${skill.level || 1}`;
       castingSlot.appendChild(levelLabel);
-
-      // Mana cost
       const manaCost = document.createElement("div");
       manaCost.classList.add("mana-cost");
       manaCost.innerText = (skill.manaCost || 0).toFixed(1);
       castingSlot.appendChild(manaCost);
-
-      // Cooldown overlay
       const cooldownOverlay = document.createElement("div");
       cooldownOverlay.classList.add("cooldown-overlay");
       cooldownOverlay.style.display = "none";
@@ -679,12 +693,9 @@ export default class UIManager {
       cooldownTimer.classList.add("cooldown-timer");
       cooldownOverlay.appendChild(cooldownTimer);
       castingSlot.appendChild(cooldownOverlay);
-
-      // Click => use skill
       castingSlot.addEventListener("click", () => {
         this.scene.useSkill(skill);
       });
-
       this.castingBar.appendChild(castingSlot);
     }
   }
@@ -708,7 +719,6 @@ export default class UIManager {
     const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
     const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
     if (!cooldownTimer || !cooldownOverlay) return;
-
     let remainingTime = cooldownTime;
     if (castingSlot.cooldownTimerEvent) {
       this.scene.time.removeEvent(castingSlot.cooldownTimerEvent);
@@ -725,7 +735,7 @@ export default class UIManager {
           cooldownTimer.innerText = remainingTime.toFixed(1);
         }
       },
-      loop: true
+      loop: true,
     });
   }
 
@@ -736,19 +746,15 @@ export default class UIManager {
     if (!this.lootContent || !this.lootMenu) return;
     this.lootContent.innerHTML = "";
     this.lootMenu.style.display = "block";
-
     const title = document.createElement("h3");
     title.innerText = `Loot from ${mob.customData.id}`;
     this.lootContent.appendChild(title);
-
     if (mob.customData.droppedLoot.length === 0) {
       const noLoot = document.createElement("p");
       noLoot.innerText = "No loot.";
       this.lootContent.appendChild(noLoot);
       return;
     }
-
-    // "Take All" button
     const takeAllButton = document.createElement("button");
     takeAllButton.innerText = "Take All";
     takeAllButton.classList.add("loot-button");
@@ -757,46 +763,36 @@ export default class UIManager {
       for (let i = mob.customData.droppedLoot.length - 1; i >= 0; i--) {
         const itemId = mob.customData.droppedLoot[i];
         const skillData = allGameSkills.find((s) => s.id === itemId);
-
         if (skillData) {
-          // skill loot
-          const alreadyKnown = playerSkills.find(sk => sk.id === skillData.id);
+          const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
           if (!alreadyKnown) {
             skillData.level = skillData.level || 1;
             playerSkills.push(skillData);
             this.scene.chatManager.addMessage(`You learned a new skill: ${skillData.name}!`);
           } else {
-            // upgrade skill
             alreadyKnown.level = (alreadyKnown.level || 1) + 1;
             let enh = skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
             for (const prop in enh) {
               const pct = enh[prop];
               if (typeof alreadyKnown[prop] === "number") {
-                alreadyKnown[prop] *= (1 + pct);
+                alreadyKnown[prop] *= 1 + pct;
                 if ((prop === "castingTime" || prop === "cooldown") && alreadyKnown[prop] < 0) {
                   alreadyKnown[prop] = 0;
                 }
               }
             }
-            this.scene.chatManager.addMessage(
-              `Upgraded skill: ${alreadyKnown.name} to level ${alreadyKnown.level}!`
-            );
+            this.scene.chatManager.addMessage(`Upgraded skill: ${alreadyKnown.name} to level ${alreadyKnown.level}!`);
           }
           mob.customData.droppedLoot.splice(i, 1);
           learnedOrUpgradedSkill = true;
         } else {
-          // item loot
           const success = this.scene.playerManager.addItemToInventory(itemId, 1);
           if (success) {
             mob.customData.droppedLoot.splice(i, 1);
             const itemData = itemsMap[itemId];
-            this.scene.chatManager.addMessage(
-              `Took "${itemData ? itemData.name : "Unknown"}" (Take All).`
-            );
+            this.scene.chatManager.addMessage(`Took "${itemData ? itemData.name : "Unknown"}" (Take All).`);
           } else {
-            this.scene.chatManager.addMessage(
-              `Cannot loot item (ID=${itemId}). Inventory might be full.`
-            );
+            this.scene.chatManager.addMessage(`Cannot loot item (ID=${itemId}). Inventory might be full.`);
           }
         }
       }
@@ -810,18 +806,13 @@ export default class UIManager {
       this.openLootWindow(mob);
     });
     this.lootContent.appendChild(takeAllButton);
-
-    // List each loot item
     mob.customData.droppedLoot.forEach((itemId, index) => {
       const itemData = itemsMap[itemId];
       const skillData = allGameSkills.find((s) => s.id === itemId);
-
       if (itemData) {
-        // normal item
         const itemDiv = document.createElement("div");
         itemDiv.innerText = itemData.name;
         itemDiv.classList.add("loot-item");
-
         const takeButton = document.createElement("button");
         takeButton.innerText = "Take Item";
         takeButton.classList.add("loot-button");
@@ -830,13 +821,10 @@ export default class UIManager {
         });
         itemDiv.appendChild(takeButton);
         this.lootContent.appendChild(itemDiv);
-
       } else if (skillData) {
-        // skill item
         const skillDiv = document.createElement("div");
         skillDiv.innerText = `${skillData.name} (Skill)`;
         skillDiv.classList.add("loot-item");
-
         const learnButton = document.createElement("button");
         learnButton.innerText = "Learn Skill";
         learnButton.classList.add("loot-button");
@@ -845,9 +833,7 @@ export default class UIManager {
         });
         skillDiv.appendChild(learnButton);
         this.lootContent.appendChild(skillDiv);
-
       } else {
-        // unknown loot
         const unknownDiv = document.createElement("div");
         unknownDiv.innerText = `Unknown loot ID: ${itemId}`;
         this.lootContent.appendChild(unknownDiv);
@@ -881,15 +867,13 @@ export default class UIManager {
       for (const prop in enh) {
         const pct = enh[prop];
         if (typeof alreadyKnown[prop] === "number") {
-          alreadyKnown[prop] *= (1 + pct);
+          alreadyKnown[prop] *= 1 + pct;
           if ((prop === "castingTime" || prop === "cooldown") && alreadyKnown[prop] < 0) {
             alreadyKnown[prop] = 0;
           }
         }
       }
-      this.scene.chatManager.addMessage(
-        `Upgraded skill: ${alreadyKnown.name} to level ${alreadyKnown.level}!`
-      );
+      this.scene.chatManager.addMessage(`Upgraded skill: ${alreadyKnown.name} to level ${alreadyKnown.level}!`);
     }
     mob.customData.droppedLoot.splice(lootIndex, 1);
     this.setupSkills(playerSkills);
@@ -908,7 +892,6 @@ export default class UIManager {
     notification.classList.add("level-up-notification");
     notification.innerText = `Level Up! Now Level ${newLevel}!`;
     document.body.appendChild(notification);
-
     this.scene.time.delayedCall(3000, () => {
       notification.remove();
     });

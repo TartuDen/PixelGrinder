@@ -275,7 +275,7 @@ const armorItems = [
     id: 3003,
     name: "swift_gauntlets",
     icon: "assets/armor/armor.png",
-    iconCol: 4, // 4th column
+    iconCol: 3, // 3rd column
     iconRow: 1, // 1st row (same as pants)
     type: "gauntlets",
     slot: "shoulders",
@@ -332,10 +332,10 @@ const playerBackpack = {
   cell_0_2: 0,
   cell_0_3: 0,
   cell_0_4: 0,
-  cell_1_0: null,
-  cell_1_1: null,
-  cell_1_2: null,
-  cell_1_3: null,
+  cell_1_0: 3000,
+  cell_1_1: 3001,
+  cell_1_2: 3002,
+  cell_1_3: 3003,
   cell_1_4: null,
   cell_2_0: null,
   cell_2_1: null,
