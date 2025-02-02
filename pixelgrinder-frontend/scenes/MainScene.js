@@ -1,12 +1,11 @@
-// scenes/MainScene.js
-
+// File: scenes/MainScene.js
 import UIManager from "../managers/UIManager.js";
 import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
 import PlayerManager from "../managers/PlayerManager.js";
 import InputManager from "../managers/InputManager.js";
 import ChatManager from "../managers/ChatManager.js";
-import GatherManager from "../managers/GatherManager.js"; // <-- NEW import
+import GatherManager from "../managers/GatherManager.js";
 
 import {
   naturalRegeneration,
@@ -33,7 +32,7 @@ export default class MainScene extends Phaser.Scene {
     this.playerManager = null;
     this.inputManager = null;
     this.chatManager = null;
-    this.gatherManager = null; // <-- For gather logic
+    this.gatherManager = null;
 
     // We'll use a custom event emitter for certain UI updates
     this.events = new Phaser.Events.EventEmitter();
@@ -59,7 +58,7 @@ export default class MainScene extends Phaser.Scene {
     this.playerManager = new PlayerManager(this);
     this.playerManager.createPlayer(this.map);
 
-    // Add collision with the gatherRockLayer now that we have a player
+    // Add collision with gatherRockLayer
     this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
     // 4) Skill Manager
@@ -100,7 +99,6 @@ export default class MainScene extends Phaser.Scene {
       this.uiManager,
       this.chatManager
     );
-    // Pass in gatherRockLayer so GatherManager knows which tiles are gatherable
     this.gatherManager.init(this.gatherRockLayer);
 
     // Emit initial UI update
@@ -123,7 +121,7 @@ export default class MainScene extends Phaser.Scene {
     this.chatManager.addMessage(`Player Level: ${level}`);
     this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
 
-    // Create two in-game UI buttons in bottom-right
+    // Create menu buttons in bottom-right
     this.createInGameMenuButtons();
   }
 
@@ -136,7 +134,7 @@ export default class MainScene extends Phaser.Scene {
     // 2) Mob AI
     this.mobManager.updateMobs(this.playerManager.player);
 
-    // 3) Gathering update loop (handles showing GATHER tooltip, etc.)
+    // 3) Gathering loop
     if (this.gatherManager) {
       this.gatherManager.update();
     }
@@ -161,7 +159,7 @@ export default class MainScene extends Phaser.Scene {
       frameHeight: 32,
     });
 
-    // Load skill sprite sheets for all game skills
+    // Load skill sprite sheets
     allGameSkills.forEach((skill) => {
       this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
         frameWidth: 72,
@@ -179,21 +177,16 @@ export default class MainScene extends Phaser.Scene {
 
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
     this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
-
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
     this.collisionLayer.setCollisionByExclusion([-1, 0]);
 
     // The GATHER layer
     this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
-    // Make it collidable so player can't walk over gather tiles
     this.gatherRockLayer.setCollisionByExclusion([-1]);
   }
 
-  /**
-   * Defines animations for player, mobs, AND skills.
-   */
   defineAnimations() {
-    // --- Player anims ---
+    // Player anims
     this.anims.create({
       key: "walk-down",
       frames: this.anims.generateFrameNumbers("mage", { start: 0, end: 5 }),
@@ -219,7 +212,7 @@ export default class MainScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // --- Mobs ---
+    // Mobs
     this.anims.create({
       key: "mob-walk-down",
       frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
@@ -244,7 +237,6 @@ export default class MainScene extends Phaser.Scene {
       frameRate: 10,
       repeat: -1,
     });
-
     this.anims.create({
       key: "mob-dead",
       frames: this.anims.generateFrameNumbers("$dead", { start: 7, end: 7 }),
@@ -252,15 +244,13 @@ export default class MainScene extends Phaser.Scene {
       repeat: 0,
     });
 
-    // --- Skills (IMPORTANT!) ---
-    // For each skill in allGameSkills, create an animation that matches e.g. "magic_wip_anim"
+    // Skills
     allGameSkills.forEach((skill) => {
-      // skill.animationSeq might be [0, 7], meaning frames 0..7
       this.anims.create({
-        key: `${skill.name}_anim`, // e.g. "magic_wip_anim"
+        key: `${skill.name}_anim`,
         frames: this.anims.generateFrameNumbers(`${skill.name}_anim`, {
           start: 0,
-          end: skill.animationSeq[1], // e.g. 7
+          end: skill.animationSeq[1],
         }),
         frameRate: 15,
         repeat: 0,
@@ -285,7 +275,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // -------------------------------------------------
-  // Buttons in bottom-right corner
+  // In-Game Menu Buttons in bottom-right
   // -------------------------------------------------
   createInGameMenuButtons() {
     const menuContainer = document.createElement("div");
@@ -352,6 +342,7 @@ export default class MainScene extends Phaser.Scene {
     const currentExp = totalExp - accumulatedExp;
     const nextLevelExp = expForNextLevel;
 
+    // If level changed
     if (level > oldLevel) {
       for (let lvl = oldLevel; lvl < level; lvl++) {
         for (const statKey in playerGrowthStats) {
@@ -370,7 +361,7 @@ export default class MainScene extends Phaser.Scene {
 
   gainExperience(amount) {
     playerProfile.totalExp += amount;
-    this.chatManager.addMessage(`Gained ${amount} EXP. Total EXP: ${playerProfile.totalExp}`);
+    this.chatManager.addMessage(`Gained ${amount} EXP (Total: ${playerProfile.totalExp})`);
 
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
@@ -379,9 +370,6 @@ export default class MainScene extends Phaser.Scene {
     this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
   }
 
-  // -------------------------------------------------
-  // Emit Stats / UI
-  // -------------------------------------------------
   emitStatsUpdate() {
     const playerStats = this.playerManager.getPlayerStats();
     this.events.emit("statsUpdated", {
@@ -411,9 +399,6 @@ export default class MainScene extends Phaser.Scene {
     this.uiManager.updateUI(uiStats);
   }
 
-  // -------------------------------------------------
-  // Other UI toggles
-  // -------------------------------------------------
   toggleStatsMenu() {
     if (this.uiManager.statsMenu.style.display === "block") {
       this.uiManager.hideStatsMenu();
@@ -426,13 +411,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   generateStatsHTML() {
-    return `<p>This is where you'd show the player's stats in HTML form.</p>`;
-  }
-
-  summarizePlayerStats() {
-    this.chatManager.addMessage("=== Player Stats Summary ===");
-    const stats = this.playerManager.getPlayerStats();
-    this.chatManager.addMessage(JSON.stringify(stats, null, 2));
+    return `<p>Display player's detailed stats here.</p>`;
   }
 
   useSkill(skill) {
@@ -455,9 +434,13 @@ export default class MainScene extends Phaser.Scene {
   }
 
   cycleTarget() {
-    this.mobManager.cycleTarget(this.playerManager.player, TAB_TARGET_RANGE, () => {
-      this.emitStatsUpdate();
-    });
+    this.mobManager.cycleTarget(
+      this.playerManager.player,
+      TAB_TARGET_RANGE,
+      () => {
+        this.emitStatsUpdate();
+      }
+    );
   }
 
   highlightMob(mob) {

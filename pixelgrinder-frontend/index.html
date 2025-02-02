@@ -3,12 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <title>PixelGrinder</title>
+
+    <!-- main CSS -->
     <link rel="stylesheet" href="ui.css" />
 
     <!-- Phaser -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.js"></script>
 
     <style>
+      /* Make the canvas full-width (responsive) */
       canvas {
         width: 100%;
       }
@@ -40,25 +43,40 @@
     <!-- Casting Bar -->
     <div id="casting-bar"></div>
 
-    <!-- Stats Menu -->
-    <div id="stats-menu" class="stats-menu" style="display: none">
-      <button id="close-stats">Close</button>
-      <div id="stats-content"></div>
-    </div>
-
-    <!-- Inventory Menu -->
-    <div id="inventory-menu" style="display: none" class="stats-menu">
-      <button id="close-inventory">Close</button>
-      <h2>Inventory</h2>
-      <div id="inventory-content"></div>
-    </div>
-
     <!-- Casting Progress Bar -->
     <div id="casting-progress-container">
       <div id="casting-skill-name"></div>
       <div id="casting-progress-fill"></div>
     </div>
 
+    <!-- Stats Menu -->
+    <div id="stats-menu" class="stats-menu" style="display: none;">
+      <button id="close-stats" class="close-btn">Close</button>
+      <div id="stats-content"></div>
+    </div>
+
+    <!-- Inventory Menu -->
+    <div id="inventory-menu" class="stats-menu" style="display: none;">
+      <button id="close-inventory" class="close-btn">Close</button>
+      <h2>Inventory</h2>
+      <div id="inventory-content"></div>
+    </div>
+
+    <!-- Skill Book (NEW) -->
+    <div id="skill-book" class="stats-menu" style="display: none;">
+      <!-- The UIManager will add a drag-header if it doesn't find one -->
+      <button id="skill-book-close-button" class="close-btn">Close</button>
+      <div id="skill-book-content"></div>
+    </div>
+
+    <!-- Loot Window (NEW) -->
+    <div id="loot-menu" class="stats-menu" style="display: none;">
+      <!-- The UIManager will add a drag-header if it doesn't find one -->
+      <button id="loot-close-button" class="close-btn">Close</button>
+      <div id="loot-content"></div>
+    </div>
+
+    <!-- Main game logic -->
     <script type="module" src="./main.js"></script>
   </body>
 </html>
