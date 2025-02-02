@@ -165,7 +165,7 @@ const playerSkills = [
 const weaponItems = [
   {
     id: 2000,
-    name: "basic_staff1.png", // already contains the file name
+    name: "basic_staff.png", // already contains the file name
     icon: "assets/WeaponIcons32x32/basic_staff.png", // NEW property
     type: "staff",
     slot: "weapon",
