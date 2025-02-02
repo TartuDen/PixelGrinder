@@ -436,3 +436,55 @@ body {
   .close-btn { padding: 4px 8px; font-size: 12px; }
   #casting-progress-container { width: 80%; }
 }
+
+
+
+
+
+/* Skill Book Container */
+.skill-card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Each Skill Card */
+.skill-card {
+  background: #fdf6e3;          /* A light parchment color */
+  border: 1px solid #d3b58c;     /* Parchment-like border */
+  border-radius: 8px;
+  padding: 8px;
+  width: 200px;                 /* Adjust width as needed */
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+
+/* Card Header: contains icon and title */
+.skill-card-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid #d3b58c;
+  margin-bottom: 5px;
+  padding-bottom: 5px;
+}
+
+/* Skill Icon */
+.skill-card-header img.skill-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* Skill Card Details: compact stats */
+.skill-card-details p {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #333;
+}
+.skill-card-details span {
+  display: inline-block;
+  margin-right: 5px;
+}
