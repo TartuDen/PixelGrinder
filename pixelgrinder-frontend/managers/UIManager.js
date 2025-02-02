@@ -1,4 +1,3 @@
-// File: managers/UIManager.js
 import {
   playerBackpack,
   itemsMap,
@@ -278,10 +277,24 @@ export default class UIManager {
         if (itemData && itemData.icon) {
           const iconContainer = document.createElement("div");
           iconContainer.className = "icon-container";
-          const img = document.createElement("img");
-          img.src = itemData.icon;
-          img.alt = itemData.name;
-          iconContainer.appendChild(img);
+          // If the item has iconCol and iconRow, assume it is an armor item (spritesheet)
+          if (itemData.iconCol !== undefined && itemData.iconRow !== undefined) {
+            const iconDiv = document.createElement("div");
+            iconDiv.style.width = "64px";
+            iconDiv.style.height = "64px";
+            iconDiv.style.backgroundImage = `url(${itemData.icon})`;
+            iconDiv.style.backgroundSize = "320px 320px";
+            const posX = -((itemData.iconCol - 1) * 64);
+            const posY = -((itemData.iconRow - 1) * 64);
+            iconDiv.style.backgroundPosition = `${posX}px ${posY}px`;
+            iconDiv.title = itemData.name;
+            iconContainer.appendChild(iconDiv);
+          } else {
+            const img = document.createElement("img");
+            img.src = itemData.icon;
+            img.alt = itemData.name;
+            iconContainer.appendChild(img);
+          }
           slotDiv.appendChild(iconContainer);
           const nameDiv = document.createElement("div");
           nameDiv.innerText = this.formatItemName(itemData.name);
@@ -381,10 +394,23 @@ export default class UIManager {
           if (itemData && itemData.icon) {
             const iconContainer = document.createElement("div");
             iconContainer.className = "icon-container";
-            const img = document.createElement("img");
-            img.src = itemData.icon;
-            img.alt = itemData.name;
-            iconContainer.appendChild(img);
+            if (itemData.iconCol !== undefined && itemData.iconRow !== undefined) {
+              const iconDiv = document.createElement("div");
+              iconDiv.style.width = "64px";
+              iconDiv.style.height = "64px";
+              iconDiv.style.backgroundImage = `url(${itemData.icon})`;
+              iconDiv.style.backgroundSize = "320px 320px";
+              const posX = -((itemData.iconCol - 1) * 64);
+              const posY = -((itemData.iconRow - 1) * 64);
+              iconDiv.style.backgroundPosition = `${posX}px ${posY}px`;
+              iconDiv.title = itemData.name;
+              iconContainer.appendChild(iconDiv);
+            } else {
+              const img = document.createElement("img");
+              img.src = itemData.icon;
+              img.alt = itemData.name;
+              iconContainer.appendChild(img);
+            }
             cell.appendChild(iconContainer);
           }
           const nameDiv = document.createElement("div");

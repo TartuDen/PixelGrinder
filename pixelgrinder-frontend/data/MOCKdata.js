@@ -1,5 +1,3 @@
-// data/MOCKdata.js
-
 // --- Player Profile (Meta info) ---
 const playerProfile = {
   class: "mage",
@@ -161,12 +159,14 @@ const playerSkills = [
   },
 ];
 
-// Weapon / Armor Items ...
+// --------------------------------------------------------------------
+// Weapon Items (ID >= 2000)
+// --------------------------------------------------------------------
 const weaponItems = [
   {
     id: 2000,
-    name: "basic_staff.png", // already contains the file name
-    icon: "assets/WeaponIcons32x32/basic_staff.png", // NEW property
+    name: "basic_staff.png",
+    icon: "assets/WeaponIcons32x32/basic_staff.png",
     type: "staff",
     slot: "weapon",
     health: 0,
@@ -181,8 +181,8 @@ const weaponItems = [
   },
   {
     id: 2001,
-    name: "green_branch", // if the file is green_branch.png, then…
-    icon: "assets/WeaponIcons32x32/green_branch.png", // NEW property
+    name: "green_branch",
+    icon: "assets/WeaponIcons32x32/green_branch.png",
     type: "staff",
     slot: "weapon",
     health: 0,
@@ -197,8 +197,8 @@ const weaponItems = [
   },
   {
     id: 2002,
-    name: "dark_omen", // similarly, assume dark_omen.png exists
-    icon: "assets/WeaponIcons32x32/dark_omen.png", // NEW property
+    name: "dark_omen",
+    icon: "assets/WeaponIcons32x32/dark_omen.png",
     type: "staff",
     slot: "weapon",
     health: 0,
@@ -213,10 +213,16 @@ const weaponItems = [
   },
 ];
 
+// --------------------------------------------------------------------
+// Armor Items (ID >= 3000)
+// --------------------------------------------------------------------
 const armorItems = [
   {
     id: 3000,
     name: "common_robe_chest",
+    icon: "assets/armor/armor.png", // common spritesheet
+    iconCol: 2, // 2nd column (each cell = 64px)
+    iconRow: 1, // 1st row
     type: "robe",
     slot: "chest",
     health: 100,
@@ -232,6 +238,9 @@ const armorItems = [
   {
     id: 3001,
     name: "common_robe_pants",
+    icon: "assets/armor/armor.png",
+    iconCol: 4, // 4th column
+    iconRow: 1, // 1st row
     type: "robe",
     slot: "legs",
     health: 3,
@@ -247,6 +256,9 @@ const armorItems = [
   {
     id: 3002,
     name: "light_boots",
+    icon: "assets/armor/armor.png",
+    iconCol: 5, // 5th column
+    iconRow: 1, // 1st row
     type: "boots",
     slot: "feet",
     health: 2,
@@ -262,6 +274,9 @@ const armorItems = [
   {
     id: 3003,
     name: "swift_gauntlets",
+    icon: "assets/armor/armor.png",
+    iconCol: 4, // 4th column
+    iconRow: 1, // 1st row (same as pants)
     type: "gauntlets",
     slot: "shoulders",
     health: 1,
@@ -276,7 +291,9 @@ const armorItems = [
   },
 ];
 
+// --------------------------------------------------------------------
 // Gatherable items (ID>=4000)
+// --------------------------------------------------------------------
 const gatherableItems = [
   {
     id: 4000,
@@ -285,7 +302,9 @@ const gatherableItems = [
   },
 ];
 
+// --------------------------------------------------------------------
 // Combine for easy lookups
+// --------------------------------------------------------------------
 const allItems = [
   ...weaponItems,
   ...armorItems,
