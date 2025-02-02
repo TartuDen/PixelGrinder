@@ -451,4 +451,9 @@ body {
   #casting-progress-container {
     width: 80%;
   }
+
+  
+}
+#inventory-menu {
+  max-width: 800px;
 }
