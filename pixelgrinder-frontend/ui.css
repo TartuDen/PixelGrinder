@@ -437,10 +437,9 @@ body {
   #casting-progress-container { width: 80%; }
 }
 
-
-
-
-
+/* ===============================
+   11. Skill Book Styles
+=============================== */
 /* Skill Book Container */
 .skill-card-container {
   display: flex;
@@ -448,17 +447,15 @@ body {
   gap: 10px;
   justify-content: center;
 }
-
 /* Each Skill Card */
 .skill-card {
-  background: #fdf6e3;          /* A light parchment color */
-  border: 1px solid #d3b58c;     /* Parchment-like border */
+  background: #fdf6e3;         /* A light parchment color */
+  border: 1px solid #d3b58c;   /* Parchment-like border */
   border-radius: 8px;
   padding: 8px;
-  width: 200px;                 /* Adjust width as needed */
+  width: 200px;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
 }
-
 /* Card Header: contains icon and title */
 .skill-card-header {
   display: flex;
@@ -468,7 +465,6 @@ body {
   margin-bottom: 5px;
   padding-bottom: 5px;
 }
-
 /* Skill Icon */
 .skill-card-header img.skill-icon {
   width: 40px;
@@ -476,7 +472,6 @@ body {
   object-fit: cover;
   border-radius: 4px;
 }
-
 /* Skill Card Details: compact stats */
 .skill-card-details p {
   margin: 4px 0;
@@ -487,4 +482,33 @@ body {
 .skill-card-details span {
   display: inline-block;
   margin-right: 5px;
+}
+
+/* ===============================
+   12. In-Game Menu Classes
+=============================== */
+
+/* The container for your bottom-right menu. */
+#game-menu-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  gap: 10px;
+}
+
+/* Generic button styling for in-game menu buttons. */
+.in-game-menu-button {
+  padding: 10px 15px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 1px solid #f1c40f;
+  color: #f1c40f;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.in-game-menu-button:hover {
+  background-color: rgba(0, 0, 0, 0.9);
 }

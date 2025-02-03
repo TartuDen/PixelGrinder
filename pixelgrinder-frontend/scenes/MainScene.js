@@ -278,37 +278,16 @@ export default class MainScene extends Phaser.Scene {
   // In-Game Menu Buttons in bottom-right
   // -------------------------------------------------
   createInGameMenuButtons() {
+    // Create a container <div> with an ID, rely on CSS for styling
     const menuContainer = document.createElement("div");
     menuContainer.id = "game-menu-container";
-    menuContainer.style.position = "fixed";
-    menuContainer.style.bottom = "20px";
-    menuContainer.style.right = "20px";
-    menuContainer.style.zIndex = 9999;
-    menuContainer.style.display = "flex";
-    menuContainer.style.gap = "10px";
     document.body.appendChild(menuContainer);
-
-    const styleButton = (btn) => {
-      btn.style.padding = "10px 15px";
-      btn.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-      btn.style.border = "1px solid #f1c40f";
-      btn.style.color = "#f1c40f";
-      btn.style.fontFamily = "Cinzel, serif";
-      btn.style.fontSize = "14px";
-      btn.style.borderRadius = "5px";
-      btn.style.cursor = "pointer";
-      btn.addEventListener("mouseenter", () => {
-        btn.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-      });
-      btn.addEventListener("mouseleave", () => {
-        btn.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-      });
-    };
 
     // PLAYER INFO button
     const playerInfoBtn = document.createElement("button");
     playerInfoBtn.textContent = "PLAYER INFO";
-    styleButton(playerInfoBtn);
+    // Instead of inline styles, add a class (defined in CSS)
+    playerInfoBtn.classList.add("in-game-menu-button");
     playerInfoBtn.onclick = () => {
       this.toggleInventoryMenu();
     };
@@ -317,7 +296,7 @@ export default class MainScene extends Phaser.Scene {
     // SKILL BOOK button
     const skillBookBtn = document.createElement("button");
     skillBookBtn.textContent = "SKILL BOOK";
-    styleButton(skillBookBtn);
+    skillBookBtn.classList.add("in-game-menu-button");
     skillBookBtn.onclick = () => {
       this.uiManager.toggleSkillBook();
     };
