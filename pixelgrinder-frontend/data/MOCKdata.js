@@ -13,7 +13,7 @@ const playerBaseStats = {
   health: 100,
   mana: 150,
   intellect: 3,
-  strength: 0,
+  strength: 3,
   dexterity: 3,
   constitution: 4,
   speed: 50,
@@ -187,20 +187,6 @@ const playerSkills = [
     animationSeq: [0, 7],
     level: 1,
   },
-  // {
-  //   id: 1003,
-  //   name: "self_heal",
-  //   manaCost: 10,
-  //   range: 0,
-  //   healHP: 30,
-  //   healMP: 30,
-  //   castingTime: 5,
-  //   cooldown: 10,
-  //   icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_08.png",
-  //   skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/8.png",
-  //   animationSeq: [0, 7],
-  //   level: 1,
-  // },
 ];
 
 // --------------------------------------------------------------------

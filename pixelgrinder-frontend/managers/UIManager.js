@@ -1,4 +1,4 @@
-// File: managers/UIManager.js
+// managers/UIManager.js
 
 import {
   playerBackpack,
@@ -874,6 +874,10 @@ export default class UIManager {
           this.updateSkillBook();
         }
       }
+      // **NEW** Refresh inventory if it's open:
+      if (this.inventoryMenu && this.inventoryMenu.style.display !== "none") {
+        this.openInventory();
+      }
       this.openLootWindow(mob);
     });
     this.lootContent.appendChild(takeAllButton);
@@ -974,13 +978,26 @@ export default class UIManager {
     this.openLootWindow(mob);
   }
 
+  /**
+   * Shows a "Level Up!" notification with a simple fade-in/out animation.
+   */
   showLevelUpNotification(newLevel) {
     const notification = document.createElement("div");
     notification.classList.add("level-up-notification");
     notification.innerText = `Level Up! Now Level ${newLevel}!`;
     document.body.appendChild(notification);
+
+    // Force reflow to ensure initial styles are applied.
+    notification.offsetHeight; 
+    // Add class that triggers CSS fade/transform
+    notification.classList.add("show");
+
+    // Fade out after 3s, then remove
     this.scene.time.delayedCall(3000, () => {
-      notification.remove();
+      notification.classList.remove("show");
+      this.scene.time.delayedCall(500, () => {
+        notification.remove();
+      });
     });
   }
 }

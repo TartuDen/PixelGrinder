@@ -1,4 +1,4 @@
-// managers/SkillManager.js
+// File: managers/SkillManager.js
 
 import { SKILL_RANGE_EXTENDER } from "../data/MOCKdata.js";
 import {
@@ -27,8 +27,8 @@ export default class SkillManager {
   }
 
   createSkillAnimations() {
-    // If your MainScene already defines skill animations, you can skip
-    // or leave this empty if you're comfortable.
+    // If your MainScene already defines skill animations,
+    // you can skip or keep this empty.
   }
 
   isAttackEvaded(evasionStat) {
@@ -63,7 +63,6 @@ export default class SkillManager {
     // --- SELF-CAST SKILL (range=0) ---
     if (skill.range <= 0) {
       // Bypass target checks
-      // Start cast if needed
       if (skill.castingTime > 0) {
         this.castSkill(skill, null /*no mob needed*/);
       } else {
@@ -88,7 +87,9 @@ export default class SkillManager {
     );
     if (distance > skill.range) {
       this.scene.chatManager.addMessage(
-        `Target out of range for ${skill.name}. Dist=${distance.toFixed(1)}, Range=${skill.range.toFixed(1)}.`
+        `Target out of range for ${skill.name}. Dist=${distance.toFixed(
+          1
+        )}, Range=${skill.range.toFixed(1)}.`
       );
       return { success: false };
     }
@@ -121,7 +122,6 @@ export default class SkillManager {
         elapsedTime += 0.1;
         this.scene.uiManager.updateCastingProgress(elapsedTime, totalTime);
 
-        // If we've reached the end, we can remove the event
         if (elapsedTime >= totalTime && this.castingTimer) {
           this.castingTimer.remove(false);
           this.castingTimer = null;
@@ -157,7 +157,7 @@ export default class SkillManager {
       }
     );
 
-    // If we have a mob target, we do a range check loop to see if it runs away
+    // If we have a mob target, do a range check loop
     if (targetedMob) {
       this.rangeCheckTimer = this.scene.time.addEvent({
         delay: 100,
@@ -223,28 +223,55 @@ export default class SkillManager {
       // =====================
       // 2) NORMAL (Offensive)
       // =====================
-      if (skill.magicAttack > 0 && targetedMob) {
+      if (targetedMob) {
         const playerStats = this.getPlayerStats();
         const mobStats = this.scene.mobManager.getStats(targetedMob);
 
-        const evaded = this.isAttackEvaded(mobStats.magicEvasion || 0);
-        if (evaded) {
-          this.scene.chatManager.addMessage(
-            `${skill.name} was evaded by Mob ${targetedMob.customData.id}.`
-          );
-        } else {
-          let damage = calculateMagicDamage(
-            playerStats,
-            mobStats,
-            skill.magicAttack
-          );
-          damage = Math.round(damage);
-          this.scene.mobManager.applyDamageToMob(targetedMob, damage);
+        // MAGIC Attack check
+        if (skill.magicAttack > 0) {
+          const evaded = this.isAttackEvaded(mobStats.magicEvasion || 0);
+          if (evaded) {
+            this.scene.chatManager.addMessage(
+              `${skill.name} was evaded by Mob ${targetedMob.customData.id}.`
+            );
+          } else {
+            // Add skill's magicAttack to player's own
+            let damage = calculateMagicDamage(
+              { ...playerStats }, // attacker stats
+              mobStats,
+              skill.magicAttack
+            );
+            damage = Math.round(damage);
+            this.scene.mobManager.applyDamageToMob(targetedMob, damage);
 
-          this.scene.chatManager.addMessage(
-            `${skill.name} hit Mob ${targetedMob.customData.id} for ${damage} magic damage.`
-          );
-          this.triggerSkillAnimation(skill, targetedMob);
+            this.scene.chatManager.addMessage(
+              `${skill.name} hit Mob ${targetedMob.customData.id} for ${damage} magic damage.`
+            );
+            this.triggerSkillAnimation(skill, targetedMob);
+          }
+        }
+        // MELEE Attack check
+        else if (skill.meleeAttack > 0) {
+          const evaded = this.isAttackEvaded(mobStats.meleeEvasion || 0);
+          if (evaded) {
+            this.scene.chatManager.addMessage(
+              `${skill.name} was evaded by Mob ${targetedMob.customData.id}.`
+            );
+          } else {
+            // Combine player's meleeAttack + skill's meleeAttack
+            const combinedStats = {
+              ...playerStats,
+              meleeAttack: playerStats.meleeAttack + skill.meleeAttack,
+            };
+            let damage = calculateMeleeDamage(combinedStats, mobStats);
+            damage = Math.round(damage);
+            this.scene.mobManager.applyDamageToMob(targetedMob, damage);
+
+            this.scene.chatManager.addMessage(
+              `${skill.name} hit Mob ${targetedMob.customData.id} for ${damage} melee damage.`
+            );
+            this.triggerSkillAnimation(skill, targetedMob);
+          }
         }
       }
     }
