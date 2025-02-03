@@ -225,6 +225,18 @@ body {
   font-size: 14px;
   text-shadow: 1px 1px 2px #000;
 }
+.skill-level-label {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #f1c40f;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
 
 /* ===============================
    5. Stats Menu & Tables

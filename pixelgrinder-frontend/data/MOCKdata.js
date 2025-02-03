@@ -1,3 +1,5 @@
+// File: data/MOCKdata.js
+
 // --- Player Profile (Meta info) ---
 const playerProfile = {
   class: "mage",
@@ -15,7 +17,6 @@ const playerBaseStats = {
   dexterity: 3,
   constitution: 4,
   speed: 50,
-
   gatherSpeed: 1,
 };
 
@@ -66,7 +67,6 @@ const statWeights = {
 };
 
 // --------------------------------------------------------------------
-// --------------------------------------------------------------------
 // Skill Enhancements
 // --------------------------------------------------------------------
 // "default" applies to ANY skill not explicitly listed.
@@ -80,17 +80,13 @@ const skillEnhancements = {
     cooldown: -0.1,    // -10%
   },
 
+  // Example: self_heal gets custom scaling
   self_heal: {
-    // Each time you level self_heal:
-    // increase manaCost by +10%
-    manaCost: 0.1,
-    // reduce cast time by -15%
-    castingTime: -0.15,
-    // reduce cooldown by -20%
-    cooldown: -0.2,
-    // each level adds +20% to healHP & healMP
-    healHP: 0.2,
-    healMP: 0.2,
+    manaCost: 0.1,     // +10%
+    castingTime: -0.15, // -15% each level
+    cooldown: -0.2,    // -20% each level
+    healHP: 0.2,       // +20% to HP heal
+    healMP: 0.2,       // +20% to MP heal
   },
 };
 
@@ -143,11 +139,10 @@ const allGameSkills = [
   {
     id: 1003,
     name: "self_heal",
-    // This is now purely self-cast (range=0).
+    // This is purely self-cast (range=0).
     manaCost: 10,
-    range: 0, 
-    // We won't use magicAttack for damage.
-    // Instead, let's define how much we heal:
+    range: 0,
+    // Instead of dealing damage, it heals:
     healHP: 30,
     healMP: 30,
     castingTime: 5,
@@ -160,7 +155,8 @@ const allGameSkills = [
 ];
 
 // --------------------------------------------------------------------
-// PLAYER SKILLS
+// PLAYER SKILLS (just examples you currently know)
+// NOTE: Now includes "self_heal" so it shows in skill book & hotbar
 // --------------------------------------------------------------------
 const playerSkills = [
   {
@@ -191,6 +187,20 @@ const playerSkills = [
     animationSeq: [0, 7],
     level: 1,
   },
+  // {
+  //   id: 1003,
+  //   name: "self_heal",
+  //   manaCost: 10,
+  //   range: 0,
+  //   healHP: 30,
+  //   healMP: 30,
+  //   castingTime: 5,
+  //   cooldown: 10,
+  //   icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_08.png",
+  //   skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/8.png",
+  //   animationSeq: [0, 7],
+  //   level: 1,
+  // },
 ];
 
 // --------------------------------------------------------------------
@@ -254,7 +264,7 @@ const armorItems = [
   {
     id: 3000,
     name: "common_robe_chest",
-    icon: "assets/armor/armor.png", // common spritesheet
+    icon: "assets/armor/armor.png", // a common spritesheet
     iconCol: 2, // 2nd column (each cell = 64px)
     iconRow: 1, // 1st row
     type: "robe",
@@ -326,7 +336,7 @@ const armorItems = [
 ];
 
 // --------------------------------------------------------------------
-// Gatherable items (ID>=4000)
+// Gatherable items (ID >= 4000)
 // --------------------------------------------------------------------
 const gatherableItems = [
   {
@@ -339,11 +349,8 @@ const gatherableItems = [
 // --------------------------------------------------------------------
 // Combine for easy lookups
 // --------------------------------------------------------------------
-const allItems = [
-  ...weaponItems,
-  ...armorItems,
-  ...gatherableItems,
-];
+const allItems = [...weaponItems, ...armorItems, ...gatherableItems];
+
 const itemsMap = {};
 allItems.forEach((item) => {
   itemsMap[item.id] = item;
@@ -395,7 +402,7 @@ const playerBackpack = {
 
 const deletedItems = [];
 
-// Mobs + loot
+// Example Mobs
 const mobsData = {
   slime: {
     name: "Slime",
@@ -474,6 +481,7 @@ export {
   playerBaseStats,
   playerGrowthStats,
   statWeights,
+  skillEnhancements,
   weaponItems,
   armorItems,
   playerEquippedItems,
@@ -491,5 +499,4 @@ export {
   deletedItems,
   GATHER_RANGE,
   MOB_CORPSE_DURATION,
-  skillEnhancements,
 };

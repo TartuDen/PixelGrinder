@@ -21,11 +21,9 @@ export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
 
-    // Targeting
     this.currentTargetIndex = -1;
     this.targetedMob = null;
 
-    // Managers
     this.uiManager = null;
     this.skillManager = null;
     this.mobManager = null;
@@ -34,7 +32,6 @@ export default class MainScene extends Phaser.Scene {
     this.chatManager = null;
     this.gatherManager = null;
 
-    // We'll use a custom event emitter for certain UI updates
     this.events = new Phaser.Events.EventEmitter();
   }
 
@@ -43,7 +40,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   create() {
-    // Record the player's initial level to detect level-ups
     this.previousLevel = playerProfile.level;
 
     // 1) Create tilemap & define animations
@@ -114,35 +110,30 @@ export default class MainScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Show initial XP/Level in chat
+    // Show initial XP/Level
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
-    this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+    this.chatManager.addMessage(
+      `EXP: ${currentExp} / ${nextLevelExp} to next level`
+    );
 
     // Create menu buttons in bottom-right
     this.createInGameMenuButtons();
   }
 
   update(time, delta) {
-    // 1) Movement & Casting
     const cursors = this.inputManager.getInputKeys();
     const isCasting = this.skillManager.isCasting;
     this.playerManager.handleMovement(cursors, isCasting);
-
-    // 2) Mob AI
     this.mobManager.updateMobs(this.playerManager.player);
 
-    // 3) Gathering loop
     if (this.gatherManager) {
       this.gatherManager.update();
     }
   }
 
-  // -------------------------------------------------
-  // Load game assets
-  // -------------------------------------------------
   loadAssets() {
     this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
     this.load.image("terrain", "assets/map/terrain.png");
@@ -168,19 +159,14 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
-  // -------------------------------------------------
-  // Tilemap
-  // -------------------------------------------------
   createTilemap() {
     this.map = this.make.tilemap({ key: "Map1" });
     const tileset = this.map.addTilesetImage("terrain", "terrain");
-
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
     this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
     this.collisionLayer.setCollisionByExclusion([-1, 0]);
 
-    // The GATHER layer
     this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
     this.gatherRockLayer.setCollisionByExclusion([-1]);
   }
@@ -215,25 +201,37 @@ export default class MainScene extends Phaser.Scene {
     // Mobs
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", { start: 48, end: 50 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 48,
+        end: 50,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", { start: 60, end: 62 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 60,
+        end: 62,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", { start: 72, end: 74 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 72,
+        end: 74,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", { start: 84, end: 86 }),
+      frames: this.anims.generateFrameNumbers("characters", {
+        start: 84,
+        end: 86,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -274,26 +272,21 @@ export default class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.playerManager.player);
   }
 
-  // -------------------------------------------------
-  // In-Game Menu Buttons in bottom-right
-  // -------------------------------------------------
   createInGameMenuButtons() {
-    // Create a container <div> with an ID, rely on CSS for styling
     const menuContainer = document.createElement("div");
     menuContainer.id = "game-menu-container";
     document.body.appendChild(menuContainer);
 
-    // PLAYER INFO button
+    // PLAYER INFO
     const playerInfoBtn = document.createElement("button");
     playerInfoBtn.textContent = "PLAYER INFO";
-    // Instead of inline styles, add a class (defined in CSS)
     playerInfoBtn.classList.add("in-game-menu-button");
     playerInfoBtn.onclick = () => {
       this.toggleInventoryMenu();
     };
     menuContainer.appendChild(playerInfoBtn);
 
-    // SKILL BOOK button
+    // SKILL BOOK
     const skillBookBtn = document.createElement("button");
     skillBookBtn.textContent = "SKILL BOOK";
     skillBookBtn.classList.add("in-game-menu-button");
@@ -303,9 +296,6 @@ export default class MainScene extends Phaser.Scene {
     menuContainer.appendChild(skillBookBtn);
   }
 
-  // -------------------------------------------------
-  // Experience & Level
-  // -------------------------------------------------
   calculatePlayerLevel(totalExp) {
     const oldLevel = playerProfile.level;
     let level = 1;
@@ -317,11 +307,9 @@ export default class MainScene extends Phaser.Scene {
       level += 1;
       expForNextLevel = Math.floor(expForNextLevel * 1.5);
     }
-
     const currentExp = totalExp - accumulatedExp;
     const nextLevelExp = expForNextLevel;
 
-    // If level changed
     if (level > oldLevel) {
       for (let lvl = oldLevel; lvl < level; lvl++) {
         for (const statKey in playerGrowthStats) {
@@ -329,7 +317,9 @@ export default class MainScene extends Phaser.Scene {
         }
       }
       playerProfile.level = level;
-      this.chatManager.addMessage(`Congratulations! You've reached Level ${level}!`);
+      this.chatManager.addMessage(
+        `Congratulations! You've reached Level ${level}!`
+      );
       this.playerManager.updatePlayerStats();
       this.playerManager.replenishHealthAndMana();
     }
@@ -340,13 +330,16 @@ export default class MainScene extends Phaser.Scene {
 
   gainExperience(amount) {
     playerProfile.totalExp += amount;
-    this.chatManager.addMessage(`Gained ${amount} EXP (Total: ${playerProfile.totalExp})`);
-
+    this.chatManager.addMessage(
+      `Gained ${amount} EXP (Total: ${playerProfile.totalExp})`
+    );
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
-    this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+    this.chatManager.addMessage(
+      `EXP: ${currentExp} / ${nextLevelExp} to next level`
+    );
   }
 
   emitStatsUpdate() {

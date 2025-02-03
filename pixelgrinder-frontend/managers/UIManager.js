@@ -1,3 +1,5 @@
+// File: managers/UIManager.js
+
 import {
   playerBackpack,
   itemsMap,
@@ -10,10 +12,7 @@ import {
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
 function makeDraggable(elmnt, dragHandle) {
-  let pos1 = 0,
-    pos2 = 0,
-    pos3 = 0,
-    pos4 = 0;
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   dragHandle.onmousedown = dragMouseDown;
   function dragMouseDown(e) {
     e.preventDefault();
@@ -78,13 +77,13 @@ export default class UIManager {
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // Tooltip Element (single floating DIV)
+    // Tooltip Element
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "game-tooltip";
     this.tooltipEl.style.display = "none";
     document.body.appendChild(this.tooltipEl);
 
-    // Create drag headers (if missing) for draggable windows
+    // Create drag headers (if missing)
     if (
       this.inventoryMenu &&
       !this.inventoryMenu.querySelector(".drag-header")
@@ -110,7 +109,7 @@ export default class UIManager {
       makeDraggable(this.lootMenu, header);
     }
 
-    // Tooltip follows the mouse.
+    // Tooltip follows the mouse
     document.addEventListener("mousemove", (ev) => {
       this.updateTooltipPosition(ev);
     });
@@ -145,14 +144,10 @@ export default class UIManager {
     if (itemData.mana) stats.push(`Mana: +${itemData.mana}`);
     if (itemData.magicAttack) stats.push(`Magic Atk: +${itemData.magicAttack}`);
     if (itemData.meleeAttack) stats.push(`Melee Atk: +${itemData.meleeAttack}`);
-    if (itemData.magicDefense)
-      stats.push(`Magic Def: +${itemData.magicDefense}`);
-    if (itemData.meleeDefense)
-      stats.push(`Melee Def: +${itemData.meleeDefense}`);
-    if (itemData.magicEvasion)
-      stats.push(`Magic Eva: +${itemData.magicEvasion}`);
-    if (itemData.meleeEvasion)
-      stats.push(`Melee Eva: +${itemData.meleeEvasion}`);
+    if (itemData.magicDefense) stats.push(`Magic Def: +${itemData.magicDefense}`);
+    if (itemData.meleeDefense) stats.push(`Melee Def: +${itemData.meleeDefense}`);
+    if (itemData.magicEvasion) stats.push(`Magic Eva: +${itemData.magicEvasion}`);
+    if (itemData.meleeEvasion) stats.push(`Melee Eva: +${itemData.meleeEvasion}`);
     if (itemData.speed) stats.push(`Speed: +${itemData.speed}`);
     if (stats.length > 0) text += "\n" + stats.join(", ");
     return text;
@@ -161,7 +156,9 @@ export default class UIManager {
   formatItemName(name) {
     let base = name.replace(/\.[^/.]+$/, "");
     let words = base.split(/[_-]+/);
-    return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    return words
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
   }
 
   init(onCloseStatsCallback) {
@@ -201,19 +198,12 @@ export default class UIManager {
     }
   }
 
-  updateUI({
-    name,
-    currentHealth,
-    maxHealth,
-    currentMana,
-    maxMana,
-    level,
-    xp,
-  }) {
+  updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp }) {
     const hpVal = Math.round(currentHealth);
     const hpMaxVal = Math.round(maxHealth);
     const mpVal = Math.round(currentMana);
     const mpMaxVal = Math.round(maxMana);
+
     if (this.uiHealthFill && this.healthText) {
       const hpPct = (hpVal / hpMaxVal) * 100;
       this.uiHealthFill.style.width = `${hpPct}%`;
@@ -231,6 +221,7 @@ export default class UIManager {
     if (this.uiName) this.uiName.innerText = name;
     if (this.uiLevel) this.uiLevel.innerText = `Level: ${level}`;
 
+    // Calculate how close we are to next level for the EXP bar
     let expForNextLevel = 100,
       accumulatedExp = 0,
       tempLevel = 1;
@@ -353,7 +344,7 @@ export default class UIManager {
             iconContainer.appendChild(img);
           }
           slotDiv.appendChild(iconContainer);
-          // Show tooltip on hover.
+          // Show tooltip on hover
           slotDiv.addEventListener("mouseenter", () => {
             const tipText = this.getItemTooltipText(itemData);
             this.showTooltip(tipText);
@@ -424,6 +415,7 @@ export default class UIManager {
     const heading = document.createElement("h3");
     heading.innerText = "Inventory";
     container.appendChild(heading);
+
     const table = document.createElement("table");
     table.classList.add("inventory-table");
     for (let r = 0; r < 6; r++) {
@@ -666,18 +658,14 @@ export default class UIManager {
         // Card details: show a compact summary of key stats.
         const details = document.createElement("div");
         details.classList.add("skill-card-details");
+        const rangeDisplay = skill.range > 0 ? skill.range : "Self";
         details.innerHTML = `
           <p>
             <span><strong>Mana:</strong> ${skill.manaCost.toFixed(1)}</span>
-            <span><strong>Range:</strong> ${skill.range.toFixed(1)}</span>
-            <span><strong>Magic Atk:</strong> ${skill.magicAttack.toFixed(
-              1
-            )}</span>
+            <span><strong>Range:</strong> ${rangeDisplay}</span>
           </p>
           <p>
-            <span><strong>Casting:</strong> ${skill.castingTime.toFixed(
-              1
-            )}</span>
+            <span><strong>Casting:</strong> ${skill.castingTime.toFixed(1)}</span>
             <span><strong>Cooldown:</strong> ${skill.cooldown.toFixed(1)}</span>
           </p>
         `;
@@ -729,18 +717,26 @@ export default class UIManager {
       const castingSlot = document.createElement("div");
       castingSlot.classList.add("casting-slot");
       castingSlot.setAttribute("data-skill-id", skill.id);
+
+      // Skill icon
       const img = document.createElement("img");
       img.src = skill.icon;
       img.alt = skill.name;
       castingSlot.appendChild(img);
+
+      // Show skill level label in top-right corner
       const levelLabel = document.createElement("div");
       levelLabel.classList.add("skill-level-label");
       levelLabel.innerText = `L${skill.level || 1}`;
       castingSlot.appendChild(levelLabel);
+
+      // Mana cost in bottom-left
       const manaCost = document.createElement("div");
       manaCost.classList.add("mana-cost");
       manaCost.innerText = (skill.manaCost || 0).toFixed(1);
       castingSlot.appendChild(manaCost);
+
+      // Cooldown overlay
       const cooldownOverlay = document.createElement("div");
       cooldownOverlay.classList.add("cooldown-overlay");
       cooldownOverlay.style.display = "none";
@@ -748,6 +744,7 @@ export default class UIManager {
       cooldownTimer.classList.add("cooldown-timer");
       cooldownOverlay.appendChild(cooldownTimer);
       castingSlot.appendChild(cooldownOverlay);
+
       castingSlot.addEventListener("click", () => {
         this.scene.useSkill(skill);
       });
@@ -803,15 +800,18 @@ export default class UIManager {
     if (!this.lootContent || !this.lootMenu) return;
     this.lootContent.innerHTML = "";
     this.lootMenu.style.display = "block";
+
     const title = document.createElement("h3");
     title.innerText = `Loot from ${mob.customData.id}`;
     this.lootContent.appendChild(title);
+
     if (mob.customData.droppedLoot.length === 0) {
       const noLoot = document.createElement("p");
       noLoot.innerText = "No loot.";
       this.lootContent.appendChild(noLoot);
       return;
     }
+
     const takeAllButton = document.createElement("button");
     takeAllButton.innerText = "Take All";
     takeAllButton.classList.add("loot-button");
@@ -821,9 +821,7 @@ export default class UIManager {
         const itemId = mob.customData.droppedLoot[i];
         const skillData = allGameSkills.find((s) => s.id === itemId);
         if (skillData) {
-          const alreadyKnown = playerSkills.find(
-            (sk) => sk.id === skillData.id
-          );
+          const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
           if (!alreadyKnown) {
             skillData.level = skillData.level || 1;
             playerSkills.push(skillData);
@@ -831,6 +829,7 @@ export default class UIManager {
               `You learned a new skill: ${skillData.name}!`
             );
           } else {
+            // skill already known => level it up
             alreadyKnown.level = (alreadyKnown.level || 1) + 1;
             let enh =
               skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
@@ -853,10 +852,8 @@ export default class UIManager {
           mob.customData.droppedLoot.splice(i, 1);
           learnedOrUpgradedSkill = true;
         } else {
-          const success = this.scene.playerManager.addItemToInventory(
-            itemId,
-            1
-          );
+          // normal item loot
+          const success = this.scene.playerManager.addItemToInventory(itemId, 1);
           if (success) {
             mob.customData.droppedLoot.splice(i, 1);
             const itemData = itemsMap[itemId];
@@ -880,10 +877,13 @@ export default class UIManager {
       this.openLootWindow(mob);
     });
     this.lootContent.appendChild(takeAllButton);
+
     mob.customData.droppedLoot.forEach((itemId, index) => {
       const itemData = itemsMap[itemId];
       const skillData = allGameSkills.find((s) => s.id === itemId);
+
       if (itemData) {
+        // normal item
         const itemDiv = document.createElement("div");
         itemDiv.innerText = itemData.name;
         itemDiv.classList.add("loot-item");
@@ -895,7 +895,9 @@ export default class UIManager {
         });
         itemDiv.appendChild(takeButton);
         this.lootContent.appendChild(itemDiv);
+
       } else if (skillData) {
+        // skill loot
         const skillDiv = document.createElement("div");
         skillDiv.innerText = `${skillData.name} (Skill)`;
         skillDiv.classList.add("loot-item");
@@ -907,7 +909,9 @@ export default class UIManager {
         });
         skillDiv.appendChild(learnButton);
         this.lootContent.appendChild(skillDiv);
+
       } else {
+        // unknown
         const unknownDiv = document.createElement("div");
         unknownDiv.innerText = `Unknown loot ID: ${itemId}`;
         this.lootContent.appendChild(unknownDiv);
@@ -941,8 +945,7 @@ export default class UIManager {
       );
     } else {
       alreadyKnown.level = (alreadyKnown.level || 1) + 1;
-      let enh =
-        skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
+      let enh = skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
       for (const prop in enh) {
         const pct = enh[prop];
         if (typeof alreadyKnown[prop] === "number") {
