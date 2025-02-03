@@ -66,14 +66,31 @@ const statWeights = {
 };
 
 // --------------------------------------------------------------------
-// skillEnhancements => "default" applies to ANY skill not explicitly listed
+// --------------------------------------------------------------------
+// Skill Enhancements
+// --------------------------------------------------------------------
+// "default" applies to ANY skill not explicitly listed.
+// We'll add a special case for "self_heal" to show how you'd do it.
 const skillEnhancements = {
   default: {
     manaCost: 0.1,     // +10% each level
-    range: 0.0,        // 0%
+    range: 0.0,        // 0% => no range change by default
     magicAttack: 0.1,  // +10%
-    castingTime: -0.1, // -10%
+    castingTime: -0.1, // -10% (each level reduces castTime by 10%)
     cooldown: -0.1,    // -10%
+  },
+
+  self_heal: {
+    // Each time you level self_heal:
+    // increase manaCost by +10%
+    manaCost: 0.1,
+    // reduce cast time by -15%
+    castingTime: -0.15,
+    // reduce cooldown by -20%
+    cooldown: -0.2,
+    // each level adds +20% to healHP & healMP
+    healHP: 0.2,
+    healMP: 0.2,
   },
 };
 
@@ -120,6 +137,23 @@ const allGameSkills = [
     cooldown: 10,
     icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
     skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1.png",
+    animationSeq: [0, 7],
+    level: 1,
+  },
+  {
+    id: 1003,
+    name: "self_heal",
+    // This is now purely self-cast (range=0).
+    manaCost: 10,
+    range: 0, 
+    // We won't use magicAttack for damage.
+    // Instead, let's define how much we heal:
+    healHP: 30,
+    healMP: 30,
+    castingTime: 5,
+    cooldown: 10,
+    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_08.png",
+    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/8.png",
     animationSeq: [0, 7],
     level: 1,
   },
@@ -384,6 +418,7 @@ const mobsData = {
       { itemId: 2001, chance: 80 },
       { itemId: 1002, chance: 80 },
       { itemId: 1000, chance: 80 },
+      { itemId: 1003, chance: 80 },
     ],
   },
   goblin: {
