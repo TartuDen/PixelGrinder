@@ -1,4 +1,4 @@
-// managers/UIManager.js
+// File: managers/UIManager.js
 
 import {
   playerBackpack,
@@ -8,12 +8,15 @@ import {
   playerSkills,
   allGameSkills,
   skillEnhancements,
+  SKILL_RANGE_EXTENDER,
 } from "../data/MOCKdata.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 
+// Draggable helper
 function makeDraggable(elmnt, dragHandle) {
   let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   dragHandle.onmousedown = dragMouseDown;
+
   function dragMouseDown(e) {
     e.preventDefault();
     pos3 = e.clientX;
@@ -69,25 +72,23 @@ export default class UIManager {
     this.lootCloseButton = document.getElementById("loot-close-button");
     this.lootContent = document.getElementById("loot-content");
 
-    // Casting
+    // Casting bar & progress
     this.castingBar = document.getElementById("casting-bar");
-    this.castingProgressContainer = document.getElementById(
-      "casting-progress-container"
-    );
+    this.castingProgressContainer = document.getElementById("casting-progress-container");
     this.castingProgressFill = document.getElementById("casting-progress-fill");
     this.castingSkillName = document.getElementById("casting-skill-name");
 
-    // Tooltip Element
+    // Tooltip
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "game-tooltip";
     this.tooltipEl.style.display = "none";
     document.body.appendChild(this.tooltipEl);
 
-    // Create drag headers (if missing)
-    if (
-      this.inventoryMenu &&
-      !this.inventoryMenu.querySelector(".drag-header")
-    ) {
+    // Keep track of up to 9 skill slots
+    this.skillBarSlots = new Array(9).fill(null);
+
+    // Make menus draggable if no drag-header found
+    if (this.inventoryMenu && !this.inventoryMenu.querySelector(".drag-header")) {
       const invHeader = document.createElement("div");
       invHeader.className = "drag-header";
       invHeader.innerText = "Player Info";
@@ -109,58 +110,15 @@ export default class UIManager {
       makeDraggable(this.lootMenu, header);
     }
 
-    // Tooltip follows the mouse
+    // Tooltip follow mouse
     document.addEventListener("mousemove", (ev) => {
       this.updateTooltipPosition(ev);
     });
   }
 
-  // --------------------
-  // TOOLTIP METHODS
-  // --------------------
-  showTooltip(text) {
-    this.tooltipEl.innerText = text;
-    this.tooltipEl.style.display = "block";
-  }
-  hideTooltip() {
-    this.tooltipEl.style.display = "none";
-  }
-  updateTooltipPosition(ev) {
-    if (this.tooltipEl.style.display !== "none") {
-      const offset = 12;
-      this.tooltipEl.style.left = ev.pageX + offset + "px";
-      this.tooltipEl.style.top = ev.pageY + offset + "px";
-    }
-  }
-
-  // Returns a string with item details.
-  getItemTooltipText(itemData) {
-    if (!itemData) return "";
-    let text = `${this.formatItemName(itemData.name)}`;
-    if (itemData.type) text += `\nType: ${itemData.type}`;
-    if (itemData.slot) text += `\nSlot: ${itemData.slot}`;
-    let stats = [];
-    if (itemData.health) stats.push(`HP: +${itemData.health}`);
-    if (itemData.mana) stats.push(`Mana: +${itemData.mana}`);
-    if (itemData.magicAttack) stats.push(`Magic Atk: +${itemData.magicAttack}`);
-    if (itemData.meleeAttack) stats.push(`Melee Atk: +${itemData.meleeAttack}`);
-    if (itemData.magicDefense) stats.push(`Magic Def: +${itemData.magicDefense}`);
-    if (itemData.meleeDefense) stats.push(`Melee Def: +${itemData.meleeDefense}`);
-    if (itemData.magicEvasion) stats.push(`Magic Eva: +${itemData.magicEvasion}`);
-    if (itemData.meleeEvasion) stats.push(`Melee Eva: +${itemData.meleeEvasion}`);
-    if (itemData.speed) stats.push(`Speed: +${itemData.speed}`);
-    if (stats.length > 0) text += "\n" + stats.join(", ");
-    return text;
-  }
-
-  formatItemName(name) {
-    let base = name.replace(/\.[^/.]+$/, "");
-    let words = base.split(/[_-]+/);
-    return words
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-  }
-
+  // -----------------------------
+  // INIT + EVENT SETUP
+  // -----------------------------
   init(onCloseStatsCallback) {
     if (this.closeStatsButton) {
       this.closeStatsButton.addEventListener("click", () => {
@@ -178,6 +136,7 @@ export default class UIManager {
     if (this.closeSkillBookBtn) {
       this.closeSkillBookBtn.addEventListener("click", () => {
         this.skillBook.style.display = "none";
+        this.renderCastingBar(); // hide empty slots now that skillbook is closed
       });
     }
     if (this.lootCloseButton) {
@@ -198,6 +157,52 @@ export default class UIManager {
     }
   }
 
+  // -----------------------------
+  // TOOLTIP
+  // -----------------------------
+  showTooltip(text) {
+    this.tooltipEl.innerText = text;
+    this.tooltipEl.style.display = "block";
+  }
+  hideTooltip() {
+    this.tooltipEl.style.display = "none";
+  }
+  updateTooltipPosition(ev) {
+    if (this.tooltipEl.style.display !== "none") {
+      const offset = 12;
+      this.tooltipEl.style.left = ev.pageX + offset + "px";
+      this.tooltipEl.style.top = ev.pageY + offset + "px";
+    }
+  }
+  getItemTooltipText(itemData) {
+    if (!itemData) return "";
+    let text = `${this.formatItemName(itemData.name)}`;
+    if (itemData.type) text += `\nType: ${itemData.type}`;
+    if (itemData.slot) text += `\nSlot: ${itemData.slot}`;
+    let stats = [];
+    if (itemData.health) stats.push(`HP: +${itemData.health}`);
+    if (itemData.mana) stats.push(`Mana: +${itemData.mana}`);
+    if (itemData.magicAttack) stats.push(`Magic Atk: +${itemData.magicAttack}`);
+    if (itemData.meleeAttack) stats.push(`Melee Atk: +${itemData.meleeAttack}`);
+    if (itemData.magicDefense) stats.push(`Magic Def: +${itemData.magicDefense}`);
+    if (itemData.meleeDefense) stats.push(`Melee Def: +${itemData.meleeDefense}`);
+    if (itemData.magicEvasion) stats.push(`Magic Eva: +${itemData.magicEvasion}`);
+    if (itemData.meleeEvasion) stats.push(`Melee Eva: +${itemData.meleeEvasion}`);
+    if (itemData.speed) stats.push(`Speed: +${itemData.speed}`);
+    if (stats.length > 0) text += "\n" + stats.join(", ");
+    return text;
+  }
+  formatItemName(name) {
+    let base = name.replace(/\.[^/.]+$/, "");
+    let words = base.split(/[_-]+/);
+    return words
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  // -----------------------------
+  // MAIN UI UPDATES
+  // -----------------------------
   updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp }) {
     const hpVal = Math.round(currentHealth);
     const hpMaxVal = Math.round(maxHealth);
@@ -207,21 +212,17 @@ export default class UIManager {
     if (this.uiHealthFill && this.healthText) {
       const hpPct = (hpVal / hpMaxVal) * 100;
       this.uiHealthFill.style.width = `${hpPct}%`;
-      this.healthText.innerText = `HP: ${hpVal}/${hpMaxVal} (${hpPct.toFixed(
-        0
-      )}%)`;
+      this.healthText.innerText = `HP: ${hpVal}/${hpMaxVal} (${hpPct.toFixed(0)}%)`;
     }
     if (this.uiManaFill && this.manaText) {
       const mpPct = (mpVal / mpMaxVal) * 100;
       this.uiManaFill.style.width = `${mpPct}%`;
-      this.manaText.innerText = `Mana: ${mpVal}/${mpMaxVal} (${mpPct.toFixed(
-        0
-      )}%)`;
+      this.manaText.innerText = `Mana: ${mpVal}/${mpMaxVal} (${mpPct.toFixed(0)}%)`;
     }
     if (this.uiName) this.uiName.innerText = name;
     if (this.uiLevel) this.uiLevel.innerText = `Level: ${level}`;
 
-    // Calculate how close we are to next level for the EXP bar
+    // Compute % exp to next level
     let expForNextLevel = 100,
       accumulatedExp = 0,
       tempLevel = 1;
@@ -234,15 +235,13 @@ export default class UIManager {
     const expPct = (currentExp / expForNextLevel) * 100;
     if (this.uiExpFill && this.uiExpText) {
       this.uiExpFill.style.width = `${expPct}%`;
-      this.uiExpText.innerText = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(
-        0
-      )}%)`;
+      this.uiExpText.innerText = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(0)}%)`;
     }
   }
 
-  // ============================
-  // Stats Menu
-  // ============================
+  // -----------------------------
+  // STATS MENU
+  // -----------------------------
   showStatsMenu(htmlContent) {
     if (!this.statsMenu) return;
     this.statsContent.innerHTML = htmlContent;
@@ -253,14 +252,14 @@ export default class UIManager {
     this.statsMenu.style.display = "none";
   }
 
-  // ============================
-  // Inventory
-  // ============================
+  // -----------------------------
+  // INVENTORY
+  // -----------------------------
   toggleInventory() {
     if (!this.inventoryMenu) return;
-    this.inventoryMenu.style.display =
-      this.inventoryMenu.style.display === "block" ? "none" : "block";
-    if (this.inventoryMenu.style.display === "block") {
+    const currentlyVisible = this.inventoryMenu.style.display === "block";
+    this.inventoryMenu.style.display = currentlyVisible ? "none" : "block";
+    if (!currentlyVisible) {
       this.openInventory();
     }
   }
@@ -295,9 +294,6 @@ export default class UIManager {
     this.inventoryMenu.style.display = "none";
   }
 
-  // -----------------------------
-  // Equipped Items Block
-  // -----------------------------
   renderEquippedItemsBlock(container) {
     const heading = document.createElement("h3");
     heading.innerText = "Equipped Items";
@@ -325,10 +321,7 @@ export default class UIManager {
         if (itemData && itemData.icon) {
           const iconContainer = document.createElement("div");
           iconContainer.className = "icon-container";
-          if (
-            itemData.iconCol !== undefined &&
-            itemData.iconRow !== undefined
-          ) {
+          if (itemData.iconCol !== undefined && itemData.iconRow !== undefined) {
             const iconDiv = document.createElement("div");
             iconDiv.classList.add("item-icon");
             iconDiv.style.backgroundImage = `url(${itemData.icon})`;
@@ -344,7 +337,7 @@ export default class UIManager {
             iconContainer.appendChild(img);
           }
           slotDiv.appendChild(iconContainer);
-          // Show tooltip on hover
+
           slotDiv.addEventListener("mouseenter", () => {
             const tipText = this.getItemTooltipText(itemData);
             this.showTooltip(tipText);
@@ -353,6 +346,7 @@ export default class UIManager {
             this.hideTooltip();
           });
         } else {
+          // Unknown item
           slotDiv.addEventListener("mouseenter", () => {
             this.showTooltip(`Unknown item (ID=${equippedItemId})`);
           });
@@ -360,11 +354,13 @@ export default class UIManager {
             this.hideTooltip();
           });
         }
+        // Right-click => context
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showEquipmentContextMenu(e, slot, equippedItemId);
         });
       } else {
+        // Empty slot
         slotDiv.addEventListener("mouseenter", () => {
           this.showTooltip(`${label.toUpperCase()} (empty)`);
         });
@@ -384,6 +380,7 @@ export default class UIManager {
     const heading = document.createElement("h3");
     heading.innerText = "Final Stats";
     container.appendChild(heading);
+
     const derivedStats = calculatePlayerStats();
     const statsTable = document.createElement("table");
     statsTable.classList.add("derived-stats-table");
@@ -425,26 +422,28 @@ export default class UIManager {
         const key = `cell_${r}_${c}`;
         const value = playerBackpack[key];
         if (value === null) {
+          // locked cell
           cell.classList.add("closed-cell");
           cell.innerText = "X";
         } else if (value === 0) {
+          // open empty cell
           cell.classList.add("open-cell");
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, null);
           });
         } else {
+          // has item
           let itemId = typeof value === "object" ? value.id : value;
           let itemQuantity = typeof value === "object" ? value.quantity : 1;
           const itemData = itemsMap[itemId];
           cell.classList.add("open-cell");
+
           if (itemData && itemData.icon) {
             const iconContainer = document.createElement("div");
             iconContainer.className = "icon-container";
-            if (
-              itemData.iconCol !== undefined &&
-              itemData.iconRow !== undefined
-            ) {
+
+            if (itemData.iconCol !== undefined && itemData.iconRow !== undefined) {
               const iconDiv = document.createElement("div");
               iconDiv.classList.add("item-icon");
               iconDiv.style.backgroundImage = `url(${itemData.icon})`;
@@ -461,12 +460,14 @@ export default class UIManager {
             }
             cell.appendChild(iconContainer);
           }
+
           const nameDiv = document.createElement("div");
           if (itemData) {
             nameDiv.innerText =
               itemQuantity > 1
                 ? `${this.formatItemName(itemData.name)} (x${itemQuantity})`
                 : this.formatItemName(itemData.name);
+
             cell.addEventListener("mouseenter", () => {
               const tipText = this.getItemTooltipText(itemData);
               this.showTooltip(tipText);
@@ -484,6 +485,7 @@ export default class UIManager {
             });
           }
           cell.appendChild(nameDiv);
+
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             const passedData = { id: itemId, quantity: itemQuantity };
@@ -497,15 +499,16 @@ export default class UIManager {
     container.appendChild(table);
   }
 
-  // Right-click on inventory item
   showItemContextMenu(event, cellKey, itemDataObj) {
     const existingMenu = document.getElementById("inventory-context-menu");
     if (existingMenu) existingMenu.remove();
+
     const menu = document.createElement("div");
     menu.id = "inventory-context-menu";
     menu.classList.add("inventory-context-menu");
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
+
     if (!itemDataObj) {
       const noItemLabel = document.createElement("div");
       noItemLabel.innerText = "No item in this cell.";
@@ -514,6 +517,7 @@ export default class UIManager {
       const { id, quantity } = itemDataObj;
       const itemData = itemsMap[id];
       if (itemData && itemData.slot) {
+        // We can "Wear" it
         const wearOption = document.createElement("div");
         wearOption.innerText = "Wear";
         wearOption.classList.add("menu-option");
@@ -537,6 +541,7 @@ export default class UIManager {
         });
         menu.appendChild(wearOption);
       }
+      // Option: Delete
       const deleteOption = document.createElement("div");
       deleteOption.innerText = "Delete";
       deleteOption.classList.add("menu-option");
@@ -555,6 +560,7 @@ export default class UIManager {
       });
       menu.appendChild(deleteOption);
     }
+
     const closeOption = document.createElement("div");
     closeOption.innerText = "Close";
     closeOption.classList.add("menu-option");
@@ -562,6 +568,7 @@ export default class UIManager {
       menu.remove();
     });
     menu.appendChild(closeOption);
+
     document.body.appendChild(menu);
     document.addEventListener(
       "click",
@@ -574,15 +581,16 @@ export default class UIManager {
     );
   }
 
-  // Right-click on equipped item
   showEquipmentContextMenu(event, slot, equippedItemId) {
     const existingMenu = document.getElementById("equipment-context-menu");
     if (existingMenu) existingMenu.remove();
+
     const menu = document.createElement("div");
     menu.id = "equipment-context-menu";
     menu.classList.add("inventory-context-menu");
     menu.style.top = `${event.clientY}px`;
     menu.style.left = `${event.clientX}px`;
+
     if (!equippedItemId) {
       const noItemLabel = document.createElement("div");
       noItemLabel.innerText = "Slot is empty.";
@@ -600,6 +608,7 @@ export default class UIManager {
       });
       menu.appendChild(unequipOption);
     }
+
     const closeOption = document.createElement("div");
     closeOption.innerText = "Close";
     closeOption.classList.add("menu-option");
@@ -607,6 +616,7 @@ export default class UIManager {
       menu.remove();
     });
     menu.appendChild(closeOption);
+
     document.body.appendChild(menu);
     document.addEventListener(
       "click",
@@ -619,76 +629,216 @@ export default class UIManager {
     );
   }
 
-  // ============================
-  // Skill Book
-  // ============================
-  updateSkillBook() {
-    if (this.skillBook && this.skillBook.style.display !== "none") {
-      // Clear previous content and add a header.
-      this.skillBookContent.innerHTML =
-        "<h3>Skill Book</h3><div class='skill-card-container'></div>";
-      const container = this.skillBookContent.querySelector(
-        ".skill-card-container"
-      );
-
-      for (const skill of playerSkills) {
-        // Create the outer card.
-        const card = document.createElement("div");
-        card.classList.add("skill-card");
-
-        // Card header: contains the icon and the title.
-        const header = document.createElement("div");
-        header.classList.add("skill-card-header");
-
-        // Skill icon (if available)
-        if (skill.icon) {
-          const icon = document.createElement("img");
-          icon.classList.add("skill-icon");
-          icon.src = skill.icon;
-          icon.alt = skill.name;
-          header.appendChild(icon);
-        }
-
-        // Skill title (name and level)
-        const title = document.createElement("h4");
-        title.innerText = `${skill.name} (Lv. ${skill.level || 1})`;
-        header.appendChild(title);
-        card.appendChild(header);
-
-        // Card details: show a compact summary of key stats.
-        const details = document.createElement("div");
-        details.classList.add("skill-card-details");
-        const rangeDisplay = skill.range > 0 ? skill.range : "Self";
-        details.innerHTML = `
-          <p>
-            <span><strong>Mana:</strong> ${skill.manaCost.toFixed(1)}</span>
-            <span><strong>Range:</strong> ${rangeDisplay}</span>
-          </p>
-          <p>
-            <span><strong>Casting:</strong> ${skill.castingTime.toFixed(1)}</span>
-            <span><strong>Cooldown:</strong> ${skill.cooldown.toFixed(1)}</span>
-          </p>
-        `;
-        card.appendChild(details);
-
-        container.appendChild(card);
-      }
-    }
-  }
-
+  // -----------------------------
+  // SKILL BOOK
+  // -----------------------------
   toggleSkillBook() {
     if (!this.skillBook) return;
     if (this.skillBook.style.display === "block") {
       this.skillBook.style.display = "none";
+      this.renderCastingBar();
     } else {
       this.skillBook.style.display = "block";
       this.updateSkillBook();
+      this.renderCastingBar();
     }
   }
 
-  // ============================
-  // Casting Progress
-  // ============================
+  updateSkillBook() {
+    if (!this.skillBook) return;
+    this.skillBookContent.innerHTML =
+      "<h3>Skill Book</h3><div class='skill-card-container'></div>";
+    const container = this.skillBookContent.querySelector(".skill-card-container");
+
+    // Render a card for each skill in playerSkills
+    for (const skill of playerSkills) {
+      const card = document.createElement("div");
+      card.classList.add("skill-card");
+      card.setAttribute("draggable", "true");
+
+      card.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("sourceType", "skillbook");
+        e.dataTransfer.setData("skillId", skill.id);
+      });
+
+      // Card header
+      const header = document.createElement("div");
+      header.classList.add("skill-card-header");
+      if (skill.icon) {
+        const icon = document.createElement("img");
+        icon.classList.add("skill-icon");
+        icon.src = skill.icon;
+        icon.alt = skill.name;
+        header.appendChild(icon);
+      }
+      const title = document.createElement("h4");
+      title.innerText = `${skill.name} (Lv. ${skill.level || 1})`;
+      header.appendChild(title);
+
+      card.appendChild(header);
+
+      // Details
+      const details = document.createElement("div");
+      details.classList.add("skill-card-details");
+      const rangeDisplay = skill.range > 0 ? skill.range : "Self";
+      details.innerHTML = `
+        <p>
+          <span><strong>Mana:</strong> ${skill.manaCost.toFixed(1)}</span>
+          <span><strong>Range:</strong> ${rangeDisplay}</span>
+        </p>
+        <p>
+          <span><strong>Casting:</strong> ${skill.castingTime.toFixed(1)}</span>
+          <span><strong>Cooldown:</strong> ${skill.cooldown.toFixed(1)}</span>
+        </p>
+      `;
+      card.appendChild(details);
+
+      container.appendChild(card);
+    }
+  }
+
+  // -----------------------------
+  // CASTING BAR
+  // -----------------------------
+  renderCastingBar() {
+    if (!this.castingBar) return;
+    this.castingBar.innerHTML = "";
+
+    const skillBookOpen = this.isSkillBookOpen();
+
+    for (let i = 0; i < 9; i++) {
+      const assignedSkill = this.skillBarSlots[i];
+      // If skill book is closed and no skill => skip
+      if (!skillBookOpen && !assignedSkill) {
+        continue;
+      }
+
+      const slot = document.createElement("div");
+      slot.classList.add("casting-slot");
+      slot.setAttribute("data-slot-index", i.toString());
+
+      // If skillbook is open, allow dropping
+      if (skillBookOpen) {
+        slot.addEventListener("dragover", (e) => {
+          e.preventDefault();
+        });
+        slot.addEventListener("drop", (e) => {
+          e.preventDefault();
+          this.handleCastingSlotDrop(e, i);
+        });
+      }
+
+      // If there's a skill in this slot
+      if (assignedSkill) {
+        // If skillbook is open => can drag from slot
+        if (skillBookOpen) {
+          slot.setAttribute("draggable", "true");
+          slot.addEventListener("dragstart", (ev) => {
+            ev.dataTransfer.setData("sourceType", "castingSlot");
+            ev.dataTransfer.setData("sourceSlot", i.toString());
+          });
+          slot.addEventListener("dragend", (ev) => {
+            // If user dropped it nowhere => remove skill from bar
+            if (ev.dataTransfer.dropEffect === "none") {
+              this.skillBarSlots[i] = null;
+              this.renderCastingBar();
+              // Re-bind keys so the removed slot is no longer castable
+              this.scene.inputManager.setupControls();
+            }
+          });
+        }
+
+        // Icon
+        const img = document.createElement("img");
+        img.src = assignedSkill.icon;
+        img.alt = assignedSkill.name;
+        slot.appendChild(img);
+
+        // Level label
+        const levelLabel = document.createElement("div");
+        levelLabel.classList.add("skill-level-label");
+        levelLabel.innerText = `L${assignedSkill.level || 1}`;
+        slot.appendChild(levelLabel);
+
+        // Mana cost
+        const manaCost = document.createElement("div");
+        manaCost.classList.add("mana-cost");
+        manaCost.innerText = (assignedSkill.manaCost || 0).toFixed(1);
+        slot.appendChild(manaCost);
+
+        // Cooldown overlay
+        const cooldownOverlay = document.createElement("div");
+        cooldownOverlay.classList.add("cooldown-overlay");
+        cooldownOverlay.style.display = "none";
+        const cooldownTimer = document.createElement("span");
+        cooldownTimer.classList.add("cooldown-timer");
+        cooldownOverlay.appendChild(cooldownTimer);
+        slot.appendChild(cooldownOverlay);
+
+        // Click => cast skill
+        slot.addEventListener("click", () => {
+          this.scene.useSkill(assignedSkill);
+        });
+      }
+      // else show an empty slot (if skillBookOpen => placeholder)
+
+      this.castingBar.appendChild(slot);
+    }
+  }
+
+  handleCastingSlotDrop(e, dropSlotIndex) {
+    const sourceType = e.dataTransfer.getData("sourceType");
+    if (!sourceType) return;
+
+    if (sourceType === "skillbook") {
+      // Drag from skillbook
+      const skillIdStr = e.dataTransfer.getData("skillId");
+      if (!skillIdStr) return;
+      const skillId = parseInt(skillIdStr);
+
+      const foundSkill = playerSkills.find((s) => s.id === skillId);
+      if (!foundSkill) return;
+
+      this.skillBarSlots[dropSlotIndex] = foundSkill;
+      this.renderCastingBar();
+      // Re-bind keys to reflect new slot assignment
+      this.scene.inputManager.setupControls();
+
+    } else if (sourceType === "castingSlot") {
+      // Drag from another bar slot
+      const oldSlotStr = e.dataTransfer.getData("sourceSlot");
+      if (oldSlotStr === "") return;
+      const oldSlotIndex = parseInt(oldSlotStr);
+      if (oldSlotIndex === dropSlotIndex) return;
+
+      const skillToMove = this.skillBarSlots[oldSlotIndex];
+      this.skillBarSlots[oldSlotIndex] = null;
+      this.skillBarSlots[dropSlotIndex] = skillToMove;
+      this.renderCastingBar();
+      // Re-bind keys
+      this.scene.inputManager.setupControls();
+    }
+  }
+
+  isSkillBookOpen() {
+    return this.skillBook && this.skillBook.style.display === "block";
+  }
+
+  /**
+   * Called once at start to place the first N known skills in the bar.
+   * If you do NOT want to reset arrangement on loot, do NOT call this again.
+   */
+  setupSkills(skills) {
+    this.skillBarSlots = new Array(9).fill(null);
+    for (let i = 0; i < skills.length && i < 9; i++) {
+      this.skillBarSlots[i] = skills[i];
+    }
+    this.renderCastingBar();
+  }
+
+  // -----------------------------
+  // CASTING PROGRESS
+  // -----------------------------
   showCastingProgress(skillName, totalTime) {
     if (this.castingProgressContainer) {
       this.castingSkillName.innerText = `Casting: ${skillName}`;
@@ -709,82 +859,48 @@ export default class UIManager {
       this.castingSkillName.innerText = "";
     }
   }
-
-  setupSkills(skills) {
-    if (!this.castingBar) return;
-    this.castingBar.innerHTML = "";
-    for (const skill of skills) {
-      const castingSlot = document.createElement("div");
-      castingSlot.classList.add("casting-slot");
-      castingSlot.setAttribute("data-skill-id", skill.id);
-
-      // Skill icon
-      const img = document.createElement("img");
-      img.src = skill.icon;
-      img.alt = skill.name;
-      castingSlot.appendChild(img);
-
-      // Show skill level label in top-right corner
-      const levelLabel = document.createElement("div");
-      levelLabel.classList.add("skill-level-label");
-      levelLabel.innerText = `L${skill.level || 1}`;
-      castingSlot.appendChild(levelLabel);
-
-      // Mana cost in bottom-left
-      const manaCost = document.createElement("div");
-      manaCost.classList.add("mana-cost");
-      manaCost.innerText = (skill.manaCost || 0).toFixed(1);
-      castingSlot.appendChild(manaCost);
-
-      // Cooldown overlay
-      const cooldownOverlay = document.createElement("div");
-      cooldownOverlay.classList.add("cooldown-overlay");
-      cooldownOverlay.style.display = "none";
-      const cooldownTimer = document.createElement("span");
-      cooldownTimer.classList.add("cooldown-timer");
-      cooldownOverlay.appendChild(cooldownTimer);
-      castingSlot.appendChild(cooldownOverlay);
-
-      castingSlot.addEventListener("click", () => {
-        this.scene.useSkill(skill);
-      });
-      this.castingBar.appendChild(castingSlot);
-    }
-  }
-
   updateSkillCooldown(skillId, cooldownTime) {
-    const slot = document.querySelector(
-      `.casting-slot[data-skill-id="${skillId}"]`
+    const slotIndex = this.skillBarSlots.findIndex((sk) => sk && sk.id === skillId);
+    if (slotIndex < 0) return;
+
+    const slot = this.castingBar.querySelector(
+      `.casting-slot[data-slot-index="${slotIndex}"]`
     );
     if (!slot) return;
+
     const cooldownOverlay = slot.querySelector(".cooldown-overlay");
     const cooldownTimer = slot.querySelector(".cooldown-timer");
     if (cooldownTime > 0) {
       cooldownOverlay.style.display = "flex";
       cooldownTimer.innerText = cooldownTime.toFixed(1);
-      this.startCooldownCountdown(cooldownTime, slot);
+      this.startCooldownCountdown(cooldownTime, slotIndex);
     } else {
       cooldownOverlay.style.display = "none";
       cooldownTimer.innerText = "";
     }
   }
 
-  startCooldownCountdown(cooldownTime, castingSlot) {
-    const cooldownTimer = castingSlot.querySelector(".cooldown-timer");
-    const cooldownOverlay = castingSlot.querySelector(".cooldown-overlay");
+  startCooldownCountdown(cooldownTime, slotIndex) {
+    const slot = this.castingBar.querySelector(
+      `.casting-slot[data-slot-index="${slotIndex}"]`
+    );
+    if (!slot) return;
+    const cooldownTimer = slot.querySelector(".cooldown-timer");
+    const cooldownOverlay = slot.querySelector(".cooldown-overlay");
     if (!cooldownTimer || !cooldownOverlay) return;
+
     let remainingTime = cooldownTime;
-    if (castingSlot.cooldownTimerEvent) {
-      this.scene.time.removeEvent(castingSlot.cooldownTimerEvent);
+    if (slot.cooldownTimerEvent) {
+      this.scene.time.removeEvent(slot.cooldownTimerEvent);
     }
-    castingSlot.cooldownTimerEvent = this.scene.time.addEvent({
+    slot.cooldownTimerEvent = this.scene.time.addEvent({
       delay: 100,
       callback: () => {
         remainingTime -= 0.1;
         if (remainingTime <= 0) {
           cooldownOverlay.style.display = "none";
           cooldownTimer.innerText = "";
-          castingSlot.cooldownTimerEvent.remove(false);
+          slot.cooldownTimerEvent.remove(false);
         } else {
           cooldownTimer.innerText = remainingTime.toFixed(1);
         }
@@ -793,9 +909,9 @@ export default class UIManager {
     });
   }
 
-  // ============================
-  // Loot Window
-  // ============================
+  // -----------------------------
+  // LOOT WINDOW
+  // -----------------------------
   openLootWindow(mob) {
     if (!this.lootContent || !this.lootMenu) return;
     this.lootContent.innerHTML = "";
@@ -817,22 +933,26 @@ export default class UIManager {
     takeAllButton.classList.add("loot-button");
     takeAllButton.addEventListener("click", () => {
       let learnedOrUpgradedSkill = false;
+      let newlyLearnedSkill = null;
+
       for (let i = mob.customData.droppedLoot.length - 1; i >= 0; i--) {
         const itemId = mob.customData.droppedLoot[i];
         const skillData = allGameSkills.find((s) => s.id === itemId);
         if (skillData) {
+          // It's a skill
           const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
           if (!alreadyKnown) {
+            // brand new skill
             skillData.level = skillData.level || 1;
             playerSkills.push(skillData);
+            newlyLearnedSkill = skillData;
             this.scene.chatManager.addMessage(
               `You learned a new skill: ${skillData.name}!`
             );
           } else {
-            // skill already known => level it up
+            // skill upgrade
             alreadyKnown.level = (alreadyKnown.level || 1) + 1;
-            let enh =
-              skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
+            let enh = skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
             for (const prop in enh) {
               const pct = enh[prop];
               if (typeof alreadyKnown[prop] === "number") {
@@ -852,7 +972,7 @@ export default class UIManager {
           mob.customData.droppedLoot.splice(i, 1);
           learnedOrUpgradedSkill = true;
         } else {
-          // normal item loot
+          // normal item
           const success = this.scene.playerManager.addItemToInventory(itemId, 1);
           if (success) {
             mob.customData.droppedLoot.splice(i, 1);
@@ -867,14 +987,26 @@ export default class UIManager {
           }
         }
       }
+
       if (learnedOrUpgradedSkill) {
-        this.setupSkills(playerSkills);
-        this.scene.inputManager.setupControls(playerSkills);
+        // Refresh skillbook if open
         if (this.skillBook && this.skillBook.style.display !== "none") {
           this.updateSkillBook();
         }
+
+        // (Optional) automatically place newlyLearnedSkill into an empty bar slot
+        if (newlyLearnedSkill) {
+          const emptyIndex = this.skillBarSlots.findIndex((slot) => slot === null);
+          if (emptyIndex !== -1) {
+            this.skillBarSlots[emptyIndex] = newlyLearnedSkill;
+            this.renderCastingBar();
+          }
+        }
+
+        // Re-bind keys so new skill can be used
+        this.scene.inputManager.setupControls();
       }
-      // **NEW** Refresh inventory if it's open:
+
       if (this.inventoryMenu && this.inventoryMenu.style.display !== "none") {
         this.openInventory();
       }
@@ -899,9 +1031,8 @@ export default class UIManager {
         });
         itemDiv.appendChild(takeButton);
         this.lootContent.appendChild(itemDiv);
-
       } else if (skillData) {
-        // skill loot
+        // skill
         const skillDiv = document.createElement("div");
         skillDiv.innerText = `${skillData.name} (Skill)`;
         skillDiv.classList.add("loot-item");
@@ -913,9 +1044,7 @@ export default class UIManager {
         });
         skillDiv.appendChild(learnButton);
         this.lootContent.appendChild(skillDiv);
-
       } else {
-        // unknown
         const unknownDiv = document.createElement("div");
         unknownDiv.innerText = `Unknown loot ID: ${itemId}`;
         this.lootContent.appendChild(unknownDiv);
@@ -941,9 +1070,12 @@ export default class UIManager {
 
   learnSkillFromLoot(mob, lootIndex, skillData) {
     const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
+    let newlyLearned = null;
+
     if (!alreadyKnown) {
       skillData.level = skillData.level || 1;
       playerSkills.push(skillData);
+      newlyLearned = skillData;
       this.scene.chatManager.addMessage(
         `You learned a new skill: ${skillData.name}!`
       );
@@ -967,32 +1099,43 @@ export default class UIManager {
       );
     }
     mob.customData.droppedLoot.splice(lootIndex, 1);
-    this.setupSkills(playerSkills);
-    this.scene.inputManager.setupControls(playerSkills);
-    if (this.inventoryMenu.style.display !== "none") {
-      this.openInventory();
-    }
+
+    // Update skillbook if open
     if (this.skillBook && this.skillBook.style.display !== "none") {
       this.updateSkillBook();
+    }
+
+    // Optionally slot the newly learned skill into the bar if there's space
+    if (newlyLearned) {
+      const emptyIndex = this.skillBarSlots.findIndex((slot) => slot === null);
+      if (emptyIndex !== -1) {
+        this.skillBarSlots[emptyIndex] = newlyLearned;
+        this.renderCastingBar();
+      }
+    }
+
+    // Re-bind keys
+    this.scene.inputManager.setupControls();
+
+    if (this.inventoryMenu.style.display !== "none") {
+      this.openInventory();
     }
     this.openLootWindow(mob);
   }
 
-  /**
-   * Shows a "Level Up!" notification with a simple fade-in/out animation.
-   */
+  // -----------------------------
+  // LEVEL-UP NOTIFICATION
+  // -----------------------------
   showLevelUpNotification(newLevel) {
     const notification = document.createElement("div");
     notification.classList.add("level-up-notification");
     notification.innerText = `Level Up! Now Level ${newLevel}!`;
     document.body.appendChild(notification);
 
-    // Force reflow to ensure initial styles are applied.
-    notification.offsetHeight; 
-    // Add class that triggers CSS fade/transform
+    // Force reflow
+    notification.offsetHeight;
     notification.classList.add("show");
-
-    // Fade out after 3s, then remove
+    // Fade out
     this.scene.time.delayedCall(3000, () => {
       notification.classList.remove("show");
       this.scene.time.delayedCall(500, () => {
