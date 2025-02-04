@@ -346,7 +346,6 @@ export default class UIManager {
             this.hideTooltip();
           });
         } else {
-          // Unknown item
           slotDiv.addEventListener("mouseenter", () => {
             this.showTooltip(`Unknown item (ID=${equippedItemId})`);
           });
@@ -354,13 +353,11 @@ export default class UIManager {
             this.hideTooltip();
           });
         }
-        // Right-click => context
         slotDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showEquipmentContextMenu(e, slot, equippedItemId);
         });
       } else {
-        // Empty slot
         slotDiv.addEventListener("mouseenter", () => {
           this.showTooltip(`${label.toUpperCase()} (empty)`);
         });
@@ -422,18 +419,15 @@ export default class UIManager {
         const key = `cell_${r}_${c}`;
         const value = playerBackpack[key];
         if (value === null) {
-          // locked cell
           cell.classList.add("closed-cell");
           cell.innerText = "X";
         } else if (value === 0) {
-          // open empty cell
           cell.classList.add("open-cell");
           cell.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             this.showItemContextMenu(e, key, null);
           });
         } else {
-          // has item
           let itemId = typeof value === "object" ? value.id : value;
           let itemQuantity = typeof value === "object" ? value.quantity : 1;
           const itemData = itemsMap[itemId];
@@ -517,7 +511,6 @@ export default class UIManager {
       const { id, quantity } = itemDataObj;
       const itemData = itemsMap[id];
       if (itemData && itemData.slot) {
-        // We can "Wear" it
         const wearOption = document.createElement("div");
         wearOption.innerText = "Wear";
         wearOption.classList.add("menu-option");
@@ -650,7 +643,6 @@ export default class UIManager {
       "<h3>Skill Book</h3><div class='skill-card-container'></div>";
     const container = this.skillBookContent.querySelector(".skill-card-container");
 
-    // Render a card for each skill in playerSkills
     for (const skill of playerSkills) {
       const card = document.createElement("div");
       card.classList.add("skill-card");
@@ -661,7 +653,6 @@ export default class UIManager {
         e.dataTransfer.setData("skillId", skill.id);
       });
 
-      // Card header
       const header = document.createElement("div");
       header.classList.add("skill-card-header");
       if (skill.icon) {
@@ -677,7 +668,6 @@ export default class UIManager {
 
       card.appendChild(header);
 
-      // Details
       const details = document.createElement("div");
       details.classList.add("skill-card-details");
       const rangeDisplay = skill.range > 0 ? skill.range : "Self";
@@ -708,7 +698,6 @@ export default class UIManager {
 
     for (let i = 0; i < 9; i++) {
       const assignedSkill = this.skillBarSlots[i];
-      // If skill book is closed and no skill => skip
       if (!skillBookOpen && !assignedSkill) {
         continue;
       }
@@ -728,7 +717,6 @@ export default class UIManager {
         });
       }
 
-      // If there's a skill in this slot
       if (assignedSkill) {
         // If skillbook is open => can drag from slot
         if (skillBookOpen) {
@@ -738,11 +726,9 @@ export default class UIManager {
             ev.dataTransfer.setData("sourceSlot", i.toString());
           });
           slot.addEventListener("dragend", (ev) => {
-            // If user dropped it nowhere => remove skill from bar
             if (ev.dataTransfer.dropEffect === "none") {
               this.skillBarSlots[i] = null;
               this.renderCastingBar();
-              // Re-bind keys so the removed slot is no longer castable
               this.scene.inputManager.setupControls();
             }
           });
@@ -753,6 +739,19 @@ export default class UIManager {
         img.src = assignedSkill.icon;
         img.alt = assignedSkill.name;
         slot.appendChild(img);
+
+        // SHOW KEY (Requirement #4: show which key is assigned)
+        const keyLabel = document.createElement("div");
+        keyLabel.style.position = "absolute";
+        keyLabel.style.top = "2px";
+        keyLabel.style.left = "2px";
+        keyLabel.style.backgroundColor = "rgba(0,0,0,0.6)";
+        keyLabel.style.color = "#fff";
+        keyLabel.style.fontSize = "10px";
+        keyLabel.style.padding = "1px 3px";
+        keyLabel.style.borderRadius = "3px";
+        keyLabel.innerText = `Key: ${i + 1}`;
+        slot.appendChild(keyLabel);
 
         // Level label
         const levelLabel = document.createElement("div");
@@ -775,12 +774,10 @@ export default class UIManager {
         cooldownOverlay.appendChild(cooldownTimer);
         slot.appendChild(cooldownOverlay);
 
-        // Click => cast skill
         slot.addEventListener("click", () => {
           this.scene.useSkill(assignedSkill);
         });
       }
-      // else show an empty slot (if skillBookOpen => placeholder)
 
       this.castingBar.appendChild(slot);
     }
@@ -791,7 +788,6 @@ export default class UIManager {
     if (!sourceType) return;
 
     if (sourceType === "skillbook") {
-      // Drag from skillbook
       const skillIdStr = e.dataTransfer.getData("skillId");
       if (!skillIdStr) return;
       const skillId = parseInt(skillIdStr);
@@ -801,11 +797,9 @@ export default class UIManager {
 
       this.skillBarSlots[dropSlotIndex] = foundSkill;
       this.renderCastingBar();
-      // Re-bind keys to reflect new slot assignment
       this.scene.inputManager.setupControls();
 
     } else if (sourceType === "castingSlot") {
-      // Drag from another bar slot
       const oldSlotStr = e.dataTransfer.getData("sourceSlot");
       if (oldSlotStr === "") return;
       const oldSlotIndex = parseInt(oldSlotStr);
@@ -815,7 +809,6 @@ export default class UIManager {
       this.skillBarSlots[oldSlotIndex] = null;
       this.skillBarSlots[dropSlotIndex] = skillToMove;
       this.renderCastingBar();
-      // Re-bind keys
       this.scene.inputManager.setupControls();
     }
   }
@@ -824,10 +817,6 @@ export default class UIManager {
     return this.skillBook && this.skillBook.style.display === "block";
   }
 
-  /**
-   * Called once at start to place the first N known skills in the bar.
-   * If you do NOT want to reset arrangement on loot, do NOT call this again.
-   */
   setupSkills(skills) {
     this.skillBarSlots = new Array(9).fill(null);
     for (let i = 0; i < skills.length && i < 9; i++) {
@@ -939,10 +928,8 @@ export default class UIManager {
         const itemId = mob.customData.droppedLoot[i];
         const skillData = allGameSkills.find((s) => s.id === itemId);
         if (skillData) {
-          // It's a skill
           const alreadyKnown = playerSkills.find((sk) => sk.id === skillData.id);
           if (!alreadyKnown) {
-            // brand new skill
             skillData.level = skillData.level || 1;
             playerSkills.push(skillData);
             newlyLearnedSkill = skillData;
@@ -950,7 +937,6 @@ export default class UIManager {
               `You learned a new skill: ${skillData.name}!`
             );
           } else {
-            // skill upgrade
             alreadyKnown.level = (alreadyKnown.level || 1) + 1;
             let enh = skillEnhancements[alreadyKnown.name] || skillEnhancements.default;
             for (const prop in enh) {
@@ -972,7 +958,6 @@ export default class UIManager {
           mob.customData.droppedLoot.splice(i, 1);
           learnedOrUpgradedSkill = true;
         } else {
-          // normal item
           const success = this.scene.playerManager.addItemToInventory(itemId, 1);
           if (success) {
             mob.customData.droppedLoot.splice(i, 1);
@@ -989,12 +974,9 @@ export default class UIManager {
       }
 
       if (learnedOrUpgradedSkill) {
-        // Refresh skillbook if open
         if (this.skillBook && this.skillBook.style.display !== "none") {
           this.updateSkillBook();
         }
-
-        // (Optional) automatically place newlyLearnedSkill into an empty bar slot
         if (newlyLearnedSkill) {
           const emptyIndex = this.skillBarSlots.findIndex((slot) => slot === null);
           if (emptyIndex !== -1) {
@@ -1002,11 +984,8 @@ export default class UIManager {
             this.renderCastingBar();
           }
         }
-
-        // Re-bind keys so new skill can be used
         this.scene.inputManager.setupControls();
       }
-
       if (this.inventoryMenu && this.inventoryMenu.style.display !== "none") {
         this.openInventory();
       }
@@ -1019,7 +998,6 @@ export default class UIManager {
       const skillData = allGameSkills.find((s) => s.id === itemId);
 
       if (itemData) {
-        // normal item
         const itemDiv = document.createElement("div");
         itemDiv.innerText = itemData.name;
         itemDiv.classList.add("loot-item");
@@ -1032,7 +1010,6 @@ export default class UIManager {
         itemDiv.appendChild(takeButton);
         this.lootContent.appendChild(itemDiv);
       } else if (skillData) {
-        // skill
         const skillDiv = document.createElement("div");
         skillDiv.innerText = `${skillData.name} (Skill)`;
         skillDiv.classList.add("loot-item");
@@ -1100,12 +1077,9 @@ export default class UIManager {
     }
     mob.customData.droppedLoot.splice(lootIndex, 1);
 
-    // Update skillbook if open
     if (this.skillBook && this.skillBook.style.display !== "none") {
       this.updateSkillBook();
     }
-
-    // Optionally slot the newly learned skill into the bar if there's space
     if (newlyLearned) {
       const emptyIndex = this.skillBarSlots.findIndex((slot) => slot === null);
       if (emptyIndex !== -1) {
@@ -1113,8 +1087,6 @@ export default class UIManager {
         this.renderCastingBar();
       }
     }
-
-    // Re-bind keys
     this.scene.inputManager.setupControls();
 
     if (this.inventoryMenu.style.display !== "none") {
@@ -1132,10 +1104,8 @@ export default class UIManager {
     notification.innerText = `Level Up! Now Level ${newLevel}!`;
     document.body.appendChild(notification);
 
-    // Force reflow
     notification.offsetHeight;
     notification.classList.add("show");
-    // Fade out
     this.scene.time.delayedCall(3000, () => {
       notification.classList.remove("show");
       this.scene.time.delayedCall(500, () => {

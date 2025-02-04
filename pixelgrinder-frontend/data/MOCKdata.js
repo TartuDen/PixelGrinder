@@ -69,24 +69,22 @@ const statWeights = {
 // --------------------------------------------------------------------
 // Skill Enhancements
 // --------------------------------------------------------------------
-// "default" applies to ANY skill not explicitly listed.
-// We'll add a special case for "self_heal" to show how you'd do it.
 const skillEnhancements = {
   default: {
     manaCost: 0.1,     // +10% each level
-    range: 0.0,        // 0% => no range change by default
-    magicAttack: 0.1,  // +10%
-    castingTime: -0.1, // -10% (each level reduces castTime by 10%)
-    cooldown: -0.1,    // -10%
+    range: 0.0,
+    magicAttack: 0.1,
+    castingTime: -0.1,
+    cooldown: -0.1,
   },
 
   // Example: self_heal gets custom scaling
   self_heal: {
-    manaCost: 0.1,     // +10%
-    castingTime: -0.15, // -15% each level
-    cooldown: -0.2,    // -20% each level
-    healHP: 0.2,       // +20% to HP heal
-    healMP: 0.2,       // +20% to MP heal
+    manaCost: 0.1,
+    castingTime: -0.15,
+    cooldown: -0.2,
+    healHP: 0.2,
+    healMP: 0.2,
   },
 };
 
@@ -139,10 +137,8 @@ const allGameSkills = [
   {
     id: 1003,
     name: "self_heal",
-    // This is purely self-cast (range=0).
     manaCost: 10,
     range: 0,
-    // Instead of dealing damage, it heals:
     healHP: 30,
     healMP: 30,
     castingTime: 5,
@@ -156,7 +152,6 @@ const allGameSkills = [
 
 // --------------------------------------------------------------------
 // PLAYER SKILLS (just examples you currently know)
-// NOTE: Now includes "self_heal" so it shows in skill book & hotbar
 // --------------------------------------------------------------------
 const playerSkills = [
   {
@@ -250,9 +245,9 @@ const armorItems = [
   {
     id: 3000,
     name: "common_robe_chest",
-    icon: "assets/armor/armor.png", // a common spritesheet
-    iconCol: 2, // 2nd column (each cell = 64px)
-    iconRow: 1, // 1st row
+    icon: "assets/armor/armor.png",
+    iconCol: 2,
+    iconRow: 1,
     type: "robe",
     slot: "chest",
     health: 100,
@@ -269,8 +264,8 @@ const armorItems = [
     id: 3001,
     name: "common_robe_pants",
     icon: "assets/armor/armor.png",
-    iconCol: 4, // 4th column
-    iconRow: 1, // 1st row
+    iconCol: 4,
+    iconRow: 1,
     type: "robe",
     slot: "legs",
     health: 3,
@@ -287,8 +282,8 @@ const armorItems = [
     id: 3002,
     name: "light_boots",
     icon: "assets/armor/armor.png",
-    iconCol: 5, // 5th column
-    iconRow: 1, // 1st row
+    iconCol: 5,
+    iconRow: 1,
     type: "boots",
     slot: "feet",
     health: 2,
@@ -305,8 +300,8 @@ const armorItems = [
     id: 3003,
     name: "swift_gauntlets",
     icon: "assets/armor/armor.png",
-    iconCol: 3, // 3rd column
-    iconRow: 1, // 1st row (same as pants)
+    iconCol: 3,
+    iconRow: 1,
     type: "gauntlets",
     slot: "shoulders",
     health: 1,
@@ -388,14 +383,19 @@ const playerBackpack = {
 
 const deletedItems = [];
 
+// ==================================================================
 // Example Mobs
+// ==================================================================
 const mobsData = {
   slime: {
     name: "Slime",
     level: 2,
     attackRange: 40,
     health: 50,
-    mana: 0,
+
+    // ADDED - now the mob can have mana & use skills:
+    mana: 600,
+
     magicAttack: 0,
     meleeAttack: 20,
     magicDefense: 2,
@@ -407,13 +407,19 @@ const mobsData = {
     attackCooldown: 2000,
     speed: 20,
     expReward: 10,
+
+    // This loot table has some skill IDs (1000, 1002, 1003)
     lootTable: [
       { itemId: 2001, chance: 80 },
       { itemId: 1002, chance: 80 },
       { itemId: 1000, chance: 80 },
       { itemId: 1003, chance: 80 },
     ],
+
+    // ADDED for healing logic: if mob has a healing skill, it will use it if HP < 50% (0.5).
+    healingSkillHPThreshold: 0.5,
   },
+
   goblin: {
     name: "Goblin",
     level: 5,
