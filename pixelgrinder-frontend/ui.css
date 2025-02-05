@@ -520,3 +520,52 @@ body {
 .in-game-menu-button:hover {
   background-color: rgba(0, 0, 0, 0.9);
 }
+
+/* ===============================
+   13. MOB Overhead UI
+=============================== */
+.mob-ui-container {
+  position: absolute;
+  /* Removed transform: translate(-50%, -100%) 
+     We'll instead manually offset the container in JS */
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  border-radius: 6px;
+  text-align: center;
+  width: 100px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  pointer-events: none; /* so it doesn't interfere with clicks */
+}
+
+.mob-name {
+  font-weight: bold;
+  color: #f1c40f;
+  font-size: 14px;
+  margin-bottom: 4px;
+  text-shadow: 1px 1px 2px #000;
+}
+
+.mob-health-bar,
+.mob-mana-bar {
+  position: relative;
+  width: 90%;
+  height: 8px;
+  margin: 0 auto 4px auto;
+  background-color: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mob-health-fill,
+.mob-mana-fill {
+  height: 100%;
+  transition: width 0.2s ease-in-out;
+}
+
+.mob-health-fill {
+  background-color: #e74c3c;
+}
+
+.mob-mana-fill {
+  background-color: #3498db;
+}

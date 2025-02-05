@@ -46,10 +46,7 @@ export default class MobManager {
       mob.customData = {
         id: mobTypeID,
         hp: mobInfo.health,
-
-        // ADDED: mob's mana from data
         mana: mobInfo.mana || 0,
-
         magicDefense: mobInfo.magicDefense || 0,
         meleeDefense: mobInfo.meleeDefense || 0,
         magicEvasion: mobInfo.magicEvasion || 0,
@@ -60,13 +57,12 @@ export default class MobManager {
         currentType: mobInfo.mobType, // 'friend' or 'enemy'
         state: "idle",
         lastAttackTime: 0,
-        hpText: null,
 
+        // For idle/wander
         idleTimer: null,
         wanderTimer: null,
         wanderDirection: new Phaser.Math.Vector2(0, 0),
         visionDistance: 50,
-
         lastChaseCheckTime: 0,
         lastPosition: { x: spawnZone.x, y: spawnZone.y },
         stuckCheckInterval: 1000,
@@ -74,34 +70,15 @@ export default class MobManager {
 
         droppedLoot: [],
 
-        // NEW: Collect actual skill objects from loot table (IDs that match allGameSkills)
+        // Skills that the mob can use
         mobSkills: this.extractMobSkillsFromLoot(mobInfo.lootTable),
-
-        // Store cooldown trackers for each skill by skill.id
         mobSkillCooldowns: {},
-
-        // We'll track if the mob is in the middle of "casting"
         isCastingSkill: false,
-
-        // For healing usage logic
         healingThreshold: mobInfo.healingSkillHPThreshold || 0.3,
       };
 
-      // HP text above the mob
-      mob.customData.hpText = this.scene.add
-        .text(spawnZone.x, spawnZone.y - 20, `HP: ${mob.customData.hp}`, {
-          font: "14px Arial",
-          fill: "#ffffff",
-          shadow: {
-            offsetX: 2,
-            offsetY: 2,
-            color: "#000000",
-            blur: 2,
-            stroke: true,
-            fill: true,
-          },
-        })
-        .setOrigin(0.5);
+      // Instead of a single text, we now create a container (name + HP bar + Mana bar)
+      this.createMobUIContainer(mob, mobInfo);
 
       mob.setInteractive({ useHandCursor: true });
       mob.on("pointerdown", () => {
@@ -116,43 +93,109 @@ export default class MobManager {
     });
   }
 
-  // --------------------------------------------
-  // Extract skills from loot table
-  // --------------------------------------------
+  // ---------------------------------------------------------
+  // Create a container with mob's name, HP bar, and Mana bar
+  // ---------------------------------------------------------
+  createMobUIContainer(mob, mobInfo) {
+    // We'll position this container above the mob, so let's place it initially
+    // at (mob.x, mob.y - 35) or so. We can reposition it in updateMobs().
+    const container = this.scene.add.container(mob.x, mob.y - 35);
+
+    // -- Mob Name --
+    const nameText = this.scene.add
+      .text(0, 0, mobInfo.name, {
+        font: "14px Arial",
+        fill: "#fff",
+        stroke: "#000",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+
+    // -- HP Bar --
+    // We'll create 2 Graphics: the background & the fill
+    const hpBarBG = this.scene.add.graphics();
+    hpBarBG.fillStyle(0x333333, 1);
+    hpBarBG.fillRect(-25, 14, 50, 6); // 50 wide, 6 high
+    // We'll do the fill as a separate Graphics
+    const hpBarFill = this.scene.add.graphics();
+
+    // -- Mana Bar --
+    const manaBarBG = this.scene.add.graphics();
+    manaBarBG.fillStyle(0x333333, 1);
+    manaBarBG.fillRect(-25, 24, 50, 6);
+    const manaBarFill = this.scene.add.graphics();
+
+    // Add them all to the container
+    container.add([nameText, hpBarBG, hpBarFill, manaBarBG, manaBarFill]);
+
+    // Store references so we can update them in updateMobs()
+    mob.customData.uiContainer = container;
+    mob.customData.nameText = nameText;
+    mob.customData.hpBarFill = hpBarFill;
+    mob.customData.manaBarFill = manaBarFill;
+  }
+
+  // ---------------------------------------------------------
+  // Update the container’s position & the bars' widths
+  // ---------------------------------------------------------
+  updateMobUI(mob) {
+    const { x, y } = mob;
+    const container = mob.customData.uiContainer;
+    if (!container) return;
+
+    // Position it slightly above the mob
+    container.setPosition(x, y - 35);
+
+    // Calculate HP fill and update the fill rectangle
+    const mobInfo = mobsData[mob.customData.id];
+    const currentHP = mob.customData.hp;
+    const maxHP = mobInfo.health;
+    const hpPercent = Math.max(0, currentHP / maxHP);
+
+    // We'll redraw the HP bar fill
+    const hpBarFill = mob.customData.hpBarFill;
+    hpBarFill.clear();
+    hpBarFill.fillStyle(0xe74c3c, 1);
+    // scale max width (50) by hpPercent
+    hpBarFill.fillRect(-25, 14, 50 * hpPercent, 6);
+
+    // Similarly for Mana
+    const manaBarFill = mob.customData.manaBarFill;
+    manaBarFill.clear();
+    if (mobInfo.mana && mobInfo.mana > 0) {
+      const currentMana = mob.customData.mana;
+      const maxMana = mobInfo.mana;
+      const manaPercent = Math.max(0, currentMana / maxMana);
+      manaBarFill.fillStyle(0x3498db, 1);
+      manaBarFill.fillRect(-25, 24, 50 * manaPercent, 6);
+    }
+  }
+
   extractMobSkillsFromLoot(lootTable) {
-    // For each item in lootTable, see if there's a matching skill in allGameSkills
-    // We store them all, so the mob can attempt to use them in combat
     const skillList = [];
     lootTable.forEach((entry) => {
       const skill = allGameSkills.find((sk) => sk.id === entry.itemId);
       if (skill) {
-        // Copy skill so we don't mutate the original
-        const skillCopy = { ...skill };
-        skillList.push(skillCopy);
+        skillList.push({ ...skill });
       }
     });
     return skillList;
   }
 
   isAttackEvaded(evasionStat) {
-    const evasionChance = 1 * evasionStat;
     const roll = Phaser.Math.FloatBetween(0, 100);
-    return roll < evasionChance;
+    return roll < evasionStat;
   }
 
   updateMobs(player) {
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active) return;
 
-      // Always update HP text position & value, even if dead
-      if (mob.customData.hpText) {
-        mob.customData.hpText.setPosition(mob.x, mob.y - 20);
-        mob.customData.hpText.setText(`HP: ${Math.round(mob.customData.hp)}`);
-      }
+      // Update UI container above the mob
+      this.updateMobUI(mob);
 
-      if (mob.customData.isDead) {
-        return;
-      }
+      // If the mob is dead, skip AI
+      if (mob.customData.isDead) return;
 
       const mobKey = mob.customData.id;
       const mobInfo = mobsData[mobKey];
@@ -289,9 +332,18 @@ export default class MobManager {
   }
 
   // --------------------------------------------------------
-  // CHASING
+  // CHASING (with skill range logic)
   // --------------------------------------------------------
   updateChasing(mob, player, mobInfo, distanceToPlayer) {
+    // 1) If the mob has at least one skill and still has mana, it tries to stay at skill range
+    //    Otherwise it goes in for melee (attackRange).
+    const skillRange = this.getMobMaxSkillRange(mob);
+    const canUseSkill = (skillRange > 0 && mob.customData.mana > 0);
+
+    // Desired range = skillRange if mob can use skill, else fallback to melee range
+    const desiredRange = canUseSkill ? skillRange : mobInfo.attackRange;
+
+    // If out of agro range, stop chasing
     if (distanceToPlayer > mobInfo.mobAgroRange) {
       this.scene.chatManager.addMessage(
         `Mob "${mob.customData.id}" stops chasing (out of range).`
@@ -300,7 +352,8 @@ export default class MobManager {
       return;
     }
 
-    if (distanceToPlayer <= mobInfo.attackRange) {
+    // If within desired range, switch to attacking
+    if (distanceToPlayer <= desiredRange) {
       mob.customData.state = "attacking";
       mob.body.setVelocity(0, 0);
       mob.anims.stop();
@@ -310,12 +363,13 @@ export default class MobManager {
       return;
     }
 
+    // Otherwise continue to chase
     this.chasePlayer(mob, player, mobInfo);
 
+    // Check for "stuck" scenario
     const now = this.scene.time.now;
     if (
-      now - mob.customData.lastChaseCheckTime >=
-      mob.customData.stuckCheckInterval
+      now - mob.customData.lastChaseCheckTime >= mob.customData.stuckCheckInterval
     ) {
       mob.customData.lastChaseCheckTime = now;
       const distMoved = Phaser.Math.Distance.Between(
@@ -348,6 +402,7 @@ export default class MobManager {
 
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
 
+    // Decide animation based on direction
     if (Math.abs(direction.x) > Math.abs(direction.y)) {
       if (direction.x > 0) mob.anims.play("mob-walk-right", true);
       else mob.anims.play("mob-walk-left", true);
@@ -402,35 +457,51 @@ export default class MobManager {
     });
   }
 
+  getMobMaxSkillRange(mob) {
+    let maxRange = 0;
+    if (mob.customData.mobSkills && mob.customData.mobSkills.length > 0) {
+      mob.customData.mobSkills.forEach((skill) => {
+        if (skill.range && skill.range > maxRange) {
+          maxRange = skill.range;
+        }
+      });
+    }
+    return maxRange;
+  }
+
   // --------------------------------------------------------
   // ATTACKING
   // --------------------------------------------------------
   updateAttacking(mob, player, mobInfo, distanceToPlayer) {
-    if (distanceToPlayer > mobInfo.attackRange) {
-      mob.customData.state = "chasing";
+    // If out of agro range, go idle
+    if (distanceToPlayer > mobInfo.mobAgroRange) {
+      mob.customData.state = "idle";
       this.scene.chatManager.addMessage(
-        `Mob "${mob.customData.id}" resumes chasing player.`
+        `Mob "${mob.customData.id}" stops attacking (player left agro range).`
       );
       return;
     }
 
-    // If the mob is "casting" a skill, skip standard attacks
+    // If the mob is casting a skill, skip standard attacks
     if (mob.customData.isCastingSkill) return;
 
-    // Step 1: Attempt to use a skill (healing or offensive)
+    // Attempt skill usage first
     if (this.mobTryUseSkill(mob, player, distanceToPlayer)) {
-      // If skill usage triggered, exit
-      return;
+      return; // skill was used
     }
 
-    // If no skill used, do the standard built-in attack cooldown logic
-    this.mobAttackPlayer(mob, mobInfo);
+    // If no skill was used, do the standard (basic) attack cooldown logic
+    if (distanceToPlayer <= mobInfo.attackRange) {
+      this.mobAttackPlayer(mob, mobInfo);
+    } else {
+      // If we're out of normal melee range, go back to chasing
+      mob.customData.state = "chasing";
+      this.scene.chatManager.addMessage(
+        `Mob "${mob.customData.id}" resumes chasing player.`
+      );
+    }
   }
 
-  /**
-   * Try to pick and use any available skill (healing or offensive).
-   * Returns TRUE if a skill usage was triggered, otherwise FALSE.
-   */
   mobTryUseSkill(mob, player, distanceToPlayer) {
     const mobSkills = mob.customData.mobSkills;
     if (!mobSkills || mobSkills.length === 0) return false;
@@ -438,26 +509,18 @@ export default class MobManager {
     // 1) Try to find a healing skill if HP < threshold
     const hpPct = mob.customData.hp / mobsData[mob.customData.id].health;
     if (hpPct < mob.customData.healingThreshold) {
-      // find any skill with healHP or healMP
       const healSkill = mobSkills.find((s) => s.healHP || s.healMP);
-      if (healSkill) {
-        // Attempt to cast it if we have enough mana & not on cooldown
-        if (this.canMobCastSkill(mob, healSkill, 0)) {
-          this.castMobSkill(mob, healSkill, null /*no target for self-heal*/);
-          return true;
-        }
+      if (healSkill && this.canMobCastSkill(mob, healSkill)) {
+        this.castMobSkill(mob, healSkill, null);
+        return true;
       }
     }
 
-    // 2) Otherwise, try an offensive skill if the player is in skill range
-    //    We'll pick the first skill that meets range & cooldown & mana
+    // 2) Otherwise, try an offensive skill if within skill range
     for (const skill of mobSkills) {
-      // skip healing skill here
-      if (skill.healHP || skill.healMP) continue;
-
-      const skillRange = skill.range || 0;
-      if (distanceToPlayer <= skillRange) {
-        if (this.canMobCastSkill(mob, skill, distanceToPlayer)) {
+      if (skill.healHP || skill.healMP) continue; // skip healing skill here
+      if (distanceToPlayer <= (skill.range || 0)) {
+        if (this.canMobCastSkill(mob, skill)) {
           this.castMobSkill(mob, skill, player);
           return true;
         }
@@ -467,41 +530,30 @@ export default class MobManager {
     return false;
   }
 
-  /**
-   * Check if the mob has enough mana and the skill is off-cooldown.
-   */
-  canMobCastSkill(mob, skill, distance) {
+  canMobCastSkill(mob, skill) {
     const neededMana = Math.round(skill.manaCost);
-    if (mob.customData.mana < neededMana) {
-      return false;
-    }
+    if (mob.customData.mana < neededMana) return false;
+
     const cdLeft = mob.customData.mobSkillCooldowns[skill.id] || 0;
-    if (cdLeft > 0) {
-      return false;
-    }
-    // If distance matters, confirm we are close enough (but that is done in the caller)
+    if (cdLeft > 0) return false;
+
     return true;
   }
 
-  /**
-   * Make the mob cast the skill (which can be healing or offensive).
-   */
   castMobSkill(mob, skill, targetSprite) {
-    // Mark as casting to block other actions
     mob.customData.isCastingSkill = true;
-
-    // Optionally show some message
     this.scene.chatManager.addMessage(
       `Mob "${mob.customData.id}" begins casting ${skill.name}.`
     );
 
-    // If skill has a castingTime > 0, we set a timed event
-    // If castingTime == 0, we do it instantly
     if (skill.castingTime > 0) {
       this.scene.time.delayedCall(
         skill.castingTime * 1000,
         () => {
-          // finish cast
+          if (!mob.active || mob.customData.isDead) {
+            mob.customData.isCastingSkill = false;
+            return;
+          }
           this.executeMobSkill(mob, skill, targetSprite);
         },
         null,
@@ -512,11 +564,8 @@ export default class MobManager {
     }
   }
 
-  /**
-   * After cast time is over, apply skill effect, trigger cooldown, etc.
-   */
   executeMobSkill(mob, skill, targetSprite) {
-    // We might have died mid-cast
+    // might have died mid-cast
     if (!mob.active || mob.customData.isDead) {
       mob.customData.isCastingSkill = false;
       return;
@@ -528,53 +577,35 @@ export default class MobManager {
 
     // Perform effect
     if (skill.healHP || skill.healMP) {
-      // Healing skill => apply to self
+      // Heal self
       const oldHP = mob.customData.hp;
-      const oldMana = mob.customData.mana;
       const totalHP = mobsData[mob.customData.id].health;
-
-      // Heal up to max HP
       if (skill.healHP) {
-        const newHP = Math.min(oldHP + skill.healHP, totalHP);
-        mob.customData.hp = newHP;
+        mob.customData.hp = Math.min(oldHP + skill.healHP, totalHP);
       }
-      // Could also do healMP if you want the mob to restore its own mana
-      if (skill.healMP) {
-        const newMP = Math.min(oldMana + skill.healMP, mob.customData.mana);
-        // If you want to let the mob restore mana, do so:
-        // mob.customData.mana = newMP;
-      }
-
+      // If you'd like, also restore mob mana here if skill.healMP
       this.scene.chatManager.addMessage(
         `Mob "${mob.customData.id}" healed itself with ${skill.name}.`
       );
-      // optional animation
       this.triggerSkillAnimation(skill, mob);
-
-    } else if (skill.magicAttack > 0 || skill.meleeAttack > 0) {
+    } else {
       // Offensive skill => damage the player
       if (!targetSprite || !targetSprite.active) {
-        // no valid target
         this.scene.chatManager.addMessage(
           `Mob "${mob.customData.id}"'s ${skill.name} had no valid target.`
         );
       } else {
-        // we treat skill.meleeAttack > 0 or skill.magicAttack > 0
         const playerStats = this.scene.playerManager.getPlayerStats();
-
         let damage = 0;
         if (skill.magicAttack > 0) {
-          // check evasion
           const evaded = this.isAttackEvaded(playerStats.magicEvasion || 0);
           if (evaded) {
             this.scene.chatManager.addMessage(
               `Player evaded mob "${mob.customData.id}"'s ${skill.name} (magic).`
             );
           } else {
-            // combine the mob's own stats if needed
             const mobMagicAttack = mobsData[mob.customData.id].magicAttack || 0;
             const totalMagicAttack = mobMagicAttack + skill.magicAttack;
-            // approximate
             const mobStats = { magicAttack: totalMagicAttack };
             damage = calculateMagicDamage(mobStats, playerStats);
             this.scene.chatManager.addMessage(
@@ -587,18 +618,18 @@ export default class MobManager {
             if (this.scene.playerManager.currentHealth <= 0) {
               this.scene.handlePlayerDeath();
             }
-            this.scene.updateUI(); // update HP bar
+            this.scene.updateUI();
             this.triggerSkillAnimation(skill, targetSprite);
           }
-        } else {
-          // Melee portion
+        } else if (skill.meleeAttack > 0) {
           const evaded = this.isAttackEvaded(playerStats.meleeEvasion || 0);
           if (evaded) {
             this.scene.chatManager.addMessage(
               `Player evaded mob "${mob.customData.id}"'s ${skill.name} (melee).`
             );
           } else {
-            const mobMeleeAttack = mobsData[mob.customData.id].meleeAttack || 0;
+            const mobMeleeAttack =
+              mobsData[mob.customData.id].meleeAttack || 0;
             const totalMelee = mobMeleeAttack + skill.meleeAttack;
             const mobStats = { meleeAttack: totalMelee };
             damage = calculateMeleeDamage(mobStats, playerStats);
@@ -629,7 +660,6 @@ export default class MobManager {
   startMobSkillCooldown(mob, skill) {
     if (skill.cooldown > 0) {
       mob.customData.mobSkillCooldowns[skill.id] = skill.cooldown;
-      // We'll tick down the cooldown in small steps
       this.scene.time.addEvent({
         delay: 100,
         loop: true,
@@ -638,11 +668,12 @@ export default class MobManager {
           if (cd <= 0) {
             mob.customData.mobSkillCooldowns[skill.id] = 0;
           } else {
-            mob.customData.mobSkillCooldowns[skill.id] = +(cd - 0.1).toFixed(1);
+            mob.customData.mobSkillCooldowns[skill.id] = +(
+              cd - 0.1
+            ).toFixed(1);
           }
         },
       });
-      // You could remove the loop event after cd is 0, but this is a lightweight approach
     }
   }
 
@@ -650,10 +681,13 @@ export default class MobManager {
     if (!targetSprite) return;
     const scene = this.scene;
 
-    const skillSprite = scene.add.sprite(targetSprite.x, targetSprite.y, `${skill.name}_anim`);
+    const skillSprite = scene.add.sprite(
+      targetSprite.x,
+      targetSprite.y,
+      `${skill.name}_anim`
+    );
     skillSprite.setScale(1);
     skillSprite.play(`${skill.name}_anim`);
-
     skillSprite.on("animationcomplete", () => {
       scene.tweens.add({
         targets: skillSprite,
@@ -723,7 +757,6 @@ export default class MobManager {
     mob.customData.isDead = true;
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-dead", true);
-
     mob.body.setEnable(false);
 
     // Award EXP
@@ -834,9 +867,8 @@ export default class MobManager {
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
 
-    mob.customData.hpText.setText(`HP: ${mob.customData.hp}`);
-    mob.customData.hpText.setPosition(mob.x, mob.y - 20);
-    mob.customData.hpText.setVisible(true);
+    // Update the UI container (e.g. reset HP bar, etc.)
+    this.updateMobUI(mob);
 
     mob.body.setVelocity(0, 0);
     mob.anims.play("mob-walk-down");
@@ -856,6 +888,7 @@ export default class MobManager {
       this.handleMobDeath(mob);
       this.scene.targetedMob = null;
     } else {
+      // If it was "friend" but now you hit it, it becomes enemy
       if (mob.customData.currentType === "friend") {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
@@ -883,7 +916,12 @@ export default class MobManager {
   cycleTarget(player, range, callback) {
     const mobsInRange = this.mobs.getChildren().filter((mob) => {
       if (mob.customData.isDead) return false;
-      const distance = Phaser.Math.Distance.Between(player.x, player.y, mob.x, mob.y);
+      const distance = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        mob.x,
+        mob.y
+      );
       return distance <= range;
     });
 
@@ -893,8 +931,18 @@ export default class MobManager {
     }
 
     mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y);
-      const distanceB = Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y);
+      const distanceA = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        b.x,
+        b.y
+      );
       return distanceA - distanceB;
     });
 
@@ -946,8 +994,18 @@ export default class MobManager {
     });
 
     mobsInRange.sort((a, b) => {
-      const distanceA = Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y);
-      const distanceB = Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y);
+      const distanceA = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        a.x,
+        a.y
+      );
+      const distanceB = Phaser.Math.Distance.Between(
+        player.x,
+        player.y,
+        b.x,
+        b.y
+      );
       return distanceA - distanceB;
     });
 
