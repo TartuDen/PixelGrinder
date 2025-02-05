@@ -58,7 +58,7 @@ export default class MobManager {
         state: "idle",
         lastAttackTime: 0,
 
-        // For idle/wander
+        // For wandering
         idleTimer: null,
         wanderTimer: null,
         wanderDirection: new Phaser.Math.Vector2(0, 0),
@@ -70,14 +70,14 @@ export default class MobManager {
 
         droppedLoot: [],
 
-        // Skills that the mob can use
+        // Skills and skill usage
         mobSkills: this.extractMobSkillsFromLoot(mobInfo.lootTable),
         mobSkillCooldowns: {},
         isCastingSkill: false,
         healingThreshold: mobInfo.healingSkillHPThreshold || 0.3,
       };
 
-      // Instead of a single text, we now create a container (name + HP bar + Mana bar)
+      // Create an overhead container for name + HP + Mana
       this.createMobUIContainer(mob, mobInfo);
 
       mob.setInteractive({ useHandCursor: true });
@@ -93,73 +93,75 @@ export default class MobManager {
     });
   }
 
-  // ---------------------------------------------------------
-  // Create a container with mob's name, HP bar, and Mana bar
-  // ---------------------------------------------------------
+  // ------------------------------------------
+  // Create small container: Name, HP bar, Mana
+  // ------------------------------------------
   createMobUIContainer(mob, mobInfo) {
-    // We'll position this container above the mob, so let's place it initially
-    // at (mob.x, mob.y - 35) or so. We can reposition it in updateMobs().
-    const container = this.scene.add.container(mob.x, mob.y - 35);
+    // Place container above the mob. We’ll fine-tune position in updateMobUI().
+    const container = this.scene.add.container(mob.x, mob.y - 40);
 
-    // -- Mob Name --
+    // 1) Name Text (smaller font, centered)
     const nameText = this.scene.add
       .text(0, 0, mobInfo.name, {
-        font: "14px Arial",
-        fill: "#fff",
-        stroke: "#000",
+        font: "12px Arial",
+        fill: "#ffffff",
+        stroke: "#000000",
         strokeThickness: 2,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5, 0);
 
-    // -- HP Bar --
-    // We'll create 2 Graphics: the background & the fill
+    // 2) HP Bar (Graphics)
+    //   We'll do a background, then a fill
+    //   Place it below the name text, say at y=16
     const hpBarBG = this.scene.add.graphics();
     hpBarBG.fillStyle(0x333333, 1);
-    hpBarBG.fillRect(-25, 14, 50, 6); // 50 wide, 6 high
-    // We'll do the fill as a separate Graphics
+    // This bar is 40 wide, 4 high, centered horizontally
+    hpBarBG.fillRect(-20, 16, 40, 4);
+
     const hpBarFill = this.scene.add.graphics();
 
-    // -- Mana Bar --
+    // 3) Mana Bar (Graphics)
+    //   Another background + fill
+    //   Place it at y=22 so it's just a few pixels below HP bar
     const manaBarBG = this.scene.add.graphics();
     manaBarBG.fillStyle(0x333333, 1);
-    manaBarBG.fillRect(-25, 24, 50, 6);
+    manaBarBG.fillRect(-20, 22, 40, 4);
+
     const manaBarFill = this.scene.add.graphics();
 
     // Add them all to the container
     container.add([nameText, hpBarBG, hpBarFill, manaBarBG, manaBarFill]);
 
-    // Store references so we can update them in updateMobs()
+    // Store references for update
     mob.customData.uiContainer = container;
     mob.customData.nameText = nameText;
     mob.customData.hpBarFill = hpBarFill;
     mob.customData.manaBarFill = manaBarFill;
   }
 
-  // ---------------------------------------------------------
-  // Update the container’s position & the bars' widths
-  // ---------------------------------------------------------
+  // -------------------------------------
+  // Update container position & bar fills
+  // -------------------------------------
   updateMobUI(mob) {
-    const { x, y } = mob;
     const container = mob.customData.uiContainer;
     if (!container) return;
 
-    // Position it slightly above the mob
-    container.setPosition(x, y - 35);
+    // Move container 40 px above the mob's Y
+    container.setPosition(mob.x, mob.y - 40);
 
-    // Calculate HP fill and update the fill rectangle
+    // Update HP fill
     const mobInfo = mobsData[mob.customData.id];
     const currentHP = mob.customData.hp;
     const maxHP = mobInfo.health;
     const hpPercent = Math.max(0, currentHP / maxHP);
 
-    // We'll redraw the HP bar fill
+    // The bar fill is 40 px wide max, 4 px high
     const hpBarFill = mob.customData.hpBarFill;
     hpBarFill.clear();
     hpBarFill.fillStyle(0xe74c3c, 1);
-    // scale max width (50) by hpPercent
-    hpBarFill.fillRect(-25, 14, 50 * hpPercent, 6);
+    hpBarFill.fillRect(-20, 16, 40 * hpPercent, 4);
 
-    // Similarly for Mana
+    // Update Mana fill
     const manaBarFill = mob.customData.manaBarFill;
     manaBarFill.clear();
     if (mobInfo.mana && mobInfo.mana > 0) {
@@ -167,7 +169,7 @@ export default class MobManager {
       const maxMana = mobInfo.mana;
       const manaPercent = Math.max(0, currentMana / maxMana);
       manaBarFill.fillStyle(0x3498db, 1);
-      manaBarFill.fillRect(-25, 24, 50 * manaPercent, 6);
+      manaBarFill.fillRect(-20, 22, 40 * manaPercent, 4);
     }
   }
 
@@ -191,17 +193,16 @@ export default class MobManager {
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active) return;
 
-      // Update UI container above the mob
+      // Update overhead UI
       this.updateMobUI(mob);
 
-      // If the mob is dead, skip AI
       if (mob.customData.isDead) return;
 
       const mobKey = mob.customData.id;
       const mobInfo = mobsData[mobKey];
       if (!mobInfo) return;
 
-      // If not an enemy, skip chase/attack
+      // If not an enemy, skip chase/attack logic
       if (mob.customData.currentType !== "enemy") {
         if (mob.customData.state === "wandering") {
           this.updateWandering(mob);
@@ -332,18 +333,17 @@ export default class MobManager {
   }
 
   // --------------------------------------------------------
-  // CHASING (with skill range logic)
+  // CHASING (with skill-range logic)
   // --------------------------------------------------------
   updateChasing(mob, player, mobInfo, distanceToPlayer) {
-    // 1) If the mob has at least one skill and still has mana, it tries to stay at skill range
-    //    Otherwise it goes in for melee (attackRange).
+    // If this mob has skill(s) and mana, it tries to stay at that skill range
     const skillRange = this.getMobMaxSkillRange(mob);
     const canUseSkill = (skillRange > 0 && mob.customData.mana > 0);
 
-    // Desired range = skillRange if mob can use skill, else fallback to melee range
+    // Use skill range if canUseSkill is true, else fallback to normal attack range
     const desiredRange = canUseSkill ? skillRange : mobInfo.attackRange;
 
-    // If out of agro range, stop chasing
+    // If out of agro range entirely
     if (distanceToPlayer > mobInfo.mobAgroRange) {
       this.scene.chatManager.addMessage(
         `Mob "${mob.customData.id}" stops chasing (out of range).`
@@ -352,7 +352,7 @@ export default class MobManager {
       return;
     }
 
-    // If within desired range, switch to attacking
+    // If close enough, start attacking
     if (distanceToPlayer <= desiredRange) {
       mob.customData.state = "attacking";
       mob.body.setVelocity(0, 0);
@@ -363,10 +363,9 @@ export default class MobManager {
       return;
     }
 
-    // Otherwise continue to chase
     this.chasePlayer(mob, player, mobInfo);
 
-    // Check for "stuck" scenario
+    // Check if stuck
     const now = this.scene.time.now;
     if (
       now - mob.customData.lastChaseCheckTime >= mob.customData.stuckCheckInterval
@@ -402,7 +401,6 @@ export default class MobManager {
 
     mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
 
-    // Decide animation based on direction
     if (Math.abs(direction.x) > Math.abs(direction.y)) {
       if (direction.x > 0) mob.anims.play("mob-walk-right", true);
       else mob.anims.play("mob-walk-left", true);
@@ -482,19 +480,19 @@ export default class MobManager {
       return;
     }
 
-    // If the mob is casting a skill, skip standard attacks
+    // If the mob is casting, skip
     if (mob.customData.isCastingSkill) return;
 
-    // Attempt skill usage first
+    // Try skill usage first
     if (this.mobTryUseSkill(mob, player, distanceToPlayer)) {
-      return; // skill was used
+      return;
     }
 
-    // If no skill was used, do the standard (basic) attack cooldown logic
+    // Then do normal melee if in melee range
     if (distanceToPlayer <= mobInfo.attackRange) {
       this.mobAttackPlayer(mob, mobInfo);
     } else {
-      // If we're out of normal melee range, go back to chasing
+      // If not in melee range, go chase
       mob.customData.state = "chasing";
       this.scene.chatManager.addMessage(
         `Mob "${mob.customData.id}" resumes chasing player.`
@@ -506,7 +504,7 @@ export default class MobManager {
     const mobSkills = mob.customData.mobSkills;
     if (!mobSkills || mobSkills.length === 0) return false;
 
-    // 1) Try to find a healing skill if HP < threshold
+    // 1) Healing if HP < threshold
     const hpPct = mob.customData.hp / mobsData[mob.customData.id].health;
     if (hpPct < mob.customData.healingThreshold) {
       const healSkill = mobSkills.find((s) => s.healHP || s.healMP);
@@ -516,9 +514,9 @@ export default class MobManager {
       }
     }
 
-    // 2) Otherwise, try an offensive skill if within skill range
+    // 2) Offensive skill if in range
     for (const skill of mobSkills) {
-      if (skill.healHP || skill.healMP) continue; // skip healing skill here
+      if (skill.healHP || skill.healMP) continue;
       if (distanceToPlayer <= (skill.range || 0)) {
         if (this.canMobCastSkill(mob, skill)) {
           this.castMobSkill(mob, skill, player);
@@ -565,7 +563,6 @@ export default class MobManager {
   }
 
   executeMobSkill(mob, skill, targetSprite) {
-    // might have died mid-cast
     if (!mob.active || mob.customData.isDead) {
       mob.customData.isCastingSkill = false;
       return;
@@ -575,21 +572,22 @@ export default class MobManager {
     const neededMana = Math.round(skill.manaCost);
     mob.customData.mana = Math.max(0, mob.customData.mana - neededMana);
 
-    // Perform effect
+    // Skill effect
     if (skill.healHP || skill.healMP) {
-      // Heal self
-      const oldHP = mob.customData.hp;
+      // Heal
       const totalHP = mobsData[mob.customData.id].health;
       if (skill.healHP) {
-        mob.customData.hp = Math.min(oldHP + skill.healHP, totalHP);
+        mob.customData.hp = Math.min(
+          mob.customData.hp + skill.healHP,
+          totalHP
+        );
       }
-      // If you'd like, also restore mob mana here if skill.healMP
       this.scene.chatManager.addMessage(
         `Mob "${mob.customData.id}" healed itself with ${skill.name}.`
       );
       this.triggerSkillAnimation(skill, mob);
     } else {
-      // Offensive skill => damage the player
+      // Offensive
       if (!targetSprite || !targetSprite.active) {
         this.scene.chatManager.addMessage(
           `Mob "${mob.customData.id}"'s ${skill.name} had no valid target.`
@@ -609,7 +607,7 @@ export default class MobManager {
             const mobStats = { magicAttack: totalMagicAttack };
             damage = calculateMagicDamage(mobStats, playerStats);
             this.scene.chatManager.addMessage(
-              `Mob "${mob.customData.id}" casts ${skill.name} on player for ${damage} magic damage.`
+              `Mob "${mob.customData.id}" casts ${skill.name} for ${damage} magic damage.`
             );
             this.scene.playerManager.currentHealth = Math.max(
               0,
@@ -650,10 +648,10 @@ export default class MobManager {
       }
     }
 
-    // Start skill cooldown
+    // Start cooldown
     this.startMobSkillCooldown(mob, skill);
 
-    // Casting is done
+    // Casting finished
     mob.customData.isCastingSkill = false;
   }
 
@@ -867,7 +865,7 @@ export default class MobManager {
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
 
-    // Update the UI container (e.g. reset HP bar, etc.)
+    // Reset overhead UI (e.g., full HP bar)
     this.updateMobUI(mob);
 
     mob.body.setVelocity(0, 0);
@@ -888,7 +886,6 @@ export default class MobManager {
       this.handleMobDeath(mob);
       this.scene.targetedMob = null;
     } else {
-      // If it was "friend" but now you hit it, it becomes enemy
       if (mob.customData.currentType === "friend") {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
