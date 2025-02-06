@@ -141,11 +141,11 @@ export default class MainScene extends Phaser.Scene {
       frameWidth: 36,
       frameHeight: 37,
     });
-    this.load.spritesheet("characters", "assets/characters.png", {
+    this.load.spritesheet("mobs", "assets/mobs.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
-    this.load.spritesheet("$dead", "assets/$dead.png", {
+    this.load.spritesheet("dead_mobs", "assets/dead_mobs.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
@@ -201,7 +201,7 @@ export default class MainScene extends Phaser.Scene {
     // Mobs
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("characters", {
+      frames: this.anims.generateFrameNumbers("mobs", {
         start: 48,
         end: 50,
       }),
@@ -210,7 +210,7 @@ export default class MainScene extends Phaser.Scene {
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("characters", {
+      frames: this.anims.generateFrameNumbers("mobs", {
         start: 60,
         end: 62,
       }),
@@ -219,7 +219,7 @@ export default class MainScene extends Phaser.Scene {
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("characters", {
+      frames: this.anims.generateFrameNumbers("mobs", {
         start: 72,
         end: 74,
       }),
@@ -228,7 +228,7 @@ export default class MainScene extends Phaser.Scene {
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("characters", {
+      frames: this.anims.generateFrameNumbers("mobs", {
         start: 84,
         end: 86,
       }),
@@ -237,7 +237,7 @@ export default class MainScene extends Phaser.Scene {
     });
     this.anims.create({
       key: "mob-dead",
-      frames: this.anims.generateFrameNumbers("$dead", { start: 7, end: 7 }),
+      frames: this.anims.generateFrameNumbers("dead_mobs", { start: 7, end: 7 }),
       frameRate: 0,
       repeat: 0,
     });

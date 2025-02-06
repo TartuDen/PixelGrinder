@@ -2,10 +2,9 @@
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
-  class: "mage",
   name: "Omigod",
   level: 1,
-  totalExp: 90,
+  totalExp: 0,
 };
 
 // --- Player Base Stats ---
