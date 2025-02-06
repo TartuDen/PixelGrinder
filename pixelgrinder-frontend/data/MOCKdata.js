@@ -2,7 +2,7 @@
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
-  name: "Omigod",
+  name: "",
   level: 1,
   totalExp: 0,
 };
@@ -11,10 +11,10 @@ const playerProfile = {
 const playerBaseStats = {
   health: 100,
   mana: 150,
-  intellect: 3,
-  strength: 3,
-  dexterity: 3,
-  constitution: 4,
+  intellect: 0,
+  strength: 0,
+  dexterity: 0,
+  constitution: 0,
   speed: 50,
   gatherSpeed: 1,
 };

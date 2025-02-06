@@ -1,0 +1,65 @@
+/* File: characterCreation.css */
+
+.char-creation-container {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    padding: 20px;
+    background: rgba(30, 30, 30, 0.9);
+    border: 2px solid #999;
+    border-radius: 8px;
+    color: #fff;
+    font-family: sans-serif;
+    z-index: 9999; /* ensure it floats above the canvas */
+  }
+  
+  .char-creation-label {
+    font-size: 14px;
+    margin-right: 6px;
+  }
+  
+  .char-creation-input {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 6px;
+  }
+  
+  .char-creation-points-remaining {
+    margin: 10px 0;
+    font-weight: bold;
+  }
+  
+  .char-creation-stat-row {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .char-creation-stat-label {
+    width: 100px;
+  }
+  
+  .char-creation-stat-btn {
+    width: 28px;
+    margin: 0 6px;
+    cursor: pointer;
+  }
+  
+  .char-creation-stat-value {
+    width: 30px;
+    text-align: center;
+  }
+  
+  .char-creation-confirm-btn {
+    margin-top: 12px;
+    padding: 8px 16px;
+    cursor: pointer;
+    background-color: #4caf50;
+    border: none;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 4px;
+  }
+  
