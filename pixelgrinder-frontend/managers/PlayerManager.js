@@ -1,4 +1,4 @@
-// managers/PlayerManager.js
+// File: managers/PlayerManager.js
 
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import {
@@ -21,6 +21,9 @@ export default class PlayerManager {
 
     // Track if we are in a "gathering" state
     this.isGathering = false;
+
+    // Track last direction for idle/cast animations
+    this.lastDirection = "down";
   }
 
   createPlayer(tilemap) {
@@ -31,8 +34,10 @@ export default class PlayerManager {
     this.player = this.scene.physics.add.sprite(
       heroStart.x,
       heroStart.y,
-      "mage"
+      // We'll set the initial texture to necromancer idle (down)
+      "necromancer-idle-down"
     );
+
     this.player.setCollideWorldBounds(true);
 
     // Prevent pushing each other
@@ -40,9 +45,10 @@ export default class PlayerManager {
 
     this.scene.physics.add.collider(this.player, this.scene.collisionLayer);
 
-    this.player.anims.play("walk-down");
-
+    // Initialize animations / stats
     this.updatePlayerStats();
+    // Start in idle-down
+    this.player.anims.play("necromancer-idle-down");
   }
 
   updatePlayerStats() {
@@ -262,37 +268,55 @@ export default class PlayerManager {
     // Prevent movement if casting or gathering
     if (isCasting || this.isGathering) {
       this.player.body.setVelocity(0);
-      this.player.anims.stop();
+
+      // If casting, show cast animation
+      if (isCasting) {
+        this.player.anims.play(`necromancer-cast-${this.lastDirection}`, true);
+      } else {
+        // If not casting but gathering, just idle
+        this.player.anims.play(`necromancer-idle-${this.lastDirection}`, true);
+      }
       return;
     }
 
     this.player.body.setVelocity(0);
 
-    if (cursors.up.isDown) {
-      this.player.body.setVelocityY(-this.playerSpeed);
-      this.player.anims.play("walk-up", true);
-    } else if (cursors.down.isDown) {
-      this.player.body.setVelocityY(this.playerSpeed);
-      this.player.anims.play("walk-down", true);
-    }
+    // Track if we pressed any movement key
+    let moving = false;
 
+    // LEFT / RIGHT
     if (cursors.left.isDown) {
       this.player.body.setVelocityX(-this.playerSpeed);
-      this.player.anims.play("walk-left", true);
+      this.player.anims.play("necromancer-run-left", true);
+      this.lastDirection = "left";
+      moving = true;
     } else if (cursors.right.isDown) {
       this.player.body.setVelocityX(this.playerSpeed);
-      this.player.anims.play("walk-right", true);
+      this.player.anims.play("necromancer-run-right", true);
+      this.lastDirection = "right";
+      moving = true;
     }
 
-    if (
-      !cursors.up.isDown &&
-      !cursors.down.isDown &&
-      !cursors.left.isDown &&
-      !cursors.right.isDown
-    ) {
-      this.player.anims.stop();
+    // UP / DOWN
+    if (cursors.up.isDown) {
+      this.player.body.setVelocityY(-this.playerSpeed);
+      this.player.anims.play("necromancer-run-up", true);
+      this.lastDirection = "up";
+      moving = true;
+    } else if (cursors.down.isDown) {
+      this.player.body.setVelocityY(this.playerSpeed);
+      this.player.anims.play("necromancer-run-down", true);
+      this.lastDirection = "down";
+      moving = true;
     }
 
+    // If not moving at all → idle
+    if (!moving) {
+      this.player.body.setVelocity(0);
+      this.player.anims.play(`necromancer-idle-${this.lastDirection}`, true);
+    }
+
+    // Normalize diagonal movement
     this.player.body.velocity.normalize().scale(this.playerSpeed);
   }
 
@@ -310,18 +334,15 @@ export default class PlayerManager {
       this.currentHealth + regenerationData.hpRegen
     );
 
-    // Check how much actually got regenerated:
+    // Log if anything actually changed
     const manaRegenerated = this.currentMana - beforeMana;
     const healthRegenerated = this.currentHealth - beforeHealth;
-
-    // Only log if at least 1 point changed
     if (manaRegenerated > 0 || healthRegenerated > 0) {
       this.scene.chatManager.addMessage(
         `Regenerated +${manaRegenerated} mana, +${healthRegenerated} HP`
       );
     }
 
-    // Finally, emit stats update
     this.scene.emitStatsUpdate();
   }
 

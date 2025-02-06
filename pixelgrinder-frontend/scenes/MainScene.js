@@ -135,12 +135,15 @@ export default class MainScene extends Phaser.Scene {
   }
 
   loadAssets() {
+    // ----------------------
+    // TILEMAP & TILES
+    // ----------------------
     this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
     this.load.image("terrain", "assets/map/terrain.png");
-    this.load.spritesheet("mage", "assets/mage.png", {
-      frameWidth: 36,
-      frameHeight: 37,
-    });
+
+    // ----------------------
+    // MOBS
+    // ----------------------
     this.load.spritesheet("mobs", "assets/mobs.png", {
       frameWidth: 32,
       frameHeight: 32,
@@ -150,7 +153,78 @@ export default class MainScene extends Phaser.Scene {
       frameHeight: 32,
     });
 
-    // Load skill sprite sheets
+    // ----------------------
+    // NECROMANCER (PLAYER)
+    // Replace old mage sprites with necromancer
+    // RUN (7 frames, each 48x48)
+    this.load.spritesheet(
+      "necromancer-run-down",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-run-up",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-run-left",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLeftRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-run-right",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // CAST (7 frames, 48x48)
+    this.load.spritesheet(
+      "necromancer-cast-down",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-cast-left",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLeftAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-cast-right",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-cast-up",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // IDLE (6 frames, 48x48)
+    this.load.spritesheet(
+      "necromancer-idle-down",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-idle-left",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLefttIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-idle-right",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-idle-up",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // ----------------------
+    // SKILLS
+    // ----------------------
     allGameSkills.forEach((skill) => {
       this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
         frameWidth: 72,
@@ -172,33 +246,127 @@ export default class MainScene extends Phaser.Scene {
   }
 
   defineAnimations() {
-    // Player anims
+    // ------------------------------------------------
+    // NECROMANCER (PLAYER) ANIMATIONS
+    // ------------------------------------------------
+
+    // RUN (7 frames: index 0..6)
     this.anims.create({
-      key: "walk-down",
-      frames: this.anims.generateFrameNumbers("mage", { start: 0, end: 5 }),
-      frameRate: 8,
+      key: "necromancer-run-down",
+      frames: this.anims.generateFrameNumbers("necromancer-run-down", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
-      key: "walk-up",
-      frames: this.anims.generateFrameNumbers("mage", { start: 6, end: 11 }),
-      frameRate: 8,
+      key: "necromancer-run-up",
+      frames: this.anims.generateFrameNumbers("necromancer-run-up", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
-      key: "walk-right",
-      frames: this.anims.generateFrameNumbers("mage", { start: 12, end: 17 }),
-      frameRate: 8,
+      key: "necromancer-run-left",
+      frames: this.anims.generateFrameNumbers("necromancer-run-left", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
-      key: "walk-left",
-      frames: this.anims.generateFrameNumbers("mage", { start: 18, end: 23 }),
-      frameRate: 8,
+      key: "necromancer-run-right",
+      frames: this.anims.generateFrameNumbers("necromancer-run-right", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
       repeat: -1,
     });
 
-    // Mobs
+    // CAST (7 frames: index 0..6, does NOT repeat)
+    this.anims.create({
+      key: "necromancer-cast-down",
+      frames: this.anims.generateFrameNumbers("necromancer-cast-down", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "necromancer-cast-left",
+      frames: this.anims.generateFrameNumbers("necromancer-cast-left", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "necromancer-cast-right",
+      frames: this.anims.generateFrameNumbers("necromancer-cast-right", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "necromancer-cast-up",
+      frames: this.anims.generateFrameNumbers("necromancer-cast-up", {
+        start: 0,
+        end: 6,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+
+    // IDLE (6 frames: index 0..5)
+    this.anims.create({
+      key: "necromancer-idle-down",
+      frames: this.anims.generateFrameNumbers("necromancer-idle-down", {
+        start: 0,
+        end: 5,
+      }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "necromancer-idle-left",
+      frames: this.anims.generateFrameNumbers("necromancer-idle-left", {
+        start: 0,
+        end: 5,
+      }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "necromancer-idle-right",
+      frames: this.anims.generateFrameNumbers("necromancer-idle-right", {
+        start: 0,
+        end: 5,
+      }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "necromancer-idle-up",
+      frames: this.anims.generateFrameNumbers("necromancer-idle-up", {
+        start: 0,
+        end: 5,
+      }),
+      frameRate: 6,
+      repeat: -1,
+    });
+
+    // ------------------------------------------------
+    // MOBS
+    // ------------------------------------------------
     this.anims.create({
       key: "mob-walk-down",
       frames: this.anims.generateFrameNumbers("mobs", {
@@ -242,7 +410,9 @@ export default class MainScene extends Phaser.Scene {
       repeat: 0,
     });
 
-    // Skills
+    // ------------------------------------------------
+    // SKILLS (already existing, unchanged)
+    // ------------------------------------------------
     allGameSkills.forEach((skill) => {
       this.anims.create({
         key: `${skill.name}_anim`,
@@ -312,6 +482,7 @@ export default class MainScene extends Phaser.Scene {
 
     if (level > oldLevel) {
       for (let lvl = oldLevel; lvl < level; lvl++) {
+        // Increase base stats
         for (const statKey in playerGrowthStats) {
           playerBaseStats[statKey] += playerGrowthStats[statKey];
         }
