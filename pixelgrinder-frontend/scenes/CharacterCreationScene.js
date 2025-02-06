@@ -17,7 +17,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
 
   preload() {
     // If you have any assets for the background, load them here
-    // this.load.image("charCreationBG", "assets/char_creation_bg.png");
+    // this.load.image("charCreationBG", "pixelgrinder-frontend/scenes/CharacterCreationScene.js");
   }
 
   create() {
