@@ -394,7 +394,7 @@ const mobsData = {
     health: 50,
 
     // ADDED - now the mob can have mana & use skills:
-    mana: 600,
+    mana: 60,
 
     magicAttack: 0,
     meleeAttack: 20,
