@@ -1,4 +1,5 @@
 // File: scenes/MainScene.js
+
 import UIManager from "../managers/UIManager.js";
 import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
@@ -36,7 +37,220 @@ export default class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    this.loadAssets();
+    // 1) Preload the map (like before)
+    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
+    this.load.image("terrain", "assets/map/terrain.png");
+
+    // 2) Preload MOBS (unchanged)
+    this.load.spritesheet("mobs", "assets/mobs.png", {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+    this.load.spritesheet("dead_mobs", "assets/dead_mobs.png", {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+
+    // -- Preload all 3 possible player skins
+    // Necromancer
+    this.load.spritesheet(
+      "necromancer-run-down",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-run-up",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-run-left",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLeftRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-run-right",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    // Necro CAST
+    this.load.spritesheet(
+      "necromancer-cast-down",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-cast-left",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLeftAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-cast-right",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-cast-up",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpAttack02.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    // Necro IDLE
+    this.load.spritesheet(
+      "necromancer-idle-down",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-idle-left",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLefttIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-idle-right",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "necromancer-idle-up",
+      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // -- Warrior
+    this.load.spritesheet(
+      "warrior-run-down",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Down/Png/WarriorDownWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-run-up",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Up/Png/WarriorUpWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-run-left",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Left/Png/WarriorLeftWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-run-right",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Right/Png/WarriorRightWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    // Warrior Attack
+    this.load.spritesheet(
+      "warrior-cast-down",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Down/Png/WarriorDownAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-cast-left",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Left/Png/WarriorLeftAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-cast-right",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Right/Png/WarriorRightAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-cast-up",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Up/Png/WarriorUpAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    // Warrior IDLE
+    this.load.spritesheet(
+      "warrior-idle-down",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Down/Png/WarriorDownIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-idle-left",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Left/Png/WarriorLeftIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-idle-right",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Right/Png/WarriorRightIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "warrior-idle-up",
+      "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Up/Png/WarriorUpIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // -- Sorceress
+    this.load.spritesheet(
+      "sorceress-run-down",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Down/Png/SorceressDownRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-run-up",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Up/Png/SorceressUpRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-run-left",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Left/Png/SorceressLeftRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-run-right",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Right/Png/SorceressRightRun.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    // Sorceress Attack
+    this.load.spritesheet(
+      "sorceress-cast-down",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Down/Png/SorceressDownAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-cast-left",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Left/Png/SorceressLeftAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-cast-right",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Right/Png/SorceressRightAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-cast-up",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Up/Png/SorceressUpAttack01.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    // Sorceress IDLE
+    this.load.spritesheet(
+      "sorceress-idle-down",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Down/Png/SorceressDownIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-idle-left",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Left/Png/SorceressLeftIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-idle-right",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Right/Png/SorceressRightIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "sorceress-idle-up",
+      "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Up/Png/SorceressUpIdle.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // 3) Preload SKILLS
+    allGameSkills.forEach((skill) => {
+      this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
+        frameWidth: 72,
+        frameHeight: 72,
+      });
+    });
   }
 
   create() {
@@ -54,7 +268,6 @@ export default class MainScene extends Phaser.Scene {
     this.playerManager = new PlayerManager(this);
     this.playerManager.createPlayer(this.map);
 
-    // Add collision with gatherRockLayer
     this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
     // 4) Skill Manager
@@ -77,7 +290,7 @@ export default class MainScene extends Phaser.Scene {
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
 
-    // Set up skill hotbar for player's known skills
+    // Setup skill hotbar
     this.uiManager.setupSkills(playerSkills);
 
     // 8) Input Manager
@@ -110,16 +323,14 @@ export default class MainScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Show initial XP/Level
+    // Show initial XP/Level in the chat
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
-    this.chatManager.addMessage(
-      `EXP: ${currentExp} / ${nextLevelExp} to next level`
-    );
+    this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
 
-    // Create menu buttons in bottom-right
+    // In-game menu buttons
     this.createInGameMenuButtons();
   }
 
@@ -135,100 +346,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   loadAssets() {
-    // ----------------------
-    // TILEMAP & TILES
-    // ----------------------
-    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
-    this.load.image("terrain", "assets/map/terrain.png");
-
-    // ----------------------
-    // MOBS
-    // ----------------------
-    this.load.spritesheet("mobs", "assets/mobs.png", {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-    this.load.spritesheet("dead_mobs", "assets/dead_mobs.png", {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-
-    // ----------------------
-    // NECROMANCER (PLAYER)
-    this.load.spritesheet(
-      "necromancer-run-down",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownRun.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-run-up",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpRun.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-run-left",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLeftRun.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-run-right",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightRun.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-
-    // CAST (7 frames, 48x48)
-    this.load.spritesheet(
-      "necromancer-cast-down",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownAttack02.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-cast-left",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLeftAttack02.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-cast-right",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightAttack02.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-cast-up",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpAttack02.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-
-    // IDLE (6 frames, 48x48)
-    this.load.spritesheet(
-      "necromancer-idle-down",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownIdle.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-idle-left",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Left/Png/NecromancerLefttIdle.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-idle-right",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightIdle.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-    this.load.spritesheet(
-      "necromancer-idle-up",
-      "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpIdle.png",
-      { frameWidth: 48, frameHeight: 48 }
-    );
-
-    // ----------------------
-    // SKILLS
-    // ----------------------
-    allGameSkills.forEach((skill) => {
-      this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
-        frameWidth: 72,
-        frameHeight: 72,
-      });
-    });
+    // (No longer used, we put all in preload() above)
   }
 
   createTilemap() {
@@ -245,119 +363,242 @@ export default class MainScene extends Phaser.Scene {
 
   defineAnimations() {
     // ------------------------------------------------
-    // NECROMANCER (PLAYER) ANIMATIONS
+    // NECROMANCER
     // ------------------------------------------------
-
-    // RUN (7 frames: index 0..6)
     this.anims.create({
       key: "necromancer-run-down",
-      frames: this.anims.generateFrameNumbers("necromancer-run-down", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-down", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-up",
-      frames: this.anims.generateFrameNumbers("necromancer-run-up", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-up", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-left",
-      frames: this.anims.generateFrameNumbers("necromancer-run-left", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-left", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-right",
-      frames: this.anims.generateFrameNumbers("necromancer-run-right", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-right", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: -1,
     });
 
-    // CAST (7 frames: index 0..6, does NOT repeat)
+    // cast
     this.anims.create({
       key: "necromancer-cast-down",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-down", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-down", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-left",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-left", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-left", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-right",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-right", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-right", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-up",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-up", {
-        start: 0,
-        end: 6,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-up", { start: 0, end: 6 }),
       frameRate: 10,
       repeat: 0,
     });
 
-    // IDLE (6 frames: index 0..5)
+    // idle
     this.anims.create({
       key: "necromancer-idle-down",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-down", {
-        start: 0,
-        end: 5,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-down", { start: 0, end: 5 }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-idle-left",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-left", {
-        start: 0,
-        end: 5,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-left", { start: 0, end: 5 }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-idle-right",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-right", {
-        start: 0,
-        end: 5,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-right", { start: 0, end: 5 }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-idle-up",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-up", {
-        start: 0,
-        end: 5,
-      }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-up", { start: 0, end: 5 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+
+    // ------------------------------------------------
+    // WARRIOR
+    // ------------------------------------------------
+    // run (we only have 4 frames for these or so; adapt as needed)
+    this.anims.create({
+      key: "warrior-run-down",
+      frames: this.anims.generateFrameNumbers("warrior-run-down", { start: 0, end: 5 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "warrior-run-up",
+      frames: this.anims.generateFrameNumbers("warrior-run-up", { start: 0, end: 5 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "warrior-run-left",
+      frames: this.anims.generateFrameNumbers("warrior-run-left", { start: 0, end: 5 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "warrior-run-right",
+      frames: this.anims.generateFrameNumbers("warrior-run-right", { start: 0, end: 5 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+
+    // cast/attack
+    this.anims.create({
+      key: "warrior-cast-down",
+      frames: this.anims.generateFrameNumbers("warrior-cast-down", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "warrior-cast-left",
+      frames: this.anims.generateFrameNumbers("warrior-cast-left", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "warrior-cast-right",
+      frames: this.anims.generateFrameNumbers("warrior-cast-right", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "warrior-cast-up",
+      frames: this.anims.generateFrameNumbers("warrior-cast-up", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+
+    // idle
+    this.anims.create({
+      key: "warrior-idle-down",
+      frames: this.anims.generateFrameNumbers("warrior-idle-down", { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "warrior-idle-left",
+      frames: this.anims.generateFrameNumbers("warrior-idle-left", { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "warrior-idle-right",
+      frames: this.anims.generateFrameNumbers("warrior-idle-right", { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "warrior-idle-up",
+      frames: this.anims.generateFrameNumbers("warrior-idle-up", { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+
+    // ------------------------------------------------
+    // SORCERESS
+    // ------------------------------------------------
+    this.anims.create({
+      key: "sorceress-run-down",
+      frames: this.anims.generateFrameNumbers("sorceress-run-down", { start: 0, end: 6 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "sorceress-run-up",
+      frames: this.anims.generateFrameNumbers("sorceress-run-up", { start: 0, end: 6 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "sorceress-run-left",
+      frames: this.anims.generateFrameNumbers("sorceress-run-left", { start: 0, end: 6 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "sorceress-run-right",
+      frames: this.anims.generateFrameNumbers("sorceress-run-right", { start: 0, end: 6 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // cast
+    this.anims.create({
+      key: "sorceress-cast-down",
+      frames: this.anims.generateFrameNumbers("sorceress-cast-down", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "sorceress-cast-left",
+      frames: this.anims.generateFrameNumbers("sorceress-cast-left", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "sorceress-cast-right",
+      frames: this.anims.generateFrameNumbers("sorceress-cast-right", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "sorceress-cast-up",
+      frames: this.anims.generateFrameNumbers("sorceress-cast-up", { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0,
+    });
+
+    // idle
+    this.anims.create({
+      key: "sorceress-idle-down",
+      frames: this.anims.generateFrameNumbers("sorceress-idle-down", { start: 0, end: 5 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "sorceress-idle-left",
+      frames: this.anims.generateFrameNumbers("sorceress-idle-left", { start: 0, end: 5 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "sorceress-idle-right",
+      frames: this.anims.generateFrameNumbers("sorceress-idle-right", { start: 0, end: 5 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "sorceress-idle-up",
+      frames: this.anims.generateFrameNumbers("sorceress-idle-up", { start: 0, end: 5 }),
       frameRate: 6,
       repeat: -1,
     });
@@ -367,37 +608,25 @@ export default class MainScene extends Phaser.Scene {
     // ------------------------------------------------
     this.anims.create({
       key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("mobs", {
-        start: 48,
-        end: 50,
-      }),
+      frames: this.anims.generateFrameNumbers("mobs", { start: 48, end: 50 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("mobs", {
-        start: 60,
-        end: 62,
-      }),
+      frames: this.anims.generateFrameNumbers("mobs", { start: 60, end: 62 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("mobs", {
-        start: 72,
-        end: 74,
-      }),
+      frames: this.anims.generateFrameNumbers("mobs", { start: 72, end: 74 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("mobs", {
-        start: 84,
-        end: 86,
-      }),
+      frames: this.anims.generateFrameNumbers("mobs", { start: 84, end: 86 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -409,7 +638,7 @@ export default class MainScene extends Phaser.Scene {
     });
 
     // ------------------------------------------------
-    // SKILLS (already existing, unchanged)
+    // SKILLS
     // ------------------------------------------------
     allGameSkills.forEach((skill) => {
       this.anims.create({
@@ -425,18 +654,8 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
-    this.cameras.main.setBounds(
-      0,
-      0,
-      this.map.widthInPixels,
-      this.map.heightInPixels
-    );
-    this.physics.world.setBounds(
-      0,
-      0,
-      this.map.widthInPixels,
-      this.map.heightInPixels
-    );
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
     this.cameras.main.startFollow(this.playerManager.player);
   }
 
@@ -486,9 +705,7 @@ export default class MainScene extends Phaser.Scene {
         }
       }
       playerProfile.level = level;
-      this.chatManager.addMessage(
-        `Congratulations! You've reached Level ${level}!`
-      );
+      this.chatManager.addMessage(`Congratulations! You've reached Level ${level}!`);
       this.playerManager.updatePlayerStats();
       this.playerManager.replenishHealthAndMana();
     }
@@ -499,16 +716,12 @@ export default class MainScene extends Phaser.Scene {
 
   gainExperience(amount) {
     playerProfile.totalExp += amount;
-    this.chatManager.addMessage(
-      `Gained ${amount} EXP (Total: ${playerProfile.totalExp})`
-    );
+    this.chatManager.addMessage(`Gained ${amount} EXP (Total: ${playerProfile.totalExp})`);
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
-    this.chatManager.addMessage(
-      `EXP: ${currentExp} / ${nextLevelExp} to next level`
-    );
+    this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
   }
 
   emitStatsUpdate() {

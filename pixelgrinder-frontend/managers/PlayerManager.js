@@ -19,10 +19,7 @@ export default class PlayerManager {
     this.maxMana = 0;
     this.maxHealth = 0;
 
-    // Track if we are in a "gathering" state
     this.isGathering = false;
-
-    // Track last direction for idle/cast animations
     this.lastDirection = "down";
   }
 
@@ -31,21 +28,22 @@ export default class PlayerManager {
       "GameObjects",
       (obj) => obj.name === "HeroStart"
     );
+
+    // Determine which skin is chosen
+    const skin = playerProfile.selectedSkin || "necromancer";
+    // We'll use the "idle-down" animation of that chosen skin
+    const idleAnimKey = `${skin}-idle-down`;
+
     this.player = this.scene.physics.add.sprite(
       heroStart.x,
       heroStart.y,
-      // We'll set the initial texture to necromancer idle (down)
-      "necromancer-idle-down"
+      idleAnimKey
     );
-
     this.player.setCollideWorldBounds(true);
-
-    // Prevent pushing each other
     this.player.setPushable(false);
 
     this.scene.physics.add.collider(this.player, this.scene.collisionLayer);
 
-    // Initialize animations / stats
     this.updatePlayerStats();
     // Start in idle-down
     this.player.anims.play("necromancer-idle-down");

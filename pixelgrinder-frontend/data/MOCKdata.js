@@ -5,7 +5,28 @@ const playerProfile = {
   name: "",
   level: 1,
   totalExp: 0,
+  // NEW: which skin the player selected (e.g. "necromancer" | "sorceress" | "warrior")
+  selectedSkin: null,
 };
+
+// We can store 3 different character skins (plus references to a showreel GIF or image)
+const availableCharacterSkins = [
+  {
+    key: "necromancer",
+    displayName: "Necromancer",
+    previewGif: "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Necromancer animations showreel.gif",
+  },
+  {
+    key: "warrior",
+    displayName: "Warrior",
+    previewGif: "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Warrior Showreel.gif",
+  },
+  {
+    key: "sorceress",
+    displayName: "Sorceress",
+    previewGif: "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Sorceress Animation Showreel.gif",
+  },
+];
 
 // --- Player Base Stats ---
 const playerBaseStats = {
@@ -70,14 +91,12 @@ const statWeights = {
 // --------------------------------------------------------------------
 const skillEnhancements = {
   default: {
-    manaCost: 0.1,     // +10% each level
+    manaCost: 0.1,
     range: 0.0,
     magicAttack: 0.1,
     castingTime: -0.1,
     cooldown: -0.1,
   },
-
-  // Example: self_heal gets custom scaling
   self_heal: {
     manaCost: 0.1,
     castingTime: -0.15,
@@ -150,7 +169,7 @@ const allGameSkills = [
 ];
 
 // --------------------------------------------------------------------
-// PLAYER SKILLS (just examples you currently know)
+// PLAYER SKILLS
 // --------------------------------------------------------------------
 const playerSkills = [
   {
@@ -326,11 +345,8 @@ const gatherableItems = [
   },
 ];
 
-// --------------------------------------------------------------------
 // Combine for easy lookups
-// --------------------------------------------------------------------
 const allItems = [...weaponItems, ...armorItems, ...gatherableItems];
-
 const itemsMap = {};
 allItems.forEach((item) => {
   itemsMap[item.id] = item;
@@ -465,10 +481,11 @@ const TAB_TARGET_RANGE = 400;
 const MOB_CHASE_SPEED_MULT = 2.0;
 const SKILL_RANGE_EXTENDER = 1.1;
 const GATHER_RANGE = 50;
-const MOB_CORPSE_DURATION = 8000; // 8 seconds
+const MOB_CORPSE_DURATION = 8000;
 
 export {
   playerProfile,
+  availableCharacterSkins,
   playerBaseStats,
   playerGrowthStats,
   statWeights,
