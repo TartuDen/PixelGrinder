@@ -155,8 +155,6 @@ export default class MainScene extends Phaser.Scene {
 
     // ----------------------
     // NECROMANCER (PLAYER)
-    // Replace old mage sprites with necromancer
-    // RUN (7 frames, each 48x48)
     this.load.spritesheet(
       "necromancer-run-down",
       "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownRun.png",
