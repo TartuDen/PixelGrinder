@@ -1,5 +1,5 @@
 // File: scenes/CharacterCreationScene.js
-import { calculateCreationStats } from "../helpers/calculateCreationStats.js"; // We'll define a small helper
+import { calculateCreationStats } from "../helpers/calculateCreationStats.js";
 import {
   playerProfile,
   playerBaseStats,
@@ -17,7 +17,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
     this.constitutionPoints = 0;
     this.pointsRemaining = 10;
 
-    // We'll store chosen skin here while user picks
     this.tempSelectedSkin = null;
 
     this.containerDiv = null;
@@ -26,32 +25,56 @@ export default class CharacterCreationScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load the Tiled map and tiles for background
+    // 1) Load map data and image for the tilemap
     this.load.tilemapTiledJSON("charCreationMap", "assets/map/char_creation_map.tmj");
-    this.load.image("charCreationTiles", "assets/map/terrain.png");
+    // The key here, "terrain", must match the name of the tileset in Tiled
+    this.load.image("terrain", "assets/map/terrain.png");
 
-    // Optionally, preload the 3 preview GIFs
-    availableCharacterSkins.forEach(skin => {
+    // 2) Preload the skin preview images (GIF or static).
+    availableCharacterSkins.forEach((skin) => {
+      // Even though these are GIFs, Phaser will treat them as static images by default.
+      // We'll just avoid 404 errors by loading them here. We'll display them in DOM <img>.
       this.load.image(`${skin.key}_preview`, skin.previewGif);
-      // If these are actual .gif files, Phaser might not animate them. We'll just show them as static images in DOM or in plain HTML <img>.
     });
   }
 
   create() {
-    // 1) Create tilemap background
+    // Create the tilemap background in the same style as MainScene
+    this.createTilemap();
+
+    // Now create the character creation UI in HTML
+    this.createDOMElements();
+    this.updateFinalStatsUI();
+  }
+
+  createTilemap() {
+    // Make the tilemap from the key we loaded
     this.map = this.make.tilemap({ key: "charCreationMap" });
-    const tileset = this.map.addTilesetImage("terrain", "charCreationTiles");
+
+    // This must match the "name in Tiled" vs "key in Phaser"
+    // If your Tiled tileset is called "terrain", do:
+    const tileset = this.map.addTilesetImage("terrain", "terrain");
+
+    // The layer name must match Tiled's layer name, e.g. "background"
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
 
-    // 2) Setup DOM
-    this.createDOMElements();
-    this.updateFinalStatsUI(); // show initial stats
+    if (!this.backgroundLayer) {
+      console.warn("No 'background' layer found. Check your Tiled layer name!");
+    }
+
+    // Adjust camera so the map is visible.
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.centerOn(
+      this.map.widthInPixels / 2,
+      this.map.heightInPixels / 2
+    );
   }
 
   createDOMElements() {
     // Main container
     this.containerDiv = document.createElement("div");
     this.containerDiv.id = "char-creation-container";
+    // The class below must exist in your CSS file to style it
     this.containerDiv.classList.add("char-creation-container");
     document.body.appendChild(this.containerDiv);
 
@@ -74,7 +97,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
     this.remainingPointsDiv.classList.add("char-creation-points-remaining");
     this.containerDiv.appendChild(this.remainingPointsDiv);
 
-    // Helper to build row
+    // Helper to build a row for each stat
     const buildStatRow = (statName, displayName) => {
       const row = document.createElement("div");
       row.classList.add("char-creation-stat-row");
@@ -91,6 +114,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
         if (this[`${statName}Points`] > 0) {
           this[`${statName}Points`]--;
           this.pointsRemaining++;
+          valueDisplay.textContent = this[`${statName}Points`];
           this.updateFinalStatsUI();
         }
       };
@@ -108,28 +132,26 @@ export default class CharacterCreationScene extends Phaser.Scene {
         if (this.pointsRemaining > 0) {
           this[`${statName}Points`]++;
           this.pointsRemaining--;
+          valueDisplay.textContent = this[`${statName}Points`];
           this.updateFinalStatsUI();
         }
       };
       row.appendChild(plusBtn);
 
-      // We'll store a quick reference so we can update the UI more easily
-      row._valueDisplay = valueDisplay;
-
       return row;
     };
 
-    // Create the stat rows
+    // Build each row
     const intellectRow = buildStatRow("intellect", "Intellect");
     const strengthRow = buildStatRow("strength", "Strength");
     const dexterityRow = buildStatRow("dexterity", "Dexterity");
     const constitutionRow = buildStatRow("constitution", "Constitution");
 
-    [intellectRow, strengthRow, dexterityRow, constitutionRow].forEach((r) => {
+    [intellectRow, strengthRow, dexterityRow, constitutionRow].forEach(r => {
       this.containerDiv.appendChild(r);
     });
 
-    // -- Final Stats Panel
+    // -- Final Stats Preview
     this.finalStatsDiv = document.createElement("div");
     this.finalStatsDiv.classList.add("char-creation-final-stats");
     this.containerDiv.appendChild(this.finalStatsDiv);
@@ -143,15 +165,17 @@ export default class CharacterCreationScene extends Phaser.Scene {
     skinsContainer.classList.add("skin-selection-container");
     this.containerDiv.appendChild(skinsContainer);
 
+    // Make each skin clickable
     availableCharacterSkins.forEach((skin) => {
       const skinDiv = document.createElement("div");
       skinDiv.classList.add("skin-option");
 
-      // We can show an <img> tag using the .previewGif path
-      // For real .gif, consider using plain <img src="..."> in DOM
       const img = document.createElement("img");
-      img.src = skin.previewGif; // or load image data?
+      img.src = skin.previewGif;
       img.alt = skin.displayName;
+      // Force 100×100 so they're consistent
+      img.style.width = "100px";
+      img.style.height = "100px";
       img.classList.add("skin-preview-img");
       skinDiv.appendChild(img);
 
@@ -159,12 +183,12 @@ export default class CharacterCreationScene extends Phaser.Scene {
       label.textContent = skin.displayName;
       skinDiv.appendChild(label);
 
-      // Mark the selected skin on click
+      // Click event: choose the skin
       skinDiv.onclick = () => {
         this.tempSelectedSkin = skin.key;
-        // highlight selection
-        document.querySelectorAll(".skin-option").forEach(d => {
-          d.classList.remove("selected-skin");
+        // Unselect all, then select this
+        document.querySelectorAll(".skin-option").forEach(div => {
+          div.classList.remove("selected-skin");
         });
         skinDiv.classList.add("selected-skin");
       };
@@ -181,12 +205,9 @@ export default class CharacterCreationScene extends Phaser.Scene {
   }
 
   updateFinalStatsUI() {
-    // Update "Points Remaining" text
-    if (this.remainingPointsDiv) {
-      this.remainingPointsDiv.textContent = `Points Remaining: ${this.pointsRemaining}`;
-    }
+    this.remainingPointsDiv.textContent = `Points Remaining: ${this.pointsRemaining}`;
 
-    // Get the final stats based on base stats + allocated points
+    // Calculate final stats
     const derived = calculateCreationStats({
       intellect: this.intellectPoints,
       strength: this.strengthPoints,
@@ -194,7 +215,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
       constitution: this.constitutionPoints,
     });
 
-    // Render them in finalStatsDiv
     this.finalStatsDiv.innerHTML = `
       <h4>Final Stats Preview:</h4>
       <ul>
@@ -226,26 +246,22 @@ export default class CharacterCreationScene extends Phaser.Scene {
       return;
     }
 
-    // 1) Save name, skin, level, exp
+    // Save to global data
     playerProfile.name = chosenName;
     playerProfile.level = 1;
     playerProfile.totalExp = 0;
-    playerProfile.selectedSkin = this.tempSelectedSkin; // e.g. "necromancer" or "warrior" etc.
+    playerProfile.selectedSkin = this.tempSelectedSkin; // e.g. "warrior" or "sorceress"
 
-    // 2) Add the allocated attribute points to base stats
-    //    In many games, you'd store them in base stats or keep them separate, your choice:
+    // Add the allocated points to base stats
     playerBaseStats.intellect += this.intellectPoints;
     playerBaseStats.strength += this.strengthPoints;
     playerBaseStats.dexterity += this.dexterityPoints;
     playerBaseStats.constitution += this.constitutionPoints;
 
     // Remove DOM
-    if (this.containerDiv) {
-      document.body.removeChild(this.containerDiv);
-      this.containerDiv = null;
-    }
+    document.body.removeChild(this.containerDiv);
 
-    // Start the main game
+    // Go to main scene
     this.scene.start("MainScene");
   }
 }

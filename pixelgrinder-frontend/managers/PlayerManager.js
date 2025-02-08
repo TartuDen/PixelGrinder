@@ -1,5 +1,3 @@
-// File: managers/PlayerManager.js
-
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import {
   playerProfile,
@@ -29,11 +27,11 @@ export default class PlayerManager {
       (obj) => obj.name === "HeroStart"
     );
 
-    // Determine which skin is chosen
+    // Determine which skin is chosen (default necromancer if none)
     const skin = playerProfile.selectedSkin || "necromancer";
-    // We'll use the "idle-down" animation of that chosen skin
     const idleAnimKey = `${skin}-idle-down`;
 
+    // Use the chosen skin key
     this.player = this.scene.physics.add.sprite(
       heroStart.x,
       heroStart.y,
@@ -44,9 +42,11 @@ export default class PlayerManager {
 
     this.scene.physics.add.collider(this.player, this.scene.collisionLayer);
 
+    // Update stats once
     this.updatePlayerStats();
-    // Start in idle-down
-    this.player.anims.play("necromancer-idle-down");
+
+    // Start in idle-down for whichever skin was chosen
+    this.player.anims.play(idleAnimKey);
   }
 
   updatePlayerStats() {
@@ -83,10 +83,6 @@ export default class PlayerManager {
     this.scene.emitStatsUpdate();
   }
 
-  /**
-   * Modified to treat only cellVal === 0 as an open cell.
-   * If cellVal === null => cell is locked/unavailable.
-   */
   findEmptyBackpackCell() {
     for (let r = 0; r < 6; r++) {
       for (let c = 0; c < 5; c++) {
@@ -101,34 +97,25 @@ export default class PlayerManager {
     return null;
   }
 
-  /**
-   * #4: Only items with ID >= 4000 are stackable.
-   * Otherwise, treat them as unique (no stacking).
-   */
   addItemToInventory(itemId, quantity = 1) {
-    // Check if the item is stackable:
+    // Check if the item is stackable (ID >= 4000)
     const isStackable = itemId >= 4000;
 
     if (isStackable) {
-      // 1) Try to find if there's already a stack of this item:
+      // 1) Try to find if there's already a stack of this item
       for (let r = 0; r < 6; r++) {
         for (let c = 0; c < 5; c++) {
           const key = `cell_${r}_${c}`;
-          const val = playerBackpack[key]; // val might be: 0, null, number, or { id, quantity }
-
+          const val = playerBackpack[key]; 
           if (val && typeof val === "object" && val.id === itemId) {
-            // We already have a stack here
+            // Already a stack
             val.quantity += quantity;
             this.scene.chatManager.addMessage(
               `Stacked +${quantity} onto existing item in ${key}. New total: ${val.quantity}`
             );
             return true;
-          } else if (
-            val !== null &&
-            typeof val === "number" &&
-            val === itemId
-          ) {
-            // We have exactly one item stored as a plain number
+          } else if (val !== null && typeof val === "number" && val === itemId) {
+            // Single item stored as a plain number
             playerBackpack[key] = { id: itemId, quantity: 1 + quantity };
             this.scene.chatManager.addMessage(
               `Converted single item to stack in ${key}.`
@@ -255,7 +242,6 @@ export default class PlayerManager {
       meleeEvasion: stats.meleeEvasion,
       speed: this.playerSpeed,
       level: playerProfile.level,
-
       gatherSpeed: stats.gatherSpeed || 1,
     };
   }
@@ -267,8 +253,8 @@ export default class PlayerManager {
     if (isCasting || this.isGathering) {
       this.player.body.setVelocity(0);
 
-      // If casting, show cast animation
       if (isCasting) {
+        // Casting animation
         this.player.anims.play(`necromancer-cast-${this.lastDirection}`, true);
       } else {
         // If not casting but gathering, just idle
@@ -279,7 +265,6 @@ export default class PlayerManager {
 
     this.player.body.setVelocity(0);
 
-    // Track if we pressed any movement key
     let moving = false;
 
     // LEFT / RIGHT
@@ -308,13 +293,13 @@ export default class PlayerManager {
       moving = true;
     }
 
-    // If not moving at all → idle
+    // If not moving → idle
     if (!moving) {
       this.player.body.setVelocity(0);
       this.player.anims.play(`necromancer-idle-${this.lastDirection}`, true);
     }
 
-    // Normalize diagonal movement
+    // Normalize diagonal
     this.player.body.velocity.normalize().scale(this.playerSpeed);
   }
 
@@ -332,7 +317,7 @@ export default class PlayerManager {
       this.currentHealth + regenerationData.hpRegen
     );
 
-    // Log if anything actually changed
+    // Log if anything changed
     const manaRegenerated = this.currentMana - beforeMana;
     const healthRegenerated = this.currentHealth - beforeHealth;
     if (manaRegenerated > 0 || healthRegenerated > 0) {
