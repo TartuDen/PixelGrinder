@@ -1,5 +1,4 @@
 // File: scenes/MainScene.js
-
 import UIManager from "../managers/UIManager.js";
 import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
@@ -37,11 +36,11 @@ export default class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    // 1) Preload the map (like before)
-    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
+    // Tiled map for the main game
+    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj"); // Ensure path is correct
     this.load.image("terrain", "assets/map/terrain.png");
 
-    // 2) Preload MOBS (unchanged)
+    // Mobs
     this.load.spritesheet("mobs", "assets/mobs.png", {
       frameWidth: 32,
       frameHeight: 32,
@@ -51,7 +50,7 @@ export default class MainScene extends Phaser.Scene {
       frameHeight: 32,
     });
 
-    // -- Preload all 3 possible player skins
+    // ============ Player skins ================
     // Necromancer
     this.load.spritesheet(
       "necromancer-run-down",
@@ -73,7 +72,8 @@ export default class MainScene extends Phaser.Scene {
       "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Right/Png/NecromancerRightRun.png",
       { frameWidth: 48, frameHeight: 48 }
     );
-    // Necro CAST
+
+    // Necromancer cast
     this.load.spritesheet(
       "necromancer-cast-down",
       "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownAttack02.png",
@@ -94,7 +94,8 @@ export default class MainScene extends Phaser.Scene {
       "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Up/Png/NecromancerUpAttack02.png",
       { frameWidth: 48, frameHeight: 48 }
     );
-    // Necro IDLE
+
+    // Necromancer idle
     this.load.spritesheet(
       "necromancer-idle-down",
       "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownIdle.png",
@@ -116,7 +117,7 @@ export default class MainScene extends Phaser.Scene {
       { frameWidth: 48, frameHeight: 48 }
     );
 
-    // -- Warrior
+    // Warrior
     this.load.spritesheet(
       "warrior-run-down",
       "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Down/Png/WarriorDownWalk.png",
@@ -137,7 +138,7 @@ export default class MainScene extends Phaser.Scene {
       "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Right/Png/WarriorRightWalk.png",
       { frameWidth: 48, frameHeight: 48 }
     );
-    // Warrior Attack
+    // Attack
     this.load.spritesheet(
       "warrior-cast-down",
       "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Down/Png/WarriorDownAttack01.png",
@@ -158,7 +159,7 @@ export default class MainScene extends Phaser.Scene {
       "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Up/Png/WarriorUpAttack01.png",
       { frameWidth: 48, frameHeight: 48 }
     );
-    // Warrior IDLE
+    // Idle
     this.load.spritesheet(
       "warrior-idle-down",
       "assets/Foozle_2DC0009_Lucifer_Warrior_Pixel_Art/Down/Png/WarriorDownIdle.png",
@@ -180,7 +181,7 @@ export default class MainScene extends Phaser.Scene {
       { frameWidth: 48, frameHeight: 48 }
     );
 
-    // -- Sorceress
+    // Sorceress
     this.load.spritesheet(
       "sorceress-run-down",
       "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Down/Png/SorceressDownRun.png",
@@ -201,7 +202,7 @@ export default class MainScene extends Phaser.Scene {
       "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Right/Png/SorceressRightRun.png",
       { frameWidth: 48, frameHeight: 48 }
     );
-    // Sorceress Attack
+    // Attack
     this.load.spritesheet(
       "sorceress-cast-down",
       "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Down/Png/SorceressDownAttack01.png",
@@ -222,7 +223,7 @@ export default class MainScene extends Phaser.Scene {
       "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Up/Png/SorceressUpAttack01.png",
       { frameWidth: 48, frameHeight: 48 }
     );
-    // Sorceress IDLE
+    // Idle
     this.load.spritesheet(
       "sorceress-idle-down",
       "assets/Foozle_2DC0011_Lucifer_Sorceress_Pixel_Art/Down/Png/SorceressDownIdle.png",
@@ -244,7 +245,7 @@ export default class MainScene extends Phaser.Scene {
       { frameWidth: 48, frameHeight: 48 }
     );
 
-    // 3) Preload SKILLS
+    // Skills
     allGameSkills.forEach((skill) => {
       this.load.spritesheet(`${skill.name}_anim`, skill.skillImage, {
         frameWidth: 72,
@@ -256,44 +257,43 @@ export default class MainScene extends Phaser.Scene {
   create() {
     this.previousLevel = playerProfile.level;
 
-    // 1) Create tilemap & define animations
     this.createTilemap();
     this.defineAnimations();
 
-    // 2) Chat Manager
+    // Chat
     this.chatManager = new ChatManager();
     this.chatManager.init();
 
-    // 3) Player Manager
+    // Player
     this.playerManager = new PlayerManager(this);
     this.playerManager.createPlayer(this.map);
 
     this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
-    // 4) Skill Manager
+    // Skill Manager
     this.skillManager = new SkillManager(this, () =>
       this.playerManager.getPlayerStats()
     );
     this.skillManager.preloadSkills();
 
-    // 5) Camera
+    // Camera
     this.setupCamera();
 
-    // 6) UI Manager
+    // UI
     this.uiManager = new UIManager(this);
     this.uiManager.init(() => {
       this.uiManager.hideStatsMenu();
       this.scene.resume();
     });
 
-    // 7) Mobs
+    // Mobs
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
 
-    // Setup skill hotbar
+    // Skill hotbar
     this.uiManager.setupSkills(playerSkills);
 
-    // 8) Input Manager
+    // Input
     this.inputManager = new InputManager(
       this,
       this.playerManager,
@@ -301,7 +301,7 @@ export default class MainScene extends Phaser.Scene {
     );
     this.inputManager.setupControls(playerSkills);
 
-    // 9) Gather Manager
+    // Gathering
     this.gatherManager = new GatherManager(
       this,
       this.playerManager,
@@ -310,33 +310,31 @@ export default class MainScene extends Phaser.Scene {
     );
     this.gatherManager.init(this.gatherRockLayer);
 
-    // Emit initial UI update
     this.emitStatsUpdate();
 
-    // Create skill animations
     this.skillManager.createSkillAnimations();
 
-    // Start natural regen
+    // Natural regen
     this.time.addEvent({
       delay: naturalRegeneration.regenerationTime,
       callback: () => this.playerManager.regenerateStats(naturalRegeneration),
       loop: true,
     });
 
-    // Show initial XP/Level in the chat
+    // Show initial XP
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
     this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
 
-    // In-game menu buttons
     this.createInGameMenuButtons();
   }
 
   update(time, delta) {
     const cursors = this.inputManager.getInputKeys();
     const isCasting = this.skillManager.isCasting;
+
     this.playerManager.handleMovement(cursors, isCasting);
     this.mobManager.updateMobs(this.playerManager.player);
 
@@ -345,15 +343,12 @@ export default class MainScene extends Phaser.Scene {
     }
   }
 
-  loadAssets() {
-    // (No longer used, we put all in preload() above)
-  }
-
   createTilemap() {
     this.map = this.make.tilemap({ key: "Map1" });
     const tileset = this.map.addTilesetImage("terrain", "terrain");
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
     this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
+
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
     this.collisionLayer.setCollisionByExclusion([-1, 0]);
 
@@ -362,30 +357,31 @@ export default class MainScene extends Phaser.Scene {
   }
 
   defineAnimations() {
-    // ------------------------------------------------
+    // =======================
     // NECROMANCER
-    // ------------------------------------------------
+    // =======================
+    // If your run-down sprite has frames 0..5, do end: 5
     this.anims.create({
       key: "necromancer-run-down",
-      frames: this.anims.generateFrameNumbers("necromancer-run-down", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-down", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-up",
-      frames: this.anims.generateFrameNumbers("necromancer-run-up", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-up", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-left",
-      frames: this.anims.generateFrameNumbers("necromancer-run-left", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-left", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-right",
-      frames: this.anims.generateFrameNumbers("necromancer-run-right", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-right", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -393,25 +389,25 @@ export default class MainScene extends Phaser.Scene {
     // cast
     this.anims.create({
       key: "necromancer-cast-down",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-down", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-down", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-left",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-left", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-left", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-right",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-right", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-right", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-up",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-up", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-up", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: 0,
     });
@@ -442,10 +438,9 @@ export default class MainScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // ------------------------------------------------
+    // =======================
     // WARRIOR
-    // ------------------------------------------------
-    // run (we only have 4 frames for these or so; adapt as needed)
+    // =======================
     this.anims.create({
       key: "warrior-run-down",
       frames: this.anims.generateFrameNumbers("warrior-run-down", { start: 0, end: 5 }),
@@ -471,7 +466,6 @@ export default class MainScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // cast/attack
     this.anims.create({
       key: "warrior-cast-down",
       frames: this.anims.generateFrameNumbers("warrior-cast-down", { start: 0, end: 5 }),
@@ -497,7 +491,6 @@ export default class MainScene extends Phaser.Scene {
       repeat: 0,
     });
 
-    // idle
     this.anims.create({
       key: "warrior-idle-down",
       frames: this.anims.generateFrameNumbers("warrior-idle-down", { start: 0, end: 3 }),
@@ -523,30 +516,31 @@ export default class MainScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // ------------------------------------------------
+    // =======================
     // SORCERESS
-    // ------------------------------------------------
+    // =======================
+    // If your run-down sprite only has frames 0..5, do end=5; if it truly has 7 frames, keep 6 or 7
     this.anims.create({
       key: "sorceress-run-down",
-      frames: this.anims.generateFrameNumbers("sorceress-run-down", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-down", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-run-up",
-      frames: this.anims.generateFrameNumbers("sorceress-run-up", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-up", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-run-left",
-      frames: this.anims.generateFrameNumbers("sorceress-run-left", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-left", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-run-right",
-      frames: this.anims.generateFrameNumbers("sorceress-run-right", { start: 0, end: 6 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-right", { start: 0, end: 5 }),
       frameRate: 10,
       repeat: -1,
     });
@@ -554,25 +548,25 @@ export default class MainScene extends Phaser.Scene {
     // cast
     this.anims.create({
       key: "sorceress-cast-down",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-down", { start: 0, end: 4 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "sorceress-cast-left",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-left", { start: 0, end: 4 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "sorceress-cast-right",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-right", { start: 0, end: 4 }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "sorceress-cast-up",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-up", { start: 0, end: 4 }),
       frameRate: 10,
       repeat: 0,
     });
@@ -603,9 +597,9 @@ export default class MainScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // ------------------------------------------------
+    // =======================
     // MOBS
-    // ------------------------------------------------
+    // =======================
     this.anims.create({
       key: "mob-walk-down",
       frames: this.anims.generateFrameNumbers("mobs", { start: 48, end: 50 }),
@@ -637,15 +631,16 @@ export default class MainScene extends Phaser.Scene {
       repeat: 0,
     });
 
-    // ------------------------------------------------
+    // =======================
     // SKILLS
-    // ------------------------------------------------
+    // =======================
     allGameSkills.forEach((skill) => {
+      // If "magic_wip_anim" only has frames 0..3, but you did animationSeq [0,7], you must fix it:
       this.anims.create({
         key: `${skill.name}_anim`,
         frames: this.anims.generateFrameNumbers(`${skill.name}_anim`, {
           start: 0,
-          end: skill.animationSeq[1],
+          end: skill.animationSeq[1], // if it only has 4 frames, use 3
         }),
         frameRate: 15,
         repeat: 0,
@@ -664,7 +659,6 @@ export default class MainScene extends Phaser.Scene {
     menuContainer.id = "game-menu-container";
     document.body.appendChild(menuContainer);
 
-    // PLAYER INFO
     const playerInfoBtn = document.createElement("button");
     playerInfoBtn.textContent = "PLAYER INFO";
     playerInfoBtn.classList.add("in-game-menu-button");
@@ -673,7 +667,6 @@ export default class MainScene extends Phaser.Scene {
     };
     menuContainer.appendChild(playerInfoBtn);
 
-    // SKILL BOOK
     const skillBookBtn = document.createElement("button");
     skillBookBtn.textContent = "SKILL BOOK";
     skillBookBtn.classList.add("in-game-menu-button");

@@ -1,4 +1,3 @@
-// File: scenes/CharacterCreationScene.js
 import { calculateCreationStats } from "../helpers/calculateCreationStats.js";
 import {
   playerProfile,
@@ -17,7 +16,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
     this.constitutionPoints = 0;
     this.pointsRemaining = 10;
 
-    this.tempSelectedSkin = null;
+    this.tempSelectedSkin = null;  // hold the chosen skin key
 
     this.containerDiv = null;
     this.finalStatsDiv = null;
@@ -25,44 +24,35 @@ export default class CharacterCreationScene extends Phaser.Scene {
   }
 
   preload() {
-    // 1) Load map data and image for the tilemap
+    // Make sure the path and file exist and that you EMBED your tileset in Tiled
     this.load.tilemapTiledJSON("charCreationMap", "assets/map/char_creation_map.tmj");
-    // The key here, "terrain", must match the name of the tileset in Tiled
     this.load.image("terrain", "assets/map/terrain.png");
 
-    // 2) Preload the skin preview images (GIF or static).
+    // Preload the GIF previews (treated as static images by Phaser).
     availableCharacterSkins.forEach((skin) => {
-      // Even though these are GIFs, Phaser will treat them as static images by default.
-      // We'll just avoid 404 errors by loading them here. We'll display them in DOM <img>.
       this.load.image(`${skin.key}_preview`, skin.previewGif);
     });
   }
 
   create() {
-    // Create the tilemap background in the same style as MainScene
     this.createTilemap();
-
-    // Now create the character creation UI in HTML
     this.createDOMElements();
     this.updateFinalStatsUI();
   }
 
   createTilemap() {
-    // Make the tilemap from the key we loaded
+    // Create the tilemap from the JSON
     this.map = this.make.tilemap({ key: "charCreationMap" });
-
-    // This must match the "name in Tiled" vs "key in Phaser"
-    // If your Tiled tileset is called "terrain", do:
+    // Must match the "name" in Tiled & the loaded key above
     const tileset = this.map.addTilesetImage("terrain", "terrain");
 
-    // The layer name must match Tiled's layer name, e.g. "background"
+    // Check the Tiled layer name. If it's not called "background", rename here or rename in Tiled.
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
-
     if (!this.backgroundLayer) {
       console.warn("No 'background' layer found. Check your Tiled layer name!");
     }
 
-    // Adjust camera so the map is visible.
+    // Center the camera on this map
     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
     this.cameras.main.centerOn(
       this.map.widthInPixels / 2,
@@ -74,7 +64,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
     // Main container
     this.containerDiv = document.createElement("div");
     this.containerDiv.id = "char-creation-container";
-    // The class below must exist in your CSS file to style it
     this.containerDiv.classList.add("char-creation-container");
     document.body.appendChild(this.containerDiv);
 
@@ -97,7 +86,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
     this.remainingPointsDiv.classList.add("char-creation-points-remaining");
     this.containerDiv.appendChild(this.remainingPointsDiv);
 
-    // Helper to build a row for each stat
     const buildStatRow = (statName, displayName) => {
       const row = document.createElement("div");
       row.classList.add("char-creation-stat-row");
@@ -141,14 +129,13 @@ export default class CharacterCreationScene extends Phaser.Scene {
       return row;
     };
 
-    // Build each row
     const intellectRow = buildStatRow("intellect", "Intellect");
     const strengthRow = buildStatRow("strength", "Strength");
     const dexterityRow = buildStatRow("dexterity", "Dexterity");
     const constitutionRow = buildStatRow("constitution", "Constitution");
 
-    [intellectRow, strengthRow, dexterityRow, constitutionRow].forEach(r => {
-      this.containerDiv.appendChild(r);
+    [intellectRow, strengthRow, dexterityRow, constitutionRow].forEach((row) => {
+      this.containerDiv.appendChild(row);
     });
 
     // -- Final Stats Preview
@@ -156,7 +143,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
     this.finalStatsDiv.classList.add("char-creation-final-stats");
     this.containerDiv.appendChild(this.finalStatsDiv);
 
-    // -- Character Skin Selection
+    // -- Skin Selection
     const skinSelectionHeading = document.createElement("h3");
     skinSelectionHeading.textContent = "Select Character Skin:";
     this.containerDiv.appendChild(skinSelectionHeading);
@@ -165,7 +152,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
     skinsContainer.classList.add("skin-selection-container");
     this.containerDiv.appendChild(skinsContainer);
 
-    // Make each skin clickable
     availableCharacterSkins.forEach((skin) => {
       const skinDiv = document.createElement("div");
       skinDiv.classList.add("skin-option");
@@ -173,7 +159,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
       const img = document.createElement("img");
       img.src = skin.previewGif;
       img.alt = skin.displayName;
-      // Force 100×100 so they're consistent
       img.style.width = "100px";
       img.style.height = "100px";
       img.classList.add("skin-preview-img");
@@ -183,12 +168,11 @@ export default class CharacterCreationScene extends Phaser.Scene {
       label.textContent = skin.displayName;
       skinDiv.appendChild(label);
 
-      // Click event: choose the skin
       skinDiv.onclick = () => {
         this.tempSelectedSkin = skin.key;
-        // Unselect all, then select this
-        document.querySelectorAll(".skin-option").forEach(div => {
-          div.classList.remove("selected-skin");
+        // highlight chosen
+        document.querySelectorAll(".skin-option").forEach(d => {
+          d.classList.remove("selected-skin");
         });
         skinDiv.classList.add("selected-skin");
       };
@@ -196,7 +180,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
       skinsContainer.appendChild(skinDiv);
     });
 
-    // -- Confirm Button
+    // -- Confirm
     const confirmBtn = document.createElement("button");
     confirmBtn.textContent = "Confirm";
     confirmBtn.classList.add("char-creation-confirm-btn");
@@ -207,7 +191,6 @@ export default class CharacterCreationScene extends Phaser.Scene {
   updateFinalStatsUI() {
     this.remainingPointsDiv.textContent = `Points Remaining: ${this.pointsRemaining}`;
 
-    // Calculate final stats
     const derived = calculateCreationStats({
       intellect: this.intellectPoints,
       strength: this.strengthPoints,
@@ -246,22 +229,19 @@ export default class CharacterCreationScene extends Phaser.Scene {
       return;
     }
 
-    // Save to global data
     playerProfile.name = chosenName;
     playerProfile.level = 1;
     playerProfile.totalExp = 0;
-    playerProfile.selectedSkin = this.tempSelectedSkin; // e.g. "warrior" or "sorceress"
+    playerProfile.selectedSkin = this.tempSelectedSkin;
 
-    // Add the allocated points to base stats
+    // Apply the allocated points
     playerBaseStats.intellect += this.intellectPoints;
     playerBaseStats.strength += this.strengthPoints;
     playerBaseStats.dexterity += this.dexterityPoints;
     playerBaseStats.constitution += this.constitutionPoints;
 
-    // Remove DOM
     document.body.removeChild(this.containerDiv);
 
-    // Go to main scene
     this.scene.start("MainScene");
   }
 }

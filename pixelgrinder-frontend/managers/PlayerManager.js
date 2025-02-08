@@ -1,3 +1,4 @@
+// File: managers/PlayerManager.js
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import {
   playerProfile,
@@ -19,6 +20,9 @@ export default class PlayerManager {
 
     this.isGathering = false;
     this.lastDirection = "down";
+
+    // Use chosen skin from character creation or default
+    this.selectedSkinKey = playerProfile.selectedSkin || "necromancer";
   }
 
   createPlayer(tilemap) {
@@ -27,11 +31,8 @@ export default class PlayerManager {
       (obj) => obj.name === "HeroStart"
     );
 
-    // Determine which skin is chosen (default necromancer if none)
-    const skin = playerProfile.selectedSkin || "necromancer";
-    const idleAnimKey = `${skin}-idle-down`;
+    const idleAnimKey = `${this.selectedSkinKey}-idle-down`;
 
-    // Use the chosen skin key
     this.player = this.scene.physics.add.sprite(
       heroStart.x,
       heroStart.y,
@@ -42,10 +43,9 @@ export default class PlayerManager {
 
     this.scene.physics.add.collider(this.player, this.scene.collisionLayer);
 
-    // Update stats once
     this.updatePlayerStats();
 
-    // Start in idle-down for whichever skin was chosen
+    // Start in idle
     this.player.anims.play(idleAnimKey);
   }
 
@@ -249,65 +249,78 @@ export default class PlayerManager {
   handleMovement(cursors, isCasting) {
     if (!this.player || !this.player.body) return;
 
-    // Prevent movement if casting or gathering
-    if (isCasting || this.isGathering) {
+    // If gathering or casting, no movement
+    if (this.isGathering || isCasting) {
       this.player.body.setVelocity(0);
-
       if (isCasting) {
-        // Casting animation
-        this.player.anims.play(`necromancer-cast-${this.lastDirection}`, true);
+        this.player.anims.play(
+          `${this.selectedSkinKey}-cast-${this.lastDirection}`,
+          true
+        );
       } else {
-        // If not casting but gathering, just idle
-        this.player.anims.play(`necromancer-idle-${this.lastDirection}`, true);
+        this.player.anims.play(
+          `${this.selectedSkinKey}-idle-${this.lastDirection}`,
+          true
+        );
       }
       return;
     }
 
+    // Normal movement
     this.player.body.setVelocity(0);
 
     let moving = false;
 
-    // LEFT / RIGHT
+    // LEFT/RIGHT
     if (cursors.left.isDown) {
       this.player.body.setVelocityX(-this.playerSpeed);
-      this.player.anims.play("necromancer-run-left", true);
+      this.player.anims.play(`${this.selectedSkinKey}-run-left`, true);
       this.lastDirection = "left";
       moving = true;
     } else if (cursors.right.isDown) {
       this.player.body.setVelocityX(this.playerSpeed);
-      this.player.anims.play("necromancer-run-right", true);
+      this.player.anims.play(`${this.selectedSkinKey}-run-right`, true);
       this.lastDirection = "right";
       moving = true;
     }
 
-    // UP / DOWN
+    // UP/DOWN
     if (cursors.up.isDown) {
       this.player.body.setVelocityY(-this.playerSpeed);
-      this.player.anims.play("necromancer-run-up", true);
+      this.player.anims.play(`${this.selectedSkinKey}-run-up`, true);
       this.lastDirection = "up";
       moving = true;
     } else if (cursors.down.isDown) {
       this.player.body.setVelocityY(this.playerSpeed);
-      this.player.anims.play("necromancer-run-down", true);
+      this.player.anims.play(`${this.selectedSkinKey}-run-down`, true);
       this.lastDirection = "down";
       moving = true;
     }
 
-    // If not moving → idle
     if (!moving) {
       this.player.body.setVelocity(0);
-      this.player.anims.play(`necromancer-idle-${this.lastDirection}`, true);
+      this.player.anims.play(
+        `${this.selectedSkinKey}-idle-${this.lastDirection}`,
+        true
+      );
     }
 
-    // Normalize diagonal
     this.player.body.velocity.normalize().scale(this.playerSpeed);
+  }
+
+  replenishHealthAndMana() {
+    this.currentHealth = this.maxHealth;
+    this.currentMana = this.maxMana;
+    this.scene.chatManager.addMessage(
+      "Player's Health and Mana fully replenished."
+    );
+    this.scene.emitStatsUpdate();
   }
 
   regenerateStats(regenerationData) {
     const beforeMana = this.currentMana;
     const beforeHealth = this.currentHealth;
 
-    // Perform the actual regen
     this.currentMana = Math.min(
       this.maxMana,
       this.currentMana + regenerationData.manaRegen
@@ -317,7 +330,6 @@ export default class PlayerManager {
       this.currentHealth + regenerationData.hpRegen
     );
 
-    // Log if anything changed
     const manaRegenerated = this.currentMana - beforeMana;
     const healthRegenerated = this.currentHealth - beforeHealth;
     if (manaRegenerated > 0 || healthRegenerated > 0) {
@@ -325,11 +337,6 @@ export default class PlayerManager {
         `Regenerated +${manaRegenerated} mana, +${healthRegenerated} HP`
       );
     }
-
     this.scene.emitStatsUpdate();
-  }
-
-  gainExperience(amount) {
-    this.scene.gainExperience(amount);
   }
 }
