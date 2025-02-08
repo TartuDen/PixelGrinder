@@ -6,7 +6,6 @@ import PlayerManager from "../managers/PlayerManager.js";
 import InputManager from "../managers/InputManager.js";
 import ChatManager from "../managers/ChatManager.js";
 import GatherManager from "../managers/GatherManager.js";
-
 import {
   naturalRegeneration,
   playerProfile,
@@ -16,6 +15,10 @@ import {
   playerGrowthStats,
   allGameSkills,
 } from "../data/MOCKdata.js";
+
+import EasyStar from "https://esm.sh/easystarjs@0.4.4";
+
+
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -33,11 +36,17 @@ export default class MainScene extends Phaser.Scene {
     this.gatherManager = null;
 
     this.events = new Phaser.Events.EventEmitter();
+
+    // [ADDED for EasyStar Pathfinding]
+    this.pathfinder = null;
+    this.walkableTiles = [];
+    this.grid = [];
+    this.tileSize = 32; // Adjust if your tile size is different
   }
 
   preload() {
     // Tiled map for the main game
-    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj"); // Ensure path is correct
+    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
     this.load.image("terrain", "assets/map/terrain.png");
 
     // Mobs
@@ -267,7 +276,6 @@ export default class MainScene extends Phaser.Scene {
     // Player
     this.playerManager = new PlayerManager(this);
     this.playerManager.createPlayer(this.map);
-
     this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
     // Skill Manager
@@ -285,6 +293,9 @@ export default class MainScene extends Phaser.Scene {
       this.uiManager.hideStatsMenu();
       this.scene.resume();
     });
+
+    // [ADDED for EasyStar Pathfinding] Initialize pathfinder
+    this.initPathfinder();
 
     // Mobs
     this.mobManager = new MobManager(this);
@@ -311,7 +322,6 @@ export default class MainScene extends Phaser.Scene {
     this.gatherManager.init(this.gatherRockLayer);
 
     this.emitStatsUpdate();
-
     this.skillManager.createSkillAnimations();
 
     // Natural regen
@@ -326,7 +336,9 @@ export default class MainScene extends Phaser.Scene {
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
-    this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+    this.chatManager.addMessage(
+      `EXP: ${currentExp} / ${nextLevelExp} to next level`
+    );
 
     this.createInGameMenuButtons();
   }
@@ -356,32 +368,77 @@ export default class MainScene extends Phaser.Scene {
     this.gatherRockLayer.setCollisionByExclusion([-1]);
   }
 
+  // [ADDED for EasyStar Pathfinding]
+  initPathfinder() {
+    this.pathfinder = new EasyStar.js();
+
+    // Build a 2D grid from the collisionLayer
+    const layerData = this.collisionLayer.layer.data;
+    // We'll interpret tile indices > -1 as "blocked" if marked as colliding
+    // and tile indices that are NOT colliding as walkable.
+
+    // Build grid
+    for (let row = 0; row < layerData.length; row++) {
+      const colArray = [];
+      for (let col = 0; col < layerData[row].length; col++) {
+        const tile = layerData[row][col];
+        // If tile.collideUp/Down/... is true or tile.index > -1 then it might be blocked.
+        // We'll treat collision as "blocked" (1) or "free" (0).
+        const isColliding = tile && tile.collides ? 1 : 0;
+        colArray.push(isColliding);
+      }
+      this.grid.push(colArray);
+    }
+
+    this.pathfinder.setGrid(this.grid);
+
+    // We have two "tile types": 0 = walkable, 1 = blocked
+    this.pathfinder.setAcceptableTiles([0]);
+
+    // Lower cost to prefer certain tiles, if you want.
+    // For now, we skip that, so cost is uniform.
+
+    // Optionally, set iterations per calc for performance
+    this.pathfinder.setIterationsPerCalculation(500);
+  }
+
   defineAnimations() {
     // =======================
     // NECROMANCER
     // =======================
-    // If your run-down sprite has frames 0..5, do end: 5
     this.anims.create({
       key: "necromancer-run-down",
-      frames: this.anims.generateFrameNumbers("necromancer-run-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-up",
-      frames: this.anims.generateFrameNumbers("necromancer-run-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-left",
-      frames: this.anims.generateFrameNumbers("necromancer-run-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-run-right",
-      frames: this.anims.generateFrameNumbers("necromancer-run-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-run-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -389,25 +446,37 @@ export default class MainScene extends Phaser.Scene {
     // cast
     this.anims.create({
       key: "necromancer-cast-down",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-left",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-right",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "necromancer-cast-up",
-      frames: this.anims.generateFrameNumbers("necromancer-cast-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-cast-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
@@ -415,25 +484,37 @@ export default class MainScene extends Phaser.Scene {
     // idle
     this.anims.create({
       key: "necromancer-idle-down",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-idle-left",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-idle-right",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "necromancer-idle-up",
-      frames: this.anims.generateFrameNumbers("necromancer-idle-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("necromancer-idle-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
@@ -443,75 +524,111 @@ export default class MainScene extends Phaser.Scene {
     // =======================
     this.anims.create({
       key: "warrior-run-down",
-      frames: this.anims.generateFrameNumbers("warrior-run-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-run-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 8,
       repeat: -1,
     });
     this.anims.create({
       key: "warrior-run-up",
-      frames: this.anims.generateFrameNumbers("warrior-run-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-run-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 8,
       repeat: -1,
     });
     this.anims.create({
       key: "warrior-run-left",
-      frames: this.anims.generateFrameNumbers("warrior-run-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-run-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 8,
       repeat: -1,
     });
     this.anims.create({
       key: "warrior-run-right",
-      frames: this.anims.generateFrameNumbers("warrior-run-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-run-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 8,
       repeat: -1,
     });
 
     this.anims.create({
       key: "warrior-cast-down",
-      frames: this.anims.generateFrameNumbers("warrior-cast-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-cast-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "warrior-cast-left",
-      frames: this.anims.generateFrameNumbers("warrior-cast-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-cast-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "warrior-cast-right",
-      frames: this.anims.generateFrameNumbers("warrior-cast-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-cast-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "warrior-cast-up",
-      frames: this.anims.generateFrameNumbers("warrior-cast-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("warrior-cast-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: 0,
     });
 
     this.anims.create({
       key: "warrior-idle-down",
-      frames: this.anims.generateFrameNumbers("warrior-idle-down", { start: 0, end: 3 }),
+      frames: this.anims.generateFrameNumbers("warrior-idle-down", {
+        start: 0,
+        end: 3,
+      }),
       frameRate: 4,
       repeat: -1,
     });
     this.anims.create({
       key: "warrior-idle-left",
-      frames: this.anims.generateFrameNumbers("warrior-idle-left", { start: 0, end: 3 }),
+      frames: this.anims.generateFrameNumbers("warrior-idle-left", {
+        start: 0,
+        end: 3,
+      }),
       frameRate: 4,
       repeat: -1,
     });
     this.anims.create({
       key: "warrior-idle-right",
-      frames: this.anims.generateFrameNumbers("warrior-idle-right", { start: 0, end: 3 }),
+      frames: this.anims.generateFrameNumbers("warrior-idle-right", {
+        start: 0,
+        end: 3,
+      }),
       frameRate: 4,
       repeat: -1,
     });
     this.anims.create({
       key: "warrior-idle-up",
-      frames: this.anims.generateFrameNumbers("warrior-idle-up", { start: 0, end: 3 }),
+      frames: this.anims.generateFrameNumbers("warrior-idle-up", {
+        start: 0,
+        end: 3,
+      }),
       frameRate: 4,
       repeat: -1,
     });
@@ -519,28 +636,39 @@ export default class MainScene extends Phaser.Scene {
     // =======================
     // SORCERESS
     // =======================
-    // If your run-down sprite only has frames 0..5, do end=5; if it truly has 7 frames, keep 6 or 7
     this.anims.create({
       key: "sorceress-run-down",
-      frames: this.anims.generateFrameNumbers("sorceress-run-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-run-up",
-      frames: this.anims.generateFrameNumbers("sorceress-run-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-run-left",
-      frames: this.anims.generateFrameNumbers("sorceress-run-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-run-right",
-      frames: this.anims.generateFrameNumbers("sorceress-run-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-run-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
@@ -548,25 +676,37 @@ export default class MainScene extends Phaser.Scene {
     // cast
     this.anims.create({
       key: "sorceress-cast-down",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-down", { start: 0, end: 4 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-down", {
+        start: 0,
+        end: 4,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "sorceress-cast-left",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-left", { start: 0, end: 4 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-left", {
+        start: 0,
+        end: 4,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "sorceress-cast-right",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-right", { start: 0, end: 4 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-right", {
+        start: 0,
+        end: 4,
+      }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "sorceress-cast-up",
-      frames: this.anims.generateFrameNumbers("sorceress-cast-up", { start: 0, end: 4 }),
+      frames: this.anims.generateFrameNumbers("sorceress-cast-up", {
+        start: 0,
+        end: 4,
+      }),
       frameRate: 10,
       repeat: 0,
     });
@@ -574,25 +714,37 @@ export default class MainScene extends Phaser.Scene {
     // idle
     this.anims.create({
       key: "sorceress-idle-down",
-      frames: this.anims.generateFrameNumbers("sorceress-idle-down", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-idle-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-idle-left",
-      frames: this.anims.generateFrameNumbers("sorceress-idle-left", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-idle-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-idle-right",
-      frames: this.anims.generateFrameNumbers("sorceress-idle-right", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-idle-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
     this.anims.create({
       key: "sorceress-idle-up",
-      frames: this.anims.generateFrameNumbers("sorceress-idle-up", { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers("sorceress-idle-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 6,
       repeat: -1,
     });
@@ -635,12 +787,11 @@ export default class MainScene extends Phaser.Scene {
     // SKILLS
     // =======================
     allGameSkills.forEach((skill) => {
-      // If "magic_wip_anim" only has frames 0..3, but you did animationSeq [0,7], you must fix it:
       this.anims.create({
         key: `${skill.name}_anim`,
         frames: this.anims.generateFrameNumbers(`${skill.name}_anim`, {
           start: 0,
-          end: skill.animationSeq[1], // if it only has 4 frames, use 3
+          end: skill.animationSeq[1],
         }),
         frameRate: 15,
         repeat: 0,
@@ -649,8 +800,18 @@ export default class MainScene extends Phaser.Scene {
   }
 
   setupCamera() {
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
+    this.physics.world.setBounds(
+      0,
+      0,
+      this.map.widthInPixels,
+      this.map.heightInPixels
+    );
     this.cameras.main.startFollow(this.playerManager.player);
   }
 
@@ -709,7 +870,9 @@ export default class MainScene extends Phaser.Scene {
 
   gainExperience(amount) {
     playerProfile.totalExp += amount;
-    this.chatManager.addMessage(`Gained ${amount} EXP (Total: ${playerProfile.totalExp})`);
+    this.chatManager.addMessage(
+      `Gained ${amount} EXP (Total: ${playerProfile.totalExp})`
+    );
     const { level, currentExp, nextLevelExp } = this.calculatePlayerLevel(
       playerProfile.totalExp
     );

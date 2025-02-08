@@ -412,7 +412,7 @@ const mobsData = {
     mana: 60,
 
     magicAttack: 0,
-    meleeAttack: 20,
+    meleeAttack: 2,
     magicDefense: 2,
     meleeDefense: 30,
     magicEvasion: 1,
