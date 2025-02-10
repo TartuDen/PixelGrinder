@@ -18,8 +18,6 @@ import {
 
 import EasyStar from "https://esm.sh/easystarjs@0.4.4";
 
-
-
 export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
@@ -37,15 +35,14 @@ export default class MainScene extends Phaser.Scene {
 
     this.events = new Phaser.Events.EventEmitter();
 
-    // [ADDED for EasyStar Pathfinding]
+    // For EasyStar Pathfinding
     this.pathfinder = null;
-    this.walkableTiles = [];
     this.grid = [];
-    this.tileSize = 32; // Adjust if your tile size is different
+    this.tileSize = 32; // If your tiles are 32x32 in Tiled
   }
 
   preload() {
-    // Tiled map for the main game
+    // Tiled map
     this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
     this.load.image("terrain", "assets/map/terrain.png");
 
@@ -59,7 +56,7 @@ export default class MainScene extends Phaser.Scene {
       frameHeight: 32,
     });
 
-    // ============ Player skins ================
+    // ============ Player Skins ============ (unchanged)
     // Necromancer
     this.load.spritesheet(
       "necromancer-run-down",
@@ -82,7 +79,7 @@ export default class MainScene extends Phaser.Scene {
       { frameWidth: 48, frameHeight: 48 }
     );
 
-    // Necromancer cast
+    // Necromancer cast, idle, etc.
     this.load.spritesheet(
       "necromancer-cast-down",
       "assets/Foozle_2DC0010_Lucifer_Necromancer_Pixel_Art/Down/Png/NecromancerDownAttack02.png",
@@ -266,7 +263,9 @@ export default class MainScene extends Phaser.Scene {
   create() {
     this.previousLevel = playerProfile.level;
 
+    // Create map
     this.createTilemap();
+    // Define animations for player, mobs, skills
     this.defineAnimations();
 
     // Chat
@@ -276,6 +275,7 @@ export default class MainScene extends Phaser.Scene {
     // Player
     this.playerManager = new PlayerManager(this);
     this.playerManager.createPlayer(this.map);
+    // Allow collisions with gather_rock
     this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
     // Skill Manager
@@ -294,7 +294,7 @@ export default class MainScene extends Phaser.Scene {
       this.scene.resume();
     });
 
-    // [ADDED for EasyStar Pathfinding] Initialize pathfinder
+    // Init pathfinder
     this.initPathfinder();
 
     // Mobs
@@ -321,6 +321,7 @@ export default class MainScene extends Phaser.Scene {
     );
     this.gatherManager.init(this.gatherRockLayer);
 
+    // Emit stats on init
     this.emitStatsUpdate();
     this.skillManager.createSkillAnimations();
 
@@ -340,6 +341,7 @@ export default class MainScene extends Phaser.Scene {
       `EXP: ${currentExp} / ${nextLevelExp} to next level`
     );
 
+    // In-game menu
     this.createInGameMenuButtons();
   }
 
@@ -347,65 +349,79 @@ export default class MainScene extends Phaser.Scene {
     const cursors = this.inputManager.getInputKeys();
     const isCasting = this.skillManager.isCasting;
 
+    // Player movement
     this.playerManager.handleMovement(cursors, isCasting);
+
+    // Mobs AI
     this.mobManager.updateMobs(this.playerManager.player);
 
+    // Gathering logic
     if (this.gatherManager) {
       this.gatherManager.update();
     }
   }
 
+  // ------------------------------
+  //      TILEMAP LAYERS
+  // ------------------------------
   createTilemap() {
     this.map = this.make.tilemap({ key: "Map1" });
     const tileset = this.map.addTilesetImage("terrain", "terrain");
+
+    // background, paths - walkable
     this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
     this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
 
+    // collisions, gather_rock - collidable
     this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
-    this.collisionLayer.setCollisionByExclusion([-1, 0]);
+    // Mark all tiles (except -1) as colliding in collisions layer
+    this.collisionLayer.setCollisionByExclusion([-1]);
 
     this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
+    // Mark all tiles (except -1) as colliding in gather_rock layer
     this.gatherRockLayer.setCollisionByExclusion([-1]);
   }
 
-  // [ADDED for EasyStar Pathfinding]
+  // ------------------------------
+  //      PATHFINDER
+  // ------------------------------
   initPathfinder() {
     this.pathfinder = new EasyStar.js();
 
-    // Build a 2D grid from the collisionLayer
-    const layerData = this.collisionLayer.layer.data;
-    // We'll interpret tile indices > -1 as "blocked" if marked as colliding
-    // and tile indices that are NOT colliding as walkable.
+    // We'll build our pathfinder grid from collisions + gather_rock
+    const collisionData = this.collisionLayer.layer.data;
+    const gatherData = this.gatherRockLayer.layer.data;
 
-    // Build grid
-    for (let row = 0; row < layerData.length; row++) {
+    for (let row = 0; row < collisionData.length; row++) {
       const colArray = [];
-      for (let col = 0; col < layerData[row].length; col++) {
-        const tile = layerData[row][col];
-        // If tile.collideUp/Down/... is true or tile.index > -1 then it might be blocked.
-        // We'll treat collision as "blocked" (1) or "free" (0).
-        const isColliding = tile && tile.collides ? 1 : 0;
-        colArray.push(isColliding);
+      for (let col = 0; col < collisionData[row].length; col++) {
+        const collisionTile = collisionData[row][col];
+        const gatherTile = gatherData[row][col];
+
+        // If either tile is colliding, mark blocked = 1
+        const isBlocked =
+          (collisionTile && collisionTile.collides) ||
+          (gatherTile && gatherTile.collides)
+            ? 1
+            : 0;
+        colArray.push(isBlocked);
       }
       this.grid.push(colArray);
     }
 
     this.pathfinder.setGrid(this.grid);
-
-    // We have two "tile types": 0 = walkable, 1 = blocked
+    // 0 = walkable, 1 = blocked
     this.pathfinder.setAcceptableTiles([0]);
 
-    // Lower cost to prefer certain tiles, if you want.
-    // For now, we skip that, so cost is uniform.
-
-    // Optionally, set iterations per calc for performance
+    // Adjust pathfinder iteration speed as needed
     this.pathfinder.setIterationsPerCalculation(500);
   }
 
+  // ------------------------------
+  //     ANIMATIONS
+  // ------------------------------
   defineAnimations() {
-    // =======================
-    // NECROMANCER
-    // =======================
+    // Necromancer
     this.anims.create({
       key: "necromancer-run-down",
       frames: this.anims.generateFrameNumbers("necromancer-run-down", {
@@ -783,9 +799,7 @@ export default class MainScene extends Phaser.Scene {
       repeat: 0,
     });
 
-    // =======================
-    // SKILLS
-    // =======================
+    // Skills
     allGameSkills.forEach((skill) => {
       this.anims.create({
         key: `${skill.name}_anim`,
@@ -799,6 +813,9 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  // ------------------------------
+  //     CAMERA
+  // ------------------------------
   setupCamera() {
     this.cameras.main.setBounds(
       0,
@@ -815,6 +832,9 @@ export default class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.playerManager.player);
   }
 
+  // ------------------------------
+  //     UI + MENUS
+  // ------------------------------
   createInGameMenuButtons() {
     const menuContainer = document.createElement("div");
     menuContainer.id = "game-menu-container";
@@ -837,6 +857,9 @@ export default class MainScene extends Phaser.Scene {
     menuContainer.appendChild(skillBookBtn);
   }
 
+  // ------------------------------
+  //     PLAYER LEVEL, EXP
+  // ------------------------------
   calculatePlayerLevel(totalExp) {
     const oldLevel = playerProfile.level;
     let level = 1;
@@ -859,7 +882,9 @@ export default class MainScene extends Phaser.Scene {
         }
       }
       playerProfile.level = level;
-      this.chatManager.addMessage(`Congratulations! You've reached Level ${level}!`);
+      this.chatManager.addMessage(
+        `Congratulations! You've reached Level ${level}!`
+      );
       this.playerManager.updatePlayerStats();
       this.playerManager.replenishHealthAndMana();
     }
@@ -877,9 +902,14 @@ export default class MainScene extends Phaser.Scene {
       playerProfile.totalExp
     );
     this.chatManager.addMessage(`Player Level: ${level}`);
-    this.chatManager.addMessage(`EXP: ${currentExp} / ${nextLevelExp} to next level`);
+    this.chatManager.addMessage(
+      `EXP: ${currentExp} / ${nextLevelExp} to next level`
+    );
   }
 
+  // ------------------------------
+  //     STATS / UI UPDATES
+  // ------------------------------
   emitStatsUpdate() {
     const playerStats = this.playerManager.getPlayerStats();
     this.events.emit("statsUpdated", {
@@ -909,6 +939,7 @@ export default class MainScene extends Phaser.Scene {
     this.uiManager.updateUI(uiStats);
   }
 
+  // Stats Menu
   toggleStatsMenu() {
     if (this.uiManager.statsMenu.style.display === "block") {
       this.uiManager.hideStatsMenu();
@@ -924,6 +955,9 @@ export default class MainScene extends Phaser.Scene {
     return `<p>Display player's detailed stats here.</p>`;
   }
 
+  // ------------------------------
+  //     SKILL USAGE
+  // ------------------------------
   useSkill(skill) {
     const result = this.skillManager.useSkill(skill);
     if (result.success) {
@@ -943,6 +977,9 @@ export default class MainScene extends Phaser.Scene {
     this.emitStatsUpdate();
   }
 
+  // ------------------------------
+  //     TARGETING
+  // ------------------------------
   cycleTarget() {
     this.mobManager.cycleTarget(
       this.playerManager.player,
@@ -962,6 +999,9 @@ export default class MainScene extends Phaser.Scene {
     this.emitStatsUpdate();
   }
 
+  // ------------------------------
+  //     PLAYER DEATH
+  // ------------------------------
   handlePlayerDeath() {
     this.chatManager.addMessage("Player died!");
     this.time.delayedCall(2000, () => {

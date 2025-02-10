@@ -405,7 +405,7 @@ const mobsData = {
   slime: {
     name: "Slime",
     level: 2,
-    attackRange: 80,
+    attackRange: 50,
     health: 50,
 
     // ADDED - now the mob can have mana & use skills:
@@ -425,10 +425,10 @@ const mobsData = {
 
     // This loot table has some skill IDs (1000, 1002, 1003)
     lootTable: [
-      { itemId: 2001, chance: 80 },
-      { itemId: 1002, chance: 80 },
-      { itemId: 1000, chance: 80 },
-      { itemId: 1003, chance: 80 },
+      // { itemId: 2001, chance: 80 },
+      // { itemId: 1002, chance: 80 },
+      // { itemId: 1000, chance: 80 },
+      // { itemId: 1003, chance: 80 },
     ],
 
     // ADDED for healing logic: if mob has a healing skill, it will use it if HP < 50% (0.5).
