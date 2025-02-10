@@ -46,17 +46,77 @@ export default class MainScene extends Phaser.Scene {
     this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
     this.load.image("terrain", "assets/map/terrain.png");
 
-    // Mobs
-    this.load.spritesheet("mobs", "assets/mobs.png", {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-    this.load.spritesheet("dead_mobs", "assets/dead_mobs.png", {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
+    // =======================
+    //  MOBS (NEW GoblinBeast)
+    // =======================
+    // Walking (288x48 → 6 frames × 48px width)
+    this.load.spritesheet(
+      "goblinBeast-walk-down",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Down/Png/GoblinBeastDownWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-walk-left",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Left/Png/GoblinBeastLeftWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-walk-right",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Right/Png/GoblinBeastRightWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-walk-up",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Up/Png/GoblinBeastUpWalk.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
 
-    // ============ Player Skins ============ (unchanged)
+    // Death (480x48 → 10 frames × 48px width)
+    this.load.spritesheet(
+      "goblinBeast-death-down",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Down/Png/GoblinBeastDownDeath.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-death-left",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Left/Png/GoblinBeastLeftDeath.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-death-right",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Right/Png/GoblinBeastRightDeath.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-death-up",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Up/Png/GoblinBeastUpDeath.png",
+      { frameWidth: 48, frameHeight: 48 }
+    );
+
+    // Attack (512x48 → 8 frames × 64px width)
+    // (Assuming we have Down as well; the example repeated Left path, so adjusting accordingly)
+    this.load.spritesheet(
+      "goblinBeast-attack-down",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Down/Png/GoblinBeastDownAttack01.png",
+      { frameWidth: 64, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-attack-left",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Left/Png/GoblinBeastLeftAttack01.png",
+      { frameWidth: 64, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-attack-right",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Right/Png/GoblinBeastRightAttack01.png",
+      { frameWidth: 64, frameHeight: 48 }
+    );
+    this.load.spritesheet(
+      "goblinBeast-attack-up",
+      "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Up/Png/GoblinBeastUpAttack01.png",
+      { frameWidth: 64, frameHeight: 48 }
+    );
+
+    // ============ Player Skins ============
     // Necromancer
     this.load.spritesheet(
       "necromancer-run-down",
@@ -421,7 +481,9 @@ export default class MainScene extends Phaser.Scene {
   //     ANIMATIONS
   // ------------------------------
   defineAnimations() {
+    // =======================
     // Necromancer
+    // =======================
     this.anims.create({
       key: "necromancer-run-down",
       frames: this.anims.generateFrameNumbers("necromancer-run-down", {
@@ -766,36 +828,119 @@ export default class MainScene extends Phaser.Scene {
     });
 
     // =======================
-    // MOBS
+    // Goblin Beast (for "slime")
     // =======================
+    // Walk
     this.anims.create({
-      key: "mob-walk-down",
-      frames: this.anims.generateFrameNumbers("mobs", { start: 48, end: 50 }),
+      key: "goblinBeast-walk-down",
+      frames: this.anims.generateFrameNumbers("goblinBeast-walk-down", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
-      key: "mob-walk-left",
-      frames: this.anims.generateFrameNumbers("mobs", { start: 60, end: 62 }),
+      key: "goblinBeast-walk-left",
+      frames: this.anims.generateFrameNumbers("goblinBeast-walk-left", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
-      key: "mob-walk-right",
-      frames: this.anims.generateFrameNumbers("mobs", { start: 72, end: 74 }),
+      key: "goblinBeast-walk-right",
+      frames: this.anims.generateFrameNumbers("goblinBeast-walk-right", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
-      key: "mob-walk-up",
-      frames: this.anims.generateFrameNumbers("mobs", { start: 84, end: 86 }),
+      key: "goblinBeast-walk-up",
+      frames: this.anims.generateFrameNumbers("goblinBeast-walk-up", {
+        start: 0,
+        end: 5,
+      }),
       frameRate: 10,
       repeat: -1,
     });
+
+    // Death
     this.anims.create({
-      key: "mob-dead",
-      frames: this.anims.generateFrameNumbers("dead_mobs", { start: 7, end: 7 }),
-      frameRate: 0,
+      key: "goblinBeast-death-down",
+      frames: this.anims.generateFrameNumbers("goblinBeast-death-down", {
+        start: 0,
+        end: 9,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "goblinBeast-death-left",
+      frames: this.anims.generateFrameNumbers("goblinBeast-death-left", {
+        start: 0,
+        end: 9,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "goblinBeast-death-right",
+      frames: this.anims.generateFrameNumbers("goblinBeast-death-right", {
+        start: 0,
+        end: 9,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "goblinBeast-death-up",
+      frames: this.anims.generateFrameNumbers("goblinBeast-death-up", {
+        start: 0,
+        end: 9,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+
+    // Attack
+    this.anims.create({
+      key: "goblinBeast-attack-down",
+      frames: this.anims.generateFrameNumbers("goblinBeast-attack-down", {
+        start: 0,
+        end: 7,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "goblinBeast-attack-left",
+      frames: this.anims.generateFrameNumbers("goblinBeast-attack-left", {
+        start: 0,
+        end: 7,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "goblinBeast-attack-right",
+      frames: this.anims.generateFrameNumbers("goblinBeast-attack-right", {
+        start: 0,
+        end: 7,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "goblinBeast-attack-up",
+      frames: this.anims.generateFrameNumbers("goblinBeast-attack-up", {
+        start: 0,
+        end: 7,
+      }),
+      frameRate: 10,
       repeat: 0,
     });
 

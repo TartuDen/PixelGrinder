@@ -37,14 +37,20 @@ export default class MobManager {
       return;
     }
 
+    // Example: we spawn 'slime' but give it GoblinBeast animations
     const mobSpawns = spawnLayer.objects.filter((obj) =>
       obj.name.startsWith("MobSpawnZone")
     );
 
     mobSpawns.forEach((spawnZone) => {
-      const mobTypeID = "slime"; // example: all set to 'slime'
+      // For simplicity, we just spawn the "slime" type as the new Goblin Beast
+      const mobTypeID = "slime";
       const mobInfo = mobsData[mobTypeID];
-      const mob = this.mobs.create(spawnZone.x, spawnZone.y, "characters");
+      const mob = this.mobs.create(
+        spawnZone.x,
+        spawnZone.y,
+        "goblinBeast-walk-down" // Use the Goblin Beast sprite as default
+      );
 
       mob.setPushable(false);
 
@@ -75,6 +81,9 @@ export default class MobManager {
         isUnsticking: false,
         wanderDirection: new Phaser.Math.Vector2(0, 0),
 
+        // Keep track of facing direction for death/attack animations
+        lastDirection: "down",
+
         // Pathfinding
         path: null,
         pathIndex: 0,
@@ -88,7 +97,7 @@ export default class MobManager {
       });
 
       mob.setScale(1);
-      mob.anims.play("mob-walk-down");
+      mob.anims.play("goblinBeast-walk-down");
 
       this.assignRandomIdleOrWander(mob);
     });
@@ -177,7 +186,7 @@ export default class MobManager {
       if (!mobInfo) return;
 
       if (mob.customData.currentType !== "enemy") {
-        // If 'friend', it just wanders or idles
+        // 'friend' just wanders or idles
         if (mob.customData.state === "wandering") {
           this.updateWandering(mob);
         }
@@ -223,7 +232,7 @@ export default class MobManager {
           break;
 
         case "unsticking":
-          // Let the unstick logic finish, then it will revert to chasing/idle
+          // Let the unstick logic finish
           break;
       }
     });
@@ -264,14 +273,15 @@ export default class MobManager {
     const speed = mobInfo.speed;
 
     const directions = [
-      { x: 1, y: 0, anim: "mob-walk-right" },
-      { x: -1, y: 0, anim: "mob-walk-left" },
-      { x: 0, y: 1, anim: "mob-walk-down" },
-      { x: 0, y: -1, anim: "mob-walk-up" },
+      { x: 1, y: 0, anim: "goblinBeast-walk-right", dir: "right" },
+      { x: -1, y: 0, anim: "goblinBeast-walk-left", dir: "left" },
+      { x: 0, y: 1, anim: "goblinBeast-walk-down", dir: "down" },
+      { x: 0, y: -1, anim: "goblinBeast-walk-up", dir: "up" },
     ];
     const chosen = Phaser.Utils.Array.GetRandom(directions);
 
     mob.customData.wanderDirection.set(chosen.x, chosen.y);
+    mob.customData.lastDirection = chosen.dir;
     mob.body.setVelocity(chosen.x * speed, chosen.y * speed);
     mob.anims.play(chosen.anim, true);
 
@@ -289,9 +299,9 @@ export default class MobManager {
     const dir = mob.customData.wanderDirection;
     if (dir.lengthSq() === 0) return;
 
-    // Naive check: if next tile is blocked, pick a new direction.
-    const nextX = mob.x + dir.x * mob.customData.visionDistance;
-    const nextY = mob.y + dir.y * mob.customData.visionDistance;
+    // If next tile is blocked, pick a new direction
+    const nextX = mob.x + dir.x * 20;
+    const nextY = mob.y + dir.y * 20;
     const tile = this.scene.collisionLayer.getTileAtWorldXY(nextX, nextY);
     if (tile && tile.collides) {
       this.assignRandomIdleOrWander(mob);
@@ -312,7 +322,6 @@ export default class MobManager {
       ? this.getMobMaxSkillRange(mob)
       : mobInfo.attackRange;
 
-    // Switch to attacking if within range
     if (distanceToPlayer <= desiredRange) {
       mob.customData.state = "attacking";
       mob.body.setVelocity(0, 0);
@@ -323,10 +332,10 @@ export default class MobManager {
       return;
     }
 
-    // Calculate path if we don't have one or it ended
+    // Calculate path if none or done
     this.calculatePath(mob, player);
 
-    // Check if mob is stuck
+    // Check stuck
     this.checkIfMobIsStuck(mob, player, mobInfo);
   }
 
@@ -336,8 +345,6 @@ export default class MobManager {
     const playerTileX = this.scene.collisionLayer.worldToTileX(player.x);
     const playerTileY = this.scene.collisionLayer.worldToTileY(player.y);
 
-    // Only recalc if we do NOT already have a path in progress
-    // or we reached the end of that path
     if (
       mob.customData.path &&
       mob.customData.pathIndex < mob.customData.path.length
@@ -367,14 +374,13 @@ export default class MobManager {
       !mob.customData.path ||
       mob.customData.pathIndex >= mob.customData.path.length
     ) {
-      return; // No path or path is complete
+      return;
     }
 
     const speed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
     const nextPoint = mob.customData.path[mob.customData.pathIndex];
     if (!nextPoint) return;
 
-    // Convert tile coords back to world coords (center of tile)
     const worldX =
       this.scene.collisionLayer.tileToWorldX(nextPoint.x) +
       this.scene.tileSize / 2;
@@ -391,21 +397,34 @@ export default class MobManager {
     const angle = Phaser.Math.Angle.Between(mob.x, mob.y, worldX, worldY);
     mob.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
 
-    // Pick animation
+    // Pick walk animation + record lastDirection
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
+
     if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0) mob.anims.play("mob-walk-right", true);
-      else mob.anims.play("mob-walk-left", true);
+      if (dx > 0) {
+        mob.anims.play("goblinBeast-walk-right", true);
+        mob.customData.lastDirection = "right";
+      } else {
+        mob.anims.play("goblinBeast-walk-left", true);
+        mob.customData.lastDirection = "left";
+      }
     } else {
-      if (dy > 0) mob.anims.play("mob-walk-down", true);
-      else mob.anims.play("mob-walk-up", true);
+      if (dy > 0) {
+        mob.anims.play("goblinBeast-walk-down", true);
+        mob.customData.lastDirection = "down";
+      } else {
+        mob.anims.play("goblinBeast-walk-up", true);
+        mob.customData.lastDirection = "up";
+      }
     }
   }
 
   checkIfMobIsStuck(mob, player, mobInfo) {
     const now = this.scene.time.now;
-    if (now - mob.customData.lastChaseCheckTime >= mob.customData.stuckCheckInterval) {
+    if (
+      now - mob.customData.lastChaseCheckTime >= mob.customData.stuckCheckInterval
+    ) {
       mob.customData.lastChaseCheckTime = now;
       const distMoved = Phaser.Math.Distance.Between(
         mob.x,
@@ -454,46 +473,38 @@ export default class MobManager {
     const sideSpeed = mobInfo.speed;
     mob.body.setVelocity(turnDir.x * sideSpeed, turnDir.y * sideSpeed);
 
+    // Choose correct walk anim
     if (Math.abs(turnDir.x) > Math.abs(turnDir.y)) {
-      if (turnDir.x > 0) mob.anims.play("mob-walk-right", true);
-      else mob.anims.play("mob-walk-left", true);
+      if (turnDir.x > 0) {
+        mob.anims.play("goblinBeast-walk-right", true);
+        mob.customData.lastDirection = "right";
+      } else {
+        mob.anims.play("goblinBeast-walk-left", true);
+        mob.customData.lastDirection = "left";
+      }
     } else {
-      if (turnDir.y > 0) mob.anims.play("mob-walk-down", true);
-      else mob.anims.play("mob-walk-up", true);
+      if (turnDir.y > 0) {
+        mob.anims.play("goblinBeast-walk-down", true);
+        mob.customData.lastDirection = "down";
+      } else {
+        mob.anims.play("goblinBeast-walk-up", true);
+        mob.customData.lastDirection = "up";
+      }
     }
 
     this.scene.time.addEvent({
       delay: 500,
       callback: () => {
-        // After trying to unstick, go back to chasing and recalc path
+        // go back to chasing and recalc path
         mob.customData.state = "chasing";
         mob.customData.isUnsticking = false;
         mob.customData.lastPosition.x = mob.x;
         mob.customData.lastPosition.y = mob.y;
 
-        // Force path recalc next frame
         mob.customData.path = null;
         mob.customData.pathIndex = 0;
       },
     });
-  }
-
-  // Fallback direct chase if needed (e.g. after friend->enemy switch)
-  chasePlayer(mob, player, mobInfo, desiredRange) {
-    const direction = new Phaser.Math.Vector2(
-      player.x - mob.x,
-      player.y - mob.y
-    ).normalize();
-    const chaseSpeed = mobInfo.speed * MOB_CHASE_SPEED_MULT;
-    mob.body.setVelocity(direction.x * chaseSpeed, direction.y * chaseSpeed);
-
-    if (Math.abs(direction.x) > Math.abs(direction.y)) {
-      if (direction.x > 0) mob.anims.play("mob-walk-right", true);
-      else mob.anims.play("mob-walk-left", true);
-    } else {
-      if (direction.y > 0) mob.anims.play("mob-walk-down", true);
-      else mob.anims.play("mob-walk-up", true);
-    }
   }
 
   mobHasAnyUsableSkill(mob, distanceToPlayer) {
@@ -581,7 +592,24 @@ export default class MobManager {
       return;
     }
 
+    // Play attack anim + do damage
+    this.playAttackAnimation(mob, player);
     this.mobAttackPlayer(mob, mobInfo);
+  }
+
+  playAttackAnimation(mob, target) {
+    const dx = target.x - mob.x;
+    const dy = target.y - mob.y;
+
+    let direction = mob.customData.lastDirection; // fallback
+    if (Math.abs(dx) > Math.abs(dy)) {
+      direction = dx > 0 ? "right" : "left";
+    } else {
+      direction = dy > 0 ? "down" : "up";
+    }
+    mob.customData.lastDirection = direction;
+
+    mob.anims.play(`goblinBeast-attack-${direction}`, true);
   }
 
   mobTryUseSkill(mob, player, distanceToPlayer) {
@@ -649,10 +677,7 @@ export default class MobManager {
     if (skill.healHP || skill.healMP) {
       const totalHP = mobsData[mob.customData.id].health;
       if (skill.healHP) {
-        mob.customData.hp = Math.min(
-          mob.customData.hp + skill.healHP,
-          totalHP
-        );
+        mob.customData.hp = Math.min(mob.customData.hp + skill.healHP, totalHP);
       }
       if (skill.healMP) {
         const totalMana = mobsData[mob.customData.id].mana || 0;
@@ -749,9 +774,7 @@ export default class MobManager {
           if (cd <= 0) {
             mob.customData.mobSkillCooldowns[skill.id] = 0;
           } else {
-            mob.customData.mobSkillCooldowns[skill.id] = +(
-              cd - 0.1
-            ).toFixed(1);
+            mob.customData.mobSkillCooldowns[skill.id] = +(cd - 0.1).toFixed(1);
           }
         },
       });
@@ -792,6 +815,7 @@ export default class MobManager {
     const playerStats = this.scene.playerManager.getPlayerStats();
     let damage = 0;
 
+    // We'll just see which is higher to decide if it's "magic" or "melee"
     if (mobInfo.meleeAttack >= mobInfo.magicAttack) {
       const evaded = this.isAttackEvaded(playerStats.meleeEvasion || 0);
       if (evaded) {
@@ -837,17 +861,12 @@ export default class MobManager {
       this.handleMobDeath(mob);
       this.scene.targetedMob = null;
     } else {
+      // if it was 'friend', turn enemy
       if (mob.customData.currentType === "friend") {
         mob.customData.currentType = "enemy";
         mob.customData.state = "chasing";
         this.scene.chatManager.addMessage(
           `Mob "${mob.customData.id}" became enemy (now chasing).`
-        );
-        this.chasePlayer(
-          mob,
-          this.scene.playerManager.player,
-          mobsData[mob.customData.id],
-          mobsData[mob.customData.id].attackRange
         );
       }
     }
@@ -856,7 +875,10 @@ export default class MobManager {
   handleMobDeath(mob) {
     mob.customData.isDead = true;
     mob.body.setVelocity(0, 0);
-    mob.anims.play("mob-dead", true);
+    // Play direction-based death anim
+    const lastDir = mob.customData.lastDirection || "down";
+    mob.anims.play(`goblinBeast-death-${lastDir}`, true);
+
     mob.body.setEnable(false);
 
     const mobInfo = mobsData[mob.customData.id];
@@ -956,7 +978,7 @@ export default class MobManager {
     this.updateMobUI(mob);
 
     mob.body.setVelocity(0, 0);
-    mob.anims.play("mob-walk-down");
+    mob.anims.play("goblinBeast-walk-down");
     mob.clearTint();
 
     this.scene.chatManager.addMessage(
