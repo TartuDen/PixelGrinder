@@ -405,7 +405,7 @@ const mobsData = {
   slime: {
     name: "Slime",
     level: 2,
-    attackRange: 50,
+    attackRange: 100,
     health: 50,
 
     // ADDED - now the mob can have mana & use skills:
