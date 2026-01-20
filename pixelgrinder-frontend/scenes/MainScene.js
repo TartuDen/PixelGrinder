@@ -11,11 +11,18 @@ import {
   naturalRegeneration,
   playerProfile,
   playerSkills,
+  playerEquippedItems,
+  playerBackpack,
   TAB_TARGET_RANGE,
   playerBaseStats,
   playerGrowthStats,
   allGameSkills,
 } from "../data/MOCKdata.js";
+import { loadSave, saveGame as persistSave } from "../services/SaveService.js";
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -31,6 +38,7 @@ export default class MainScene extends Phaser.Scene {
     this.inputManager = null;
     this.chatManager = null;
     this.gatherManager = null;
+    this.autoSaveTimer = null;
 
     this.events = new Phaser.Events.EventEmitter();
   }
@@ -332,6 +340,20 @@ export default class MainScene extends Phaser.Scene {
     // Allow collisions with gather_rock
     this.physics.add.collider(this.playerManager.player, this.gatherRockLayer);
 
+    const saveData = loadSave();
+    if (saveData && saveData.playerState) {
+      const { x, y, currentHealth, currentMana } = saveData.playerState;
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        this.playerManager.player.setPosition(x, y);
+      }
+      if (Number.isFinite(currentHealth)) {
+        this.playerManager.currentHealth = currentHealth;
+      }
+      if (Number.isFinite(currentMana)) {
+        this.playerManager.currentMana = currentMana;
+      }
+    }
+
     // Skill Manager
     this.skillManager = new SkillManager(this, () =>
       this.playerManager.getPlayerStats()
@@ -394,6 +416,8 @@ export default class MainScene extends Phaser.Scene {
 
     // In-game menu
     this.createInGameMenuButtons();
+
+    this.startAutoSave();
   }
 
   update(time, delta) {
@@ -1109,6 +1133,7 @@ export default class MainScene extends Phaser.Scene {
   // ------------------------------
   handlePlayerDeath() {
     this.chatManager.addMessage("Player died!");
+    this.saveGame();
     this.time.delayedCall(2000, () => {
       this.scene.restart();
     });
@@ -1116,5 +1141,34 @@ export default class MainScene extends Phaser.Scene {
 
   toggleInventoryMenu() {
     this.uiManager.toggleInventory();
+  }
+
+  startAutoSave() {
+    if (this.autoSaveTimer) {
+      this.autoSaveTimer.remove(false);
+    }
+    this.autoSaveTimer = this.time.addEvent({
+      delay: 30000,
+      loop: true,
+      callback: () => this.saveGame(),
+    });
+  }
+
+  saveGame() {
+    const player = this.playerManager.player;
+    const payload = {
+      playerProfile: deepClone(playerProfile),
+      playerBaseStats: deepClone(playerBaseStats),
+      playerEquippedItems: deepClone(playerEquippedItems),
+      playerBackpack: deepClone(playerBackpack),
+      playerSkills: deepClone(playerSkills),
+      playerState: {
+        x: player.x,
+        y: player.y,
+        currentHealth: this.playerManager.currentHealth,
+        currentMana: this.playerManager.currentMana,
+      },
+    };
+    persistSave(payload);
   }
 }

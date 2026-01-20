@@ -3,7 +3,11 @@ import {
   playerProfile,
   playerBaseStats,
   availableCharacterSkins,
+  playerEquippedItems,
+  playerBackpack,
+  playerSkills,
 } from "../data/MOCKdata.js";
+import { applySaveData, hasSave, loadSave } from "../services/SaveService.js";
 
 export default class CharacterCreationScene extends Phaser.Scene {
   constructor() {
@@ -35,6 +39,20 @@ export default class CharacterCreationScene extends Phaser.Scene {
   }
 
   create() {
+    if (hasSave()) {
+      const saveData = loadSave();
+      if (saveData) {
+        applySaveData(saveData, {
+          playerProfile,
+          playerBaseStats,
+          playerEquippedItems,
+          playerBackpack,
+          playerSkills,
+        });
+        this.scene.start("MainScene");
+        return;
+      }
+    }
     this.createTilemap();
     this.createDOMElements();
     this.updateFinalStatsUI();
