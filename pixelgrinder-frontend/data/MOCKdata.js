@@ -1,4 +1,15 @@
 // File: data/MOCKdata.js
+import { allGameSkills, startingSkills } from "./content/skills.js";
+import {
+  weaponItems,
+  armorItems,
+  gatherableItems,
+  allItems,
+  itemsMap,
+} from "./content/items.js";
+import { mobsData, expModifierRules } from "./content/mobs.js";
+import { zones } from "./content/zones.js";
+import { npcVendors } from "./content/npcs.js";
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
@@ -7,6 +18,7 @@ const playerProfile = {
   totalExp: 0,
   // NEW: which skin the player selected (e.g. "necromancer" | "sorceress" | "warrior")
   selectedSkin: null,
+  gold: 100,
 };
 
 // We can store 3 different character skins (plus references to a showreel GIF or image)
@@ -106,251 +118,7 @@ const skillEnhancements = {
   },
 };
 
-// --------------------------------------------------------------------
-// ALL GAME SKILLS
-// --------------------------------------------------------------------
-const allGameSkills = [
-  {
-    id: 1000,
-    name: "magic_wip",
-    manaCost: 5,
-    range: 150,
-    magicAttack: 2,
-    meleeAttack: 0,
-    castingTime: 0,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
-    animationSeq: [0, 7],
-    level: 1,
-  },
-  {
-    id: 1001,
-    name: "fire_ball",
-    manaCost: 10,
-    range: 150,
-    magicAttack: 3,
-    meleeAttack: 0,
-    castingTime: 1,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
-    animationSeq: [0, 7],
-    level: 1,
-  },
-  {
-    id: 1002,
-    name: "earth_root",
-    manaCost: 8,
-    range: 150,
-    magicAttack: 10,
-    meleeAttack: 0,
-    castingTime: 5,
-    cooldown: 10,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_01.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/1.png",
-    animationSeq: [0, 7],
-    level: 1,
-  },
-  {
-    id: 1003,
-    name: "self_heal",
-    manaCost: 10,
-    range: 0,
-    healHP: 30,
-    healMP: 30,
-    castingTime: 5,
-    cooldown: 10,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_08.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/8.png",
-    animationSeq: [0, 7],
-    level: 1,
-  },
-];
-
-// --------------------------------------------------------------------
-// PLAYER SKILLS
-// --------------------------------------------------------------------
-const playerSkills = [
-  {
-    id: 1000,
-    name: "magic_wip",
-    manaCost: 5,
-    range: 150,
-    magicAttack: 2,
-    meleeAttack: 0,
-    castingTime: 0,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_04.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/4_1.png",
-    animationSeq: [0, 7],
-    level: 1,
-  },
-  {
-    id: 1001,
-    name: "fire_ball",
-    manaCost: 10,
-    range: 150,
-    magicAttack: 3,
-    meleeAttack: 0,
-    castingTime: 1,
-    cooldown: 2,
-    icon: "assets/skills/free-pixel-magic-sprite-effects-pack/2 Icons/Icon_03.png",
-    skillImage: "assets/skills/free-pixel-magic-sprite-effects-pack/1 Magic/3_2.png",
-    animationSeq: [0, 7],
-    level: 1,
-  },
-];
-
-// --------------------------------------------------------------------
-// Weapon Items (ID >= 2000)
-// --------------------------------------------------------------------
-const weaponItems = [
-  {
-    id: 2000,
-    name: "basic_staff.png",
-    icon: "assets/WeaponIcons32x32/basic_staff.png",
-    type: "staff",
-    slot: "weapon",
-    health: 0,
-    mana: 10,
-    magicAttack: 3,
-    meleeAttack: 1,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 0,
-    speed: 0,
-  },
-  {
-    id: 2001,
-    name: "green_branch",
-    icon: "assets/WeaponIcons32x32/green_branch.png",
-    type: "staff",
-    slot: "weapon",
-    health: 0,
-    mana: 10,
-    magicAttack: 500,
-    meleeAttack: 2,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 0,
-    speed: 0,
-  },
-  {
-    id: 2002,
-    name: "dark_omen",
-    icon: "assets/WeaponIcons32x32/dark_omen.png",
-    type: "staff",
-    slot: "weapon",
-    health: 0,
-    mana: 10,
-    magicAttack: 0,
-    meleeAttack: 200,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 0,
-    speed: 0,
-  },
-];
-
-// --------------------------------------------------------------------
-// Armor Items (ID >= 3000)
-// --------------------------------------------------------------------
-const armorItems = [
-  {
-    id: 3000,
-    name: "common_robe_chest",
-    icon: "assets/armor/armor.png",
-    iconCol: 2,
-    iconRow: 1,
-    type: "robe",
-    slot: "chest",
-    health: 100,
-    mana: 12,
-    magicAttack: 0,
-    meleeAttack: 0,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 0,
-    speed: 0,
-  },
-  {
-    id: 3001,
-    name: "common_robe_pants",
-    icon: "assets/armor/armor.png",
-    iconCol: 4,
-    iconRow: 1,
-    type: "robe",
-    slot: "legs",
-    health: 3,
-    mana: 5,
-    magicAttack: 0,
-    meleeAttack: 0,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 0,
-    speed: 0,
-  },
-  {
-    id: 3002,
-    name: "light_boots",
-    icon: "assets/armor/armor.png",
-    iconCol: 5,
-    iconRow: 1,
-    type: "boots",
-    slot: "feet",
-    health: 2,
-    mana: 0,
-    magicAttack: 0,
-    meleeAttack: 0,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 0,
-    speed: 5,
-  },
-  {
-    id: 3003,
-    name: "swift_gauntlets",
-    icon: "assets/armor/armor.png",
-    iconCol: 3,
-    iconRow: 1,
-    type: "gauntlets",
-    slot: "shoulders",
-    health: 1,
-    mana: 0,
-    magicAttack: 0,
-    meleeAttack: 0,
-    magicDefense: 0,
-    meleeDefense: 0,
-    magicEvasion: 0,
-    meleeEvasion: 5,
-    speed: 5,
-  },
-];
-
-// --------------------------------------------------------------------
-// Gatherable items (ID >= 4000)
-// --------------------------------------------------------------------
-const gatherableItems = [
-  {
-    id: 4000,
-    name: "simple_rock",
-    type: "stone",
-  },
-];
-
-// Combine for easy lookups
-const allItems = [...weaponItems, ...armorItems, ...gatherableItems];
-const itemsMap = {};
-allItems.forEach((item) => {
-  itemsMap[item.id] = item;
-});
+const playerSkills = startingSkills.map((skill) => ({ ...skill }));
 
 // Currently equipped
 const playerEquippedItems = {
@@ -398,79 +166,6 @@ const playerBackpack = {
 
 const deletedItems = [];
 
-// ==================================================================
-// Example Mobs
-// ==================================================================
-const mobsData = {
-  slime: {
-    name: "Slime",
-    level: 2,
-    attackRange: 100,
-    health: 50,
-
-    // ADDED - now the mob can have mana & use skills:
-    mana: 60,
-
-    magicAttack: 0,
-    meleeAttack: 2,
-    magicDefense: 2,
-    meleeDefense: 30,
-    magicEvasion: 1,
-    meleeEvasion: 1,
-    mobType: "friend",
-    mobAgroRange: 300,
-    attackCooldown: 2000,
-    speed: 20,
-    expReward: 10,
-
-    // This loot table has some skill IDs (1000, 1002, 1003)
-    lootTable: [
-      { itemId: 2001, chance: 80 },
-      { itemId: 1002, chance: 80 },
-      { itemId: 1000, chance: 80 },
-      { itemId: 1003, chance: 80 },
-    ],
-
-    // ADDED for healing logic: if mob has a healing skill, it will use it if HP < 50% (0.5).
-    healingSkillHPThreshold: 0.5,
-  },
-
-  goblin: {
-    name: "Goblin",
-    level: 5,
-    attackRange: 40,
-    health: 40,
-    mana: 0,
-    magicAttack: 3,
-    meleeAttack: 4,
-    magicDefense: 2,
-    meleeDefense: 5,
-    magicEvasion: 2,
-    meleeEvasion: 2,
-    mobType: "enemy",
-    mobAgroRange: 300,
-    attackCooldown: 1500,
-    speed: 70,
-    expReward: 22,
-    lootTable: [],
-  },
-};
-
-const expModifierRules = {
-  mobAtLeast5Higher: 1.2,
-  mob4Higher: 1.15,
-  mob3Higher: 1.1,
-  mob2Higher: 1.05,
-  mob1Higher: 1.03,
-  equalLevel: 1.0,
-  player1Higher: 0.97,
-  player2Higher: 0.9,
-  player3Higher: 0.8,
-  player4Higher: 0.75,
-  player5Higher: 0.5,
-  none: 0.0,
-};
-
 const naturalRegeneration = {
   manaRegen: 3,
   hpRegen: 4,
@@ -507,4 +202,6 @@ export {
   deletedItems,
   GATHER_RANGE,
   MOB_CORPSE_DURATION,
+  zones,
+  npcVendors,
 };

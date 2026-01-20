@@ -100,6 +100,11 @@ body {
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
   z-index: 1000;
 }
+#player-gold {
+  margin: 6px 0 10px;
+  font-size: 14px;
+  color: #f1c40f;
+}
 .health-bar, .mana-bar, .exp-bar {
   position: relative;
   width: 200px;
@@ -422,7 +427,41 @@ body {
 }
 
 /* ===============================
-   9. Tooltip Style
+   9. Shop UI
+=============================== */
+.shop-columns {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.shop-panel {
+  flex: 1;
+  min-width: 220px;
+  background-color: rgba(0,0,0,0.35);
+  padding: 10px;
+  border-radius: 6px;
+}
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0;
+  gap: 8px;
+}
+.shop-item button {
+  padding: 4px 8px;
+  background-color: #2980b9;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.shop-item button:hover {
+  background-color: #3498db;
+}
+
+/* ===============================
+   10. Tooltip Style
 =============================== */
 .game-tooltip {
   position: absolute;
@@ -440,7 +479,7 @@ body {
 }
 
 /* ===============================
-   10. Responsive Design
+   11. Responsive Design
 =============================== */
 @media (max-width: 600px) {
   #player-info { width: 90%; left: 5%; top: 10px; font-size: 14px; }
@@ -455,7 +494,7 @@ body {
 }
 
 /* ===============================
-   11. Skill Book Styles
+   12. Skill Book Styles
 =============================== */
 .skill-card-container {
   display: flex;
@@ -497,7 +536,7 @@ body {
 }
 
 /* ===============================
-   12. In-Game Menu Classes
+   13. In-Game Menu Classes
 =============================== */
 #game-menu-container {
   position: fixed;
@@ -522,7 +561,7 @@ body {
 }
 
 /* ===============================
-   13. MOB Overhead UI
+   14. MOB Overhead UI
 =============================== */
 .mob-ui-container {
   position: absolute;

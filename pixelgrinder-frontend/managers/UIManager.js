@@ -1,6 +1,7 @@
 // File: managers/UIManager.js
 
 import {
+  playerProfile,
   playerBackpack,
   itemsMap,
   deletedItems,
@@ -52,6 +53,7 @@ export default class UIManager {
     this.healthText = document.getElementById("health-text");
     this.manaText = document.getElementById("mana-text");
     this.uiLevel = document.getElementById("player-level");
+    this.uiGold = document.getElementById("player-gold");
 
     // Menus
     this.statsMenu = document.getElementById("stats-menu");
@@ -71,6 +73,12 @@ export default class UIManager {
     this.lootMenu = document.getElementById("loot-menu");
     this.lootCloseButton = document.getElementById("loot-close-button");
     this.lootContent = document.getElementById("loot-content");
+
+    // Shop Menu
+    this.shopMenu = document.getElementById("shop-menu");
+    this.shopCloseButton = document.getElementById("shop-close-button");
+    this.shopContent = document.getElementById("shop-content");
+    this.currentVendor = null;
 
     // Casting bar & progress
     this.castingBar = document.getElementById("casting-bar");
@@ -144,6 +152,11 @@ export default class UIManager {
         this.lootMenu.style.display = "none";
       });
     }
+    if (this.shopCloseButton) {
+      this.shopCloseButton.addEventListener("click", () => {
+        this.closeShop();
+      });
+    }
     if (this.scene.events) {
       this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
     }
@@ -203,7 +216,7 @@ export default class UIManager {
   // -----------------------------
   // MAIN UI UPDATES
   // -----------------------------
-  updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp }) {
+  updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp, gold }) {
     const hpVal = Math.round(currentHealth);
     const hpMaxVal = Math.round(maxHealth);
     const mpVal = Math.round(currentMana);
@@ -221,6 +234,7 @@ export default class UIManager {
     }
     if (this.uiName) this.uiName.innerText = name;
     if (this.uiLevel) this.uiLevel.innerText = `Level: ${level}`;
+    if (this.uiGold) this.uiGold.innerText = `Gold: ${gold ?? 0}`;
 
     // Compute % exp to next level
     let expForNextLevel = 100,
@@ -237,6 +251,114 @@ export default class UIManager {
       this.uiExpFill.style.width = `${expPct}%`;
       this.uiExpText.innerText = `EXP: ${currentExp}/${expForNextLevel} (${expPct.toFixed(0)}%)`;
     }
+  }
+
+  // -----------------------------
+  // SHOP UI
+  // -----------------------------
+  openShop(vendor) {
+    if (!this.shopMenu || !this.shopContent) return;
+    this.currentVendor = vendor;
+    this.renderShop();
+    this.shopMenu.style.display = "block";
+  }
+
+  closeShop() {
+    if (!this.shopMenu) return;
+    this.shopMenu.style.display = "none";
+    this.currentVendor = null;
+  }
+
+  renderShop() {
+    if (!this.currentVendor || !this.shopContent) return;
+    const vendor = this.currentVendor;
+
+    this.shopContent.innerHTML = `<h3>${vendor.name}</h3>`;
+
+    const columns = document.createElement("div");
+    columns.className = "shop-columns";
+
+    const vendorPanel = document.createElement("div");
+    vendorPanel.className = "shop-panel";
+    vendorPanel.innerHTML = "<h4>Buy</h4>";
+
+    vendor.inventory.forEach((itemId) => {
+      const itemData = itemsMap[itemId];
+      if (!itemData) return;
+      const price = Math.max(0, itemData.price || 0);
+
+      const row = document.createElement("div");
+      row.className = "shop-item";
+      row.innerText = `${this.formatItemName(itemData.name)} - ${price}g`;
+
+      const buyBtn = document.createElement("button");
+      buyBtn.innerText = "Buy";
+      buyBtn.addEventListener("click", () => {
+        if (playerProfile.gold < price) {
+          this.scene.chatManager.addMessage("Not enough gold.");
+          return;
+        }
+        const success = this.scene.playerManager.addItemToInventory(itemId, 1);
+        if (!success) {
+          this.scene.chatManager.addMessage("Inventory full.");
+          return;
+        }
+        playerProfile.gold -= price;
+        this.scene.emitStatsUpdate();
+        if (this.inventoryMenu && this.inventoryMenu.style.display !== "none") {
+          this.openInventory();
+        }
+        this.renderShop();
+      });
+      row.appendChild(buyBtn);
+      vendorPanel.appendChild(row);
+    });
+
+    const sellPanel = document.createElement("div");
+    sellPanel.className = "shop-panel";
+    sellPanel.innerHTML = "<h4>Sell</h4>";
+
+    Object.entries(playerBackpack).forEach(([cellKey, cellVal]) => {
+      if (cellVal === null || cellVal === 0) return;
+      const itemId = typeof cellVal === "object" ? cellVal.id : cellVal;
+      const quantity = typeof cellVal === "object" ? cellVal.quantity : 1;
+      const itemData = itemsMap[itemId];
+      if (!itemData) return;
+
+      const price = Math.max(1, Math.floor((itemData.price || 0) * 0.5));
+      const row = document.createElement("div");
+      row.className = "shop-item";
+      const label =
+        quantity > 1
+          ? `${this.formatItemName(itemData.name)} x${quantity} - ${price}g`
+          : `${this.formatItemName(itemData.name)} - ${price}g`;
+      row.innerText = label;
+
+      const sellBtn = document.createElement("button");
+      sellBtn.innerText = "Sell";
+      sellBtn.addEventListener("click", () => {
+        if (typeof cellVal === "object") {
+          cellVal.quantity -= 1;
+          if (cellVal.quantity <= 0) {
+            playerBackpack[cellKey] = 0;
+          }
+        } else {
+          playerBackpack[cellKey] = 0;
+        }
+        playerProfile.gold += price;
+        this.scene.emitStatsUpdate();
+        if (this.inventoryMenu && this.inventoryMenu.style.display !== "none") {
+          this.openInventory();
+        }
+        this.renderShop();
+      });
+      row.appendChild(sellBtn);
+      sellPanel.appendChild(row);
+    });
+
+    columns.appendChild(vendorPanel);
+    columns.appendChild(sellPanel);
+    this.shopContent.appendChild(columns);
   }
 
   // -----------------------------

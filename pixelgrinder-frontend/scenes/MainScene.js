@@ -7,6 +7,7 @@ import PlayerManager from "../managers/PlayerManager.js";
 import InputManager from "../managers/InputManager.js";
 import ChatManager from "../managers/ChatManager.js";
 import GatherManager from "../managers/GatherManager.js";
+import NPCManager from "../managers/NPCManager.js";
 import {
   naturalRegeneration,
   playerProfile,
@@ -38,6 +39,7 @@ export default class MainScene extends Phaser.Scene {
     this.inputManager = null;
     this.chatManager = null;
     this.gatherManager = null;
+    this.npcManager = null;
     this.autoSaveTimer = null;
 
     this.events = new Phaser.Events.EventEmitter();
@@ -319,6 +321,12 @@ export default class MainScene extends Phaser.Scene {
         frameHeight: 72,
       });
     });
+
+    // NPCs
+    this.load.spritesheet("npc-vendor", "assets/npc_vendor_sheet.png", {
+      frameWidth: 29,
+      frameHeight: 34,
+    });
   }
 
   create() {
@@ -394,6 +402,16 @@ export default class MainScene extends Phaser.Scene {
     );
     this.gatherManager.init(this.gatherRockLayer);
 
+    // NPC Vendors
+    this.npcManager = new NPCManager(this);
+    this.npcManager.createNPCs("start_zone", this.map);
+    if (this.npcManager.npcs) {
+      this.physics.add.collider(
+        this.playerManager.player,
+        this.npcManager.npcs
+      );
+    }
+
     // Emit stats on init
     this.emitStatsUpdate();
     this.skillManager.createSkillAnimations();
@@ -433,6 +451,10 @@ export default class MainScene extends Phaser.Scene {
     // Gathering logic
     if (this.gatherManager) {
       this.gatherManager.update();
+    }
+
+    if (this.npcManager) {
+      this.npcManager.update();
     }
   }
 
@@ -936,6 +958,28 @@ export default class MainScene extends Phaser.Scene {
         repeat: 0,
       });
     });
+
+    // =======================
+    // NPC Vendor (6x4 sheet)
+    // =======================
+    const npcFrameCount = 6;
+    const npcRows = {
+      down: 0,
+      up: 1,
+      right: 2,
+      left: 3,
+    };
+    Object.entries(npcRows).forEach(([dir, row]) => {
+      this.anims.create({
+        key: `npc-walk-${dir}`,
+        frames: this.anims.generateFrameNumbers("npc-vendor", {
+          start: row * npcFrameCount,
+          end: row * npcFrameCount + (npcFrameCount - 1),
+        }),
+        frameRate: 8,
+        repeat: -1,
+      });
+    });
   }
 
   // ------------------------------
@@ -1050,6 +1094,7 @@ export default class MainScene extends Phaser.Scene {
       level: playerProfile.level,
       xp: playerProfile.totalExp,
       speed: playerStats.speed,
+      gold: playerProfile.gold,
     });
   }
 
@@ -1064,6 +1109,7 @@ export default class MainScene extends Phaser.Scene {
       level: playerProfile.level,
       xp: playerProfile.totalExp,
       speed: playerStats.speed,
+      gold: playerProfile.gold,
     };
     this.uiManager.updateUI(uiStats);
   }
