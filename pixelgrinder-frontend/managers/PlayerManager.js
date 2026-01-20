@@ -218,15 +218,6 @@ export default class PlayerManager {
     this.scene.emitStatsUpdate();
   }
 
-  replenishHealthAndMana() {
-    this.currentHealth = this.maxHealth;
-    this.currentMana = this.maxMana;
-    this.scene.chatManager.addMessage(
-      "Player's Health and Mana fully replenished."
-    );
-    this.scene.emitStatsUpdate();
-  }
-
   getPlayerStats() {
     const stats = calculatePlayerStats();
     return {

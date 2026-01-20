@@ -1,4 +1,5 @@
 // File: scenes/MainScene.js
+
 import UIManager from "../managers/UIManager.js";
 import SkillManager from "../managers/SkillManager.js";
 import MobManager from "../managers/MobManager.js";
@@ -16,8 +17,6 @@ import {
   allGameSkills,
 } from "../data/MOCKdata.js";
 
-import EasyStar from "https://esm.sh/easystarjs@0.4.4";
-
 export default class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
@@ -34,11 +33,6 @@ export default class MainScene extends Phaser.Scene {
     this.gatherManager = null;
 
     this.events = new Phaser.Events.EventEmitter();
-
-    // For EasyStar Pathfinding
-    this.pathfinder = null;
-    this.grid = [];
-    this.tileSize = 32; // If your tiles are 32x32 in Tiled
   }
 
   preload() {
@@ -94,7 +88,6 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // Attack (512x48 → 8 frames × 64px width)
-    // (Assuming we have Down as well; the example repeated Left path, so adjusting accordingly)
     this.load.spritesheet(
       "goblinBeast-attack-down",
       "assets/MOBS/Foozle_2DC0016_Lucifer_Goblin_Beast_Pixel_Art/Down/Png/GoblinBeastDownAttack01.png",
@@ -322,6 +315,7 @@ export default class MainScene extends Phaser.Scene {
 
   create() {
     this.previousLevel = playerProfile.level;
+    this.playerSkills = playerSkills;
 
     // Create map
     this.createTilemap();
@@ -353,9 +347,6 @@ export default class MainScene extends Phaser.Scene {
       this.uiManager.hideStatsMenu();
       this.scene.resume();
     });
-
-    // Init pathfinder
-    this.initPathfinder();
 
     // Mobs
     this.mobManager = new MobManager(this);
@@ -440,41 +431,6 @@ export default class MainScene extends Phaser.Scene {
     this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
     // Mark all tiles (except -1) as colliding in gather_rock layer
     this.gatherRockLayer.setCollisionByExclusion([-1]);
-  }
-
-  // ------------------------------
-  //      PATHFINDER
-  // ------------------------------
-  initPathfinder() {
-    this.pathfinder = new EasyStar.js();
-
-    // We'll build our pathfinder grid from collisions + gather_rock
-    const collisionData = this.collisionLayer.layer.data;
-    const gatherData = this.gatherRockLayer.layer.data;
-
-    for (let row = 0; row < collisionData.length; row++) {
-      const colArray = [];
-      for (let col = 0; col < collisionData[row].length; col++) {
-        const collisionTile = collisionData[row][col];
-        const gatherTile = gatherData[row][col];
-
-        // If either tile is colliding, mark blocked = 1
-        const isBlocked =
-          (collisionTile && collisionTile.collides) ||
-          (gatherTile && gatherTile.collides)
-            ? 1
-            : 0;
-        colArray.push(isBlocked);
-      }
-      this.grid.push(colArray);
-    }
-
-    this.pathfinder.setGrid(this.grid);
-    // 0 = walkable, 1 = blocked
-    this.pathfinder.setAcceptableTiles([0]);
-
-    // Adjust pathfinder iteration speed as needed
-    this.pathfinder.setIterationsPerCalculation(500);
   }
 
   // ------------------------------
@@ -981,6 +937,10 @@ export default class MainScene extends Phaser.Scene {
   //     UI + MENUS
   // ------------------------------
   createInGameMenuButtons() {
+    const existingMenu = document.getElementById("game-menu-container");
+    if (existingMenu) {
+      return;
+    }
     const menuContainer = document.createElement("div");
     menuContainer.id = "game-menu-container";
     document.body.appendChild(menuContainer);
