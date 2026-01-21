@@ -12,11 +12,141 @@ import {
   calculateMeleeDamage,
   calculateMagicDamage,
 } from "../helpers/calculatePlayerStats.js";
+import EasyStar from "easystarjs";
 
 export default class MobManager {
   constructor(scene) {
     this.scene = scene;
     this.mobs = null;
+    this.easystar = null;
+    this.pathGrid = null;
+    this.tileWidth = 0;
+    this.tileHeight = 0;
+    this.pathDebugEnabled = true;
+    this.pathDebugGraphics = null;
+  }
+
+  clearIdleWanderTimers(mob) {
+    if (mob.customData.idleTimer) {
+      mob.customData.idleTimer.remove(false);
+      mob.customData.idleTimer = null;
+    }
+    if (mob.customData.wanderTimer) {
+      mob.customData.wanderTimer.remove(false);
+      mob.customData.wanderTimer = null;
+    }
+  }
+
+  hasAggroMemory(mob, behavior, now) {
+    if (behavior.aggroDuration <= 0) return false;
+    return now - mob.customData.lastAggroTime <= behavior.aggroDuration;
+  }
+
+  getMobBehavior(mobInfo) {
+    return {
+      profile: mobInfo.behaviorProfile || "melee",
+      preferredRange:
+        typeof mobInfo.preferredRange === "number"
+          ? mobInfo.preferredRange
+          : mobInfo.attackRange,
+      leashRadius:
+        typeof mobInfo.leashRadius === "number"
+          ? mobInfo.leashRadius
+          : mobInfo.mobAgroRange * 1.5,
+      aggroDuration:
+        typeof mobInfo.aggroDuration === "number" ? mobInfo.aggroDuration : 6000,
+      strafeChance:
+        typeof mobInfo.strafeChance === "number" ? mobInfo.strafeChance : 0,
+      fleeHpPct:
+        typeof mobInfo.fleeHpPct === "number" ? mobInfo.fleeHpPct : 0,
+    };
+  }
+
+  getMobIdForSpawn(spawnZone, index) {
+    const spawnProps = spawnZone.properties || [];
+    const mobIdProp = spawnProps.find((prop) => prop.name === "mobId");
+    if (mobIdProp && mobsData[mobIdProp.value]) {
+      return mobIdProp.value;
+    }
+
+    const mobIds = Object.keys(mobsData);
+    if (mobIds.length === 0) return null;
+    return mobIds[index % mobIds.length];
+  }
+
+  setupPathfinding(tilemap) {
+    if (
+      !tilemap ||
+      !this.scene.collisionLayer ||
+      !this.scene.collisionLayer.getTileAt ||
+      !this.scene.gatherRockLayer ||
+      !this.scene.gatherRockLayer.getTileAt
+    ) {
+      return;
+    }
+
+    this.tileWidth = tilemap.tileWidth;
+    this.tileHeight = tilemap.tileHeight;
+
+    const grid = [];
+    for (let y = 0; y < tilemap.height; y++) {
+      const row = [];
+      for (let x = 0; x < tilemap.width; x++) {
+        const collisionTile = this.scene.collisionLayer.getTileAt(x, y);
+        const gatherTile = this.scene.gatherRockLayer.getTileAt(x, y);
+        const blocked =
+          (collisionTile && collisionTile.collides) ||
+          (gatherTile && gatherTile.collides);
+        row.push(blocked ? 1 : 0);
+      }
+      grid.push(row);
+    }
+
+    const padding = 1;
+    if (padding > 0) {
+      const padded = grid.map((row) => row.slice());
+      for (let y = 0; y < grid.length; y++) {
+        for (let x = 0; x < grid[y].length; x++) {
+          if (grid[y][x] !== 1) continue;
+          for (let dy = -padding; dy <= padding; dy++) {
+            for (let dx = -padding; dx <= padding; dx++) {
+              const ny = y + dy;
+              const nx = x + dx;
+              if (ny < 0 || nx < 0 || ny >= grid.length || nx >= grid[0].length) {
+                continue;
+              }
+              padded[ny][nx] = 1;
+            }
+          }
+        }
+      }
+      this.pathGrid = padded;
+    } else {
+      this.pathGrid = grid;
+    }
+    this.easystar = new EasyStar.js();
+    this.easystar.setGrid(this.pathGrid);
+    this.easystar.setAcceptableTiles([0]);
+    this.easystar.enableDiagonals();
+    this.easystar.disableCornerCutting();
+  }
+
+  worldToTileX(x) {
+    if (!this.tileWidth) return 0;
+    return Math.floor(x / this.tileWidth);
+  }
+
+  worldToTileY(y) {
+    if (!this.tileHeight) return 0;
+    return Math.floor(y / this.tileHeight);
+  }
+
+  tileToWorldCenterX(x) {
+    return x * this.tileWidth + this.tileWidth / 2;
+  }
+
+  tileToWorldCenterY(y) {
+    return y * this.tileHeight + this.tileHeight / 2;
   }
 
   createMobs(tilemap) {
@@ -41,10 +171,18 @@ export default class MobManager {
       obj.name.startsWith("MobSpawnZone")
     );
 
-    mobSpawns.forEach((spawnZone) => {
-      // Example: spawn "slime" but use goblinBeast sprite
-      const mobTypeID = "slime";
+    this.setupPathfinding(tilemap);
+    if (this.pathDebugEnabled && !this.pathDebugGraphics) {
+      this.pathDebugGraphics = this.scene.add.graphics();
+      this.pathDebugGraphics.setDepth(9999);
+    }
+
+    mobSpawns.forEach((spawnZone, index) => {
+      const mobTypeID = this.getMobIdForSpawn(spawnZone, index);
       const mobInfo = mobsData[mobTypeID];
+      if (!mobInfo) {
+        return;
+      }
 
       const mob = this.mobs.create(
         spawnZone.x,
@@ -75,6 +213,15 @@ export default class MobManager {
         isCastingSkill: false,
         // Heal threshold (50%)
         healingThreshold: mobInfo.healingSkillHPThreshold || 0.5,
+        lastAggroTime: 0,
+        lastSeenPosition: null,
+        strafeUntil: 0,
+        lastPathTime: 0,
+        lastPathKey: null,
+        path: null,
+        pathIndex: 0,
+        waitingForPath: false,
+        lastPathLogTime: 0,
 
         // Used for stuck checks
         lastPosition: { x: spawnZone.x, y: spawnZone.y },
@@ -177,6 +324,16 @@ export default class MobManager {
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active || mob.customData.isDead) return;
 
+      const mobInfo = mobsData[mob.customData.id];
+      const behavior = this.getMobBehavior(mobInfo);
+      const now = this.scene.time.now;
+      const distanceToSpawn = Phaser.Math.Distance.Between(
+        mob.x,
+        mob.y,
+        mob.customData.spawnX,
+        mob.customData.spawnY
+      );
+
       this.updateMobUI(mob);
 
       // If mob is friendly, just idle or wander
@@ -188,7 +345,6 @@ export default class MobManager {
       }
 
       // Enemy logic
-      const mobInfo = mobsData[mob.customData.id];
       const distanceToPlayer = Phaser.Math.Distance.Between(
         mob.x,
         mob.y,
@@ -196,9 +352,29 @@ export default class MobManager {
         player.y
       );
 
+      if (distanceToPlayer <= mobInfo.mobAgroRange) {
+        mob.customData.lastAggroTime = now;
+        mob.customData.lastSeenPosition = { x: player.x, y: player.y };
+      }
+
+      const aggroExpired =
+        behavior.aggroDuration > 0 &&
+        now - mob.customData.lastAggroTime > behavior.aggroDuration;
+      const leashExceeded = distanceToSpawn > behavior.leashRadius;
+      const hasLastSeen = Boolean(mob.customData.lastSeenPosition);
+      if (
+        (leashExceeded || (aggroExpired && !hasLastSeen)) &&
+        mob.customData.state !== "leashing"
+      ) {
+        this.clearIdleWanderTimers(mob);
+        mob.customData.state = "leashing";
+        mob.body.setVelocity(0, 0);
+      }
+
       switch (mob.customData.state) {
         case "idle":
           if (distanceToPlayer <= mobInfo.mobAgroRange) {
+            this.clearIdleWanderTimers(mob);
             mob.customData.state = "chasing";
             mob.body.setVelocity(0, 0);
           }
@@ -207,24 +383,62 @@ export default class MobManager {
         case "wandering":
           this.updateWandering(mob);
           if (distanceToPlayer <= mobInfo.mobAgroRange) {
+            this.clearIdleWanderTimers(mob);
             mob.customData.state = "chasing";
             mob.body.setVelocity(0, 0);
           }
           break;
 
         case "chasing":
-          this.updateChasing(mob, player, distanceToPlayer);
+          this.updateChasing(mob, player, distanceToPlayer, behavior);
           break;
 
         case "attacking":
-          this.updateAttacking(mob, player, distanceToPlayer);
+          this.updateAttacking(mob, player, distanceToPlayer, behavior);
           break;
 
         case "unsticking":
           // Let unstick run its course
           break;
+
+        case "leashing":
+          this.updateLeashing(mob, mobInfo, distanceToSpawn);
+          break;
       }
     });
+
+    if (this.easystar) {
+      this.easystar.calculate();
+    }
+
+    if (this.pathDebugEnabled && this.pathDebugGraphics) {
+      this.pathDebugGraphics.clear();
+      const mobToDraw =
+        (this.scene.targetedMob && !this.scene.targetedMob.customData.isDead
+          ? this.scene.targetedMob
+          : this.mobs
+              .getChildren()
+              .find(
+                (m) =>
+                  m.customData.state === "chasing" ||
+                  m.customData.state === "attacking"
+              )) || null;
+      if (mobToDraw && mobToDraw.customData.path) {
+        this.pathDebugGraphics.lineStyle(2, 0xff3aa8, 1);
+        const nodes = mobToDraw.customData.path;
+        for (let i = 0; i < nodes.length - 1; i += 1) {
+          const a = nodes[i];
+          const b = nodes[i + 1];
+          const ax = this.tileToWorldCenterX(a.x);
+          const ay = this.tileToWorldCenterY(a.y);
+          const bx = this.tileToWorldCenterX(b.x);
+          const by = this.tileToWorldCenterY(b.y);
+          this.pathDebugGraphics.strokeLineShape(
+            new Phaser.Geom.Line(ax, ay, bx, by)
+          );
+        }
+      }
+    }
   }
 
   assignRandomIdleOrWander(mob) {
@@ -306,9 +520,32 @@ export default class MobManager {
    */
   updateChasing(mob, player, distanceToPlayer) {
     const mobInfo = mobsData[mob.customData.id];
+    const behavior = this.getMobBehavior(mobInfo);
+    const stopRange = Math.max(mobInfo.attackRange, behavior.preferredRange);
+    const now = this.scene.time.now;
+    const hasAggroMemory = this.hasAggroMemory(mob, behavior, now);
+    const targetPos =
+      distanceToPlayer <= mobInfo.mobAgroRange
+        ? { x: player.x, y: player.y }
+        : mob.customData.lastSeenPosition;
+    const lastSeenPos = mob.customData.lastSeenPosition;
+    if (lastSeenPos) {
+      const distToLastSeen = Phaser.Math.Distance.Between(
+        mob.x,
+        mob.y,
+        lastSeenPos.x,
+        lastSeenPos.y
+      );
+      if (distToLastSeen <= 8) {
+        mob.customData.lastSeenPosition = null;
+      }
+    }
 
     // If player left agro range
-    if (distanceToPlayer > mobInfo.mobAgroRange) {
+    if (
+      distanceToPlayer > mobInfo.mobAgroRange &&
+      !hasAggroMemory
+    ) {
       mob.body.setVelocity(0, 0);
       mob.customData.state = "idle";
       return;
@@ -318,10 +555,17 @@ export default class MobManager {
     this.checkIfMobIsStuck(mob);
 
     const hpPct = mob.customData.hp / mobInfo.health;
+    if (behavior.fleeHpPct > 0 && hpPct <= behavior.fleeHpPct) {
+      this.clearIdleWanderTimers(mob);
+      mob.customData.state = "leashing";
+      return;
+    }
+
     if (hpPct < mob.customData.healingThreshold) {
       // Attempt heal skill
       const healSkill = this.findHealingSkill(mob);
       if (healSkill && this.canMobCastSkill(mob, healSkill)) {
+        this.clearIdleWanderTimers(mob);
         mob.customData.state = "attacking";
         this.castMobSkill(mob, healSkill, null);
         return;
@@ -330,6 +574,39 @@ export default class MobManager {
 
     const hasOffensiveSkill = this.mobHasOffensiveSkill(mob);
     const hasManaForOffensive = this.canMobCastAnyOffensiveSkill(mob);
+    const preferredRange = behavior.preferredRange;
+
+    if (behavior.profile === "caster" || behavior.profile === "skirmisher") {
+      if (distanceToPlayer <= preferredRange) {
+        mob.body.setVelocity(0, 0);
+        this.clearIdleWanderTimers(mob);
+        mob.customData.state = "attacking";
+      } else {
+        if (
+          !this.followPathToTarget(
+            mob,
+            targetPos,
+            mobInfo.speed * MOB_CHASE_SPEED_MULT,
+            now
+          )
+        ) {
+          if (targetPos) {
+            this.moveMobTowardsPosition(
+              mob,
+              targetPos,
+              mobInfo.speed * MOB_CHASE_SPEED_MULT
+            );
+          } else {
+            this.moveMobTowards(
+              mob,
+              player,
+              mobInfo.speed * MOB_CHASE_SPEED_MULT
+            );
+          }
+        }
+      }
+      return;
+    }
 
     if (hasOffensiveSkill && hasManaForOffensive) {
       // Stay at skill range
@@ -337,6 +614,7 @@ export default class MobManager {
       if (distanceToPlayer <= bestRange) {
         // Switch to attacking
         mob.body.setVelocity(0, 0);
+        this.clearIdleWanderTimers(mob);
         mob.customData.state = "attacking";
       } else {
         // Move closer
@@ -346,31 +624,78 @@ export default class MobManager {
     }
 
     // Otherwise do melee approach
-    if (distanceToPlayer <= mobInfo.attackRange) {
+    if (distanceToPlayer <= stopRange) {
       mob.body.setVelocity(0, 0);
+      this.clearIdleWanderTimers(mob);
       mob.customData.state = "attacking";
     } else {
       // Move in
-      this.moveMobTowards(mob, player, mobInfo.speed * MOB_CHASE_SPEED_MULT);
+      if (
+        !this.followPathToTarget(
+          mob,
+          targetPos,
+          mobInfo.speed * MOB_CHASE_SPEED_MULT,
+          now
+        )
+      ) {
+        if (targetPos) {
+          this.moveMobTowardsPosition(
+            mob,
+            targetPos,
+            mobInfo.speed * MOB_CHASE_SPEED_MULT
+          );
+        } else {
+          this.moveMobTowards(
+            mob,
+            player,
+            mobInfo.speed * MOB_CHASE_SPEED_MULT
+          );
+        }
+      }
     }
   }
 
-  updateAttacking(mob, player, distanceToPlayer) {
+  updateAttacking(mob, player, distanceToPlayer, behavior) {
     const mobInfo = mobsData[mob.customData.id];
+    const now = this.scene.time.now;
 
     if (distanceToPlayer > mobInfo.mobAgroRange) {
-      mob.customData.state = "idle";
+      if (this.hasAggroMemory(mob, behavior, now)) {
+        mob.customData.state = "chasing";
+      } else {
+        mob.customData.state = "idle";
+      }
       mob.body.setVelocity(0, 0);
       return;
     }
 
     // Try heal if low HP
     const hpPct = mob.customData.hp / mobInfo.health;
+    if (behavior.fleeHpPct > 0 && hpPct <= behavior.fleeHpPct) {
+      this.clearIdleWanderTimers(mob);
+      mob.customData.state = "leashing";
+      return;
+    }
     if (hpPct < mob.customData.healingThreshold) {
       const healSkill = this.findHealingSkill(mob);
       if (healSkill && this.canMobCastSkill(mob, healSkill)) {
+        this.clearIdleWanderTimers(mob);
         this.castMobSkill(mob, healSkill, null);
         return;
+      }
+    }
+
+    if (
+      (behavior.profile === "caster" || behavior.profile === "skirmisher") &&
+      distanceToPlayer <= behavior.preferredRange &&
+      behavior.strafeChance > 0
+    ) {
+      const now = this.scene.time.now;
+      if (now >= mob.customData.strafeUntil) {
+        if (Math.random() < behavior.strafeChance) {
+          this.moveMobStrafe(mob, player, mobInfo.speed * 0.6);
+          mob.customData.strafeUntil = now + 500;
+        }
       }
     }
 
@@ -391,13 +716,16 @@ export default class MobManager {
       }
     }
 
+    const stopRange = Math.max(mobInfo.attackRange, behavior.preferredRange);
+
     // If no skill or no mana or skill didn't fire, do melee
-    if (distanceToPlayer > mobInfo.attackRange) {
+    if (distanceToPlayer > stopRange) {
       mob.customData.state = "chasing";
       return;
     }
 
     // Melee
+    mob.body.setVelocity(0, 0);
     this.playAttackAnimation(mob, player);
     this.mobAttackPlayer(mob, mobInfo);
   }
@@ -425,6 +753,152 @@ export default class MobManager {
         mob.anims.play("goblinBeast-walk-up", true);
         mob.customData.lastDirection = "up";
       }
+    }
+  }
+
+  followPathToTarget(mob, targetPos, speed, now) {
+    if (!this.easystar || !this.pathGrid || !this.tileWidth || !this.tileHeight) {
+      return false;
+    }
+
+    if (!targetPos) {
+      return false;
+    }
+
+    const startX = this.worldToTileX(mob.x);
+    const startY = this.worldToTileY(mob.y);
+    const targetX = this.worldToTileX(targetPos.x);
+    const targetY = this.worldToTileY(targetPos.y);
+
+    if (
+      startX < 0 ||
+      startY < 0 ||
+      targetX < 0 ||
+      targetY < 0 ||
+      startY >= this.pathGrid.length ||
+      startX >= this.pathGrid[0].length ||
+      targetY >= this.pathGrid.length ||
+      targetX >= this.pathGrid[0].length
+    ) {
+      return false;
+    }
+
+    const targetKey = `${targetX},${targetY}`;
+    const targetChanged = mob.customData.lastPathKey !== targetKey;
+    const shouldRepath = now - mob.customData.lastPathTime >= 500;
+
+    if (
+      !mob.customData.waitingForPath &&
+      (targetChanged || (!mob.customData.path && shouldRepath))
+    ) {
+      mob.customData.waitingForPath = true;
+      mob.customData.lastPathTime = now;
+      mob.customData.lastPathKey = targetKey;
+      this.easystar.findPath(startX, startY, targetX, targetY, (path) => {
+        mob.customData.waitingForPath = false;
+        if (path && path.length > 1) {
+          mob.customData.path = path;
+          mob.customData.pathIndex = 1;
+        } else {
+          mob.customData.path = null;
+          mob.customData.pathIndex = 0;
+        }
+        if (this.pathDebugEnabled) {
+          const logNow = this.scene.time.now;
+          if (logNow - mob.customData.lastPathLogTime > 1000) {
+            mob.customData.lastPathLogTime = logNow;
+            const pathLen = path ? path.length : 0;
+            console.log(
+              `[Path] ${mob.customData.id} ${startX},${startY} -> ${targetX},${targetY} len=${pathLen}`
+            );
+          }
+        }
+      });
+    }
+
+    if (!mob.customData.path || mob.customData.path.length === 0) {
+      return false;
+    }
+
+    const node = mob.customData.path[mob.customData.pathIndex];
+    if (!node) {
+      mob.customData.path = null;
+      mob.customData.pathIndex = 0;
+      return false;
+    }
+
+    const nextPos = {
+      x: this.tileToWorldCenterX(node.x),
+      y: this.tileToWorldCenterY(node.y),
+    };
+
+    const distance = Phaser.Math.Distance.Between(
+      mob.x,
+      mob.y,
+      nextPos.x,
+      nextPos.y
+    );
+    if (distance <= 4) {
+      mob.customData.pathIndex += 1;
+      if (mob.customData.pathIndex >= mob.customData.path.length) {
+        mob.customData.path = null;
+        mob.customData.pathIndex = 0;
+      }
+    } else {
+      this.moveMobTowardsPosition(mob, nextPos, speed);
+    }
+
+    return true;
+  }
+
+  moveMobTowardsPosition(mob, position, speed) {
+    const angle = Phaser.Math.Angle.Between(
+      mob.x,
+      mob.y,
+      position.x,
+      position.y
+    );
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    mob.body.setVelocity(vx, vy);
+
+    if (Math.abs(vx) > Math.abs(vy)) {
+      if (vx > 0) {
+        mob.anims.play("goblinBeast-walk-right", true);
+        mob.customData.lastDirection = "right";
+      } else {
+        mob.anims.play("goblinBeast-walk-left", true);
+        mob.customData.lastDirection = "left";
+      }
+    } else {
+      if (vy > 0) {
+        mob.anims.play("goblinBeast-walk-down", true);
+        mob.customData.lastDirection = "down";
+      } else {
+        mob.anims.play("goblinBeast-walk-up", true);
+        mob.customData.lastDirection = "up";
+      }
+    }
+  }
+
+  moveMobStrafe(mob, player, speed) {
+    const angle = Phaser.Math.Angle.Between(mob.x, mob.y, player.x, player.y);
+    const strafeLeft = Math.random() < 0.5 ? 1 : -1;
+    const strafeAngle = angle + strafeLeft * (Math.PI / 2);
+    const vx = Math.cos(strafeAngle) * speed;
+    const vy = Math.sin(strafeAngle) * speed;
+    mob.body.setVelocity(vx, vy);
+
+    if (Math.abs(vx) > Math.abs(vy)) {
+      mob.anims.play(
+        vx > 0 ? "goblinBeast-walk-right" : "goblinBeast-walk-left",
+        true
+      );
+    } else {
+      mob.anims.play(
+        vy > 0 ? "goblinBeast-walk-down" : "goblinBeast-walk-up",
+        true
+      );
     }
   }
 
@@ -495,6 +969,23 @@ export default class MobManager {
     });
   }
 
+  updateLeashing(mob, mobInfo, distanceToSpawn) {
+    if (!mob.active || mob.customData.isDead) return;
+
+    if (distanceToSpawn <= 8) {
+      mob.body.setVelocity(0, 0);
+      mob.customData.state = "idle";
+      this.assignRandomIdleOrWander(mob);
+      return;
+    }
+
+    const spawnPosition = {
+      x: mob.customData.spawnX,
+      y: mob.customData.spawnY,
+    };
+    this.moveMobTowardsPosition(mob, spawnPosition, mobInfo.speed * 1.2);
+  }
+
   // -------------------------
   // Skills & Combat
   // -------------------------
@@ -540,9 +1031,9 @@ export default class MobManager {
         this.castMobSkill(mob, skill, player);
         return true;
       }
+      }
+      return false;
     }
-    return false;
-  }
 
   castMobSkill(mob, skill, targetSprite) {
     mob.customData.isCastingSkill = true;
@@ -779,6 +1270,7 @@ export default class MobManager {
 
   applyDamageToMob(mob, damage) {
     mob.customData.hp = Math.max(0, mob.customData.hp - damage);
+    this.updateMobUI(mob);
     if (mob.customData.hp <= 0) {
       this.scene.chatManager.addMessage("Mob died!");
       this.handleMobDeath(mob);
@@ -798,6 +1290,8 @@ export default class MobManager {
   handleMobDeath(mob) {
     mob.customData.isDead = true;
     mob.body.setVelocity(0, 0);
+    mob.customData.hp = 0;
+    this.updateMobUI(mob);
 
     const lastDir = mob.customData.lastDirection || "down";
     mob.anims.play(`goblinBeast-death-${lastDir}`, true);

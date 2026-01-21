@@ -19,7 +19,11 @@ import {
   playerGrowthStats,
   allGameSkills,
 } from "../data/MOCKdata.js";
-import { loadSave, saveGame as persistSave } from "../services/SaveService.js";
+import {
+  loadSave,
+  saveGame as persistSave,
+  clearSave,
+} from "../services/SaveService.js";
 
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -1028,6 +1032,19 @@ export default class MainScene extends Phaser.Scene {
       this.uiManager.toggleSkillBook();
     };
     menuContainer.appendChild(skillBookBtn);
+
+    const newGameBtn = document.createElement("button");
+    newGameBtn.textContent = "NEW GAME";
+    newGameBtn.classList.add("in-game-menu-button");
+    newGameBtn.onclick = () => {
+      const confirmed = window.confirm(
+        "Start a new game? Your current save will be deleted."
+      );
+      if (!confirmed) return;
+      clearSave();
+      window.location.reload();
+    };
+    menuContainer.appendChild(newGameBtn);
   }
 
   // ------------------------------
