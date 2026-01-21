@@ -45,6 +45,7 @@ export default class MainScene extends Phaser.Scene {
     this.gatherManager = null;
     this.npcManager = null;
     this.autoSaveTimer = null;
+    this.isPlayerDead = false;
 
     this.events = new Phaser.Events.EventEmitter();
   }
@@ -359,7 +360,8 @@ export default class MainScene extends Phaser.Scene {
         this.playerManager.player.setPosition(x, y);
       }
       if (Number.isFinite(currentHealth)) {
-        this.playerManager.currentHealth = currentHealth;
+        this.playerManager.currentHealth =
+          currentHealth > 0 ? currentHealth : this.playerManager.maxHealth;
       }
       if (Number.isFinite(currentMana)) {
         this.playerManager.currentMana = currentMana;
@@ -1042,7 +1044,11 @@ export default class MainScene extends Phaser.Scene {
       );
       if (!confirmed) return;
       clearSave();
-      window.location.reload();
+      const menuContainer = document.getElementById("game-menu-container");
+      if (menuContainer) {
+        menuContainer.remove();
+      }
+      this.scene.start("CharacterCreationScene");
     };
     menuContainer.appendChild(newGameBtn);
   }
@@ -1112,6 +1118,7 @@ export default class MainScene extends Phaser.Scene {
       xp: playerProfile.totalExp,
       speed: playerStats.speed,
       gold: playerProfile.gold,
+      gameMode: playerProfile.gameMode,
     });
   }
 
@@ -1127,6 +1134,7 @@ export default class MainScene extends Phaser.Scene {
       xp: playerProfile.totalExp,
       speed: playerStats.speed,
       gold: playerProfile.gold,
+      gameMode: playerProfile.gameMode,
     };
     this.uiManager.updateUI(uiStats);
   }
@@ -1195,11 +1203,86 @@ export default class MainScene extends Phaser.Scene {
   //     PLAYER DEATH
   // ------------------------------
   handlePlayerDeath() {
+    const mode = playerProfile.gameMode || "normal";
     this.chatManager.addMessage("Player died!");
-    this.saveGame();
-    this.time.delayedCall(2000, () => {
-      this.scene.restart();
+    if (this.mobManager) {
+      this.mobManager.clearAggro();
+    }
+
+    if (mode === "hardcore") {
+      if (this.isPlayerDead) return;
+      this.isPlayerDead = true;
+      const deathText = this.add
+        .text(
+          this.cameras.main.worldView.centerX,
+          this.cameras.main.worldView.centerY,
+          "You died permanently",
+          {
+            font: "20px Arial",
+            fill: "#ff5555",
+            stroke: "#000000",
+            strokeThickness: 3,
+          }
+        )
+        .setOrigin(0.5);
+      this.tweens.add({
+        targets: deathText,
+        alpha: 0,
+        duration: 1500,
+        delay: 500,
+        onComplete: () => deathText.destroy(),
+      });
+      clearSave();
+      this.time.delayedCall(2000, () => {
+        this.isPlayerDead = false;
+        this.scene.start("CharacterCreationScene");
+      });
+      return;
+    }
+
+    if (this.isPlayerDead) return;
+    this.isPlayerDead = true;
+    const respawnText = this.add
+      .text(
+        this.cameras.main.worldView.centerX,
+        this.cameras.main.worldView.centerY,
+        "You died. Respawning in 5...",
+        {
+          font: "20px Arial",
+          fill: "#ffffff",
+          stroke: "#000000",
+          strokeThickness: 3,
+        }
+      )
+      .setOrigin(0.5);
+    let secondsLeft = 5;
+    const countdownTimer = this.time.addEvent({
+      delay: 1000,
+      repeat: 4,
+      callback: () => {
+        secondsLeft -= 1;
+        respawnText.setText(`You died. Respawning in ${secondsLeft}...`);
+      },
     });
+
+    this.time.delayedCall(5000, () => {
+      countdownTimer.remove(false);
+      respawnText.destroy();
+      const heroStart = this.map.findObject(
+        "GameObjects",
+        (obj) => obj.name === "HeroStart"
+      );
+      if (heroStart) {
+        this.playerManager.player.setPosition(heroStart.x, heroStart.y);
+      }
+      this.playerManager.replenishHealthAndMana();
+      this.updateUI();
+      this.emitStatsUpdate();
+      this.saveGame();
+      this.isPlayerDead = false;
+    });
+
+    return;
   }
 
   toggleInventoryMenu() {

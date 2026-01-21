@@ -19,6 +19,7 @@ const playerProfile = {
   // NEW: which skin the player selected (e.g. "necromancer" | "sorceress" | "warrior")
   selectedSkin: null,
   gold: 100,
+  gameMode: "normal",
 };
 
 // We can store 3 different character skins (plus references to a showreel GIF or image)

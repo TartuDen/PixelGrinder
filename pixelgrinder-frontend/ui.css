@@ -105,6 +105,13 @@ body {
   font-size: 14px;
   color: #f1c40f;
 }
+#player-mode {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #f1c40f;
+}
 .health-bar, .mana-bar, .exp-bar {
   position: relative;
   width: 200px;

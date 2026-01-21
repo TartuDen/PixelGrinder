@@ -54,6 +54,7 @@ export default class UIManager {
     this.manaText = document.getElementById("mana-text");
     this.uiLevel = document.getElementById("player-level");
     this.uiGold = document.getElementById("player-gold");
+    this.uiMode = document.getElementById("player-mode");
 
     // Menus
     this.statsMenu = document.getElementById("stats-menu");
@@ -216,7 +217,7 @@ export default class UIManager {
   // -----------------------------
   // MAIN UI UPDATES
   // -----------------------------
-  updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp, gold }) {
+  updateUI({ name, currentHealth, maxHealth, currentMana, maxMana, level, xp, gold, gameMode }) {
     const hpVal = Math.round(currentHealth);
     const hpMaxVal = Math.round(maxHealth);
     const mpVal = Math.round(currentMana);
@@ -235,6 +236,10 @@ export default class UIManager {
     if (this.uiName) this.uiName.innerText = name;
     if (this.uiLevel) this.uiLevel.innerText = `Level: ${level}`;
     if (this.uiGold) this.uiGold.innerText = `Gold: ${gold ?? 0}`;
+    if (this.uiMode) {
+      const modeLabel = gameMode ? gameMode.toUpperCase() : "NORMAL";
+      this.uiMode.innerText = `Mode: ${modeLabel}`;
+    }
 
     // Compute % exp to next level
     let expForNextLevel = 100,

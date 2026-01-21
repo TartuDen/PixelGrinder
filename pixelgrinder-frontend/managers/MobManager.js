@@ -22,7 +22,7 @@ export default class MobManager {
     this.pathGrid = null;
     this.tileWidth = 0;
     this.tileHeight = 0;
-    this.pathDebugEnabled = true;
+    this.pathDebugEnabled = false;
     this.pathDebugGraphics = null;
   }
 
@@ -231,6 +231,8 @@ export default class MobManager {
 
         // For random wandering
         wanderDirection: new Phaser.Math.Vector2(0, 0),
+        wanderBlockedUntil: 0,
+        lastIdleWanderChange: 0,
 
         // Keep track of facing direction for animations
         lastDirection: "down",
@@ -247,6 +249,21 @@ export default class MobManager {
       mob.anims.play("goblinBeast-walk-down");
 
       this.assignRandomIdleOrWander(mob);
+    });
+  }
+
+  clearAggro() {
+    if (!this.mobs) return;
+    this.mobs.getChildren().forEach((mob) => {
+      if (!mob || !mob.customData) return;
+      mob.customData.state = "leashing";
+      mob.customData.lastAggroTime = 0;
+      mob.customData.lastSeenPosition = null;
+      mob.customData.path = null;
+      mob.customData.pathIndex = 0;
+      mob.customData.waitingForPath = false;
+      mob.customData.isCastingSkill = false;
+      mob.body.setVelocity(0, 0);
     });
   }
 
@@ -442,6 +459,11 @@ export default class MobManager {
   }
 
   assignRandomIdleOrWander(mob) {
+    const now = this.scene.time.now;
+    if (now - mob.customData.lastIdleWanderChange < 800) {
+      return;
+    }
+    mob.customData.lastIdleWanderChange = now;
     if (mob.customData.idleTimer) {
       mob.customData.idleTimer.remove();
       mob.customData.idleTimer = null;
@@ -471,6 +493,7 @@ export default class MobManager {
   startWandering(mob) {
     if (!mob.active || mob.customData.isDead) return;
     mob.customData.state = "wandering";
+    mob.customData.wanderBlockedUntil = 0;
 
     const mobInfo = mobsData[mob.customData.id];
     const speed = mobInfo.speed;
@@ -506,7 +529,13 @@ export default class MobManager {
     const nextX = mob.x + dir.x * 20;
     const nextY = mob.y + dir.y * 20;
     const tile = this.scene.collisionLayer.getTileAtWorldXY(nextX, nextY);
-    if (tile && tile.collides) {
+    const gatherTile = this.scene.gatherRockLayer.getTileAtWorldXY(nextX, nextY);
+    if ((tile && tile.collides) || (gatherTile && gatherTile.collides)) {
+      const now = this.scene.time.now;
+      if (now < mob.customData.wanderBlockedUntil) {
+        return;
+      }
+      mob.customData.wanderBlockedUntil = now + 500;
       this.assignRandomIdleOrWander(mob);
     }
   }
@@ -528,6 +557,10 @@ export default class MobManager {
       distanceToPlayer <= mobInfo.mobAgroRange
         ? { x: player.x, y: player.y }
         : mob.customData.lastSeenPosition;
+    if (mob.customData.isCastingSkill) {
+      mob.body.setVelocity(0, 0);
+      return;
+    }
     const lastSeenPos = mob.customData.lastSeenPosition;
     if (lastSeenPos) {
       const distToLastSeen = Phaser.Math.Distance.Between(
@@ -665,6 +698,10 @@ export default class MobManager {
       } else {
         mob.customData.state = "idle";
       }
+      mob.body.setVelocity(0, 0);
+      return;
+    }
+    if (mob.customData.isCastingSkill) {
       mob.body.setVelocity(0, 0);
       return;
     }
@@ -1023,6 +1060,7 @@ export default class MobManager {
   mobTryUseSkill(mob, player, distanceToPlayer) {
     const skills = mob.customData.mobSkills;
     if (!skills) return false;
+    if (mob.customData.isCastingSkill) return false;
 
     for (const skill of skills) {
       if (skill.healHP || skill.healMP) continue; // skip heal here
@@ -1036,6 +1074,7 @@ export default class MobManager {
     }
 
   castMobSkill(mob, skill, targetSprite) {
+    if (mob.customData.isCastingSkill) return;
     mob.customData.isCastingSkill = true;
     this.scene.chatManager.addMessage(
       `Mob "${mob.customData.id}" begins casting ${skill.name}.`

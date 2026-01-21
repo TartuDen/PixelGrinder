@@ -21,6 +21,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
     this.pointsRemaining = 10;
 
     this.tempSelectedSkin = null;  // hold the chosen skin key
+    this.selectedGameMode = "normal";
 
     this.containerDiv = null;
     this.finalStatsDiv = null;
@@ -52,6 +53,13 @@ export default class CharacterCreationScene extends Phaser.Scene {
         this.scene.start("MainScene");
         return;
       }
+    }
+    if (this.input && this.input.keyboard) {
+      this.input.keyboard.removeCapture(Phaser.Input.Keyboard.KeyCodes.W);
+      this.input.keyboard.removeCapture(Phaser.Input.Keyboard.KeyCodes.A);
+      this.input.keyboard.removeCapture(Phaser.Input.Keyboard.KeyCodes.S);
+      this.input.keyboard.removeCapture(Phaser.Input.Keyboard.KeyCodes.D);
+      this.input.keyboard.enabled = false;
     }
     this.createTilemap();
     this.createDOMElements();
@@ -195,8 +203,47 @@ export default class CharacterCreationScene extends Phaser.Scene {
         skinDiv.classList.add("selected-skin");
       };
 
-      skinsContainer.appendChild(skinDiv);
-    });
+    skinsContainer.appendChild(skinDiv);
+  });
+
+    // -- Game Mode
+    const modeHeading = document.createElement("h3");
+    modeHeading.textContent = "Select Game Mode:";
+    this.containerDiv.appendChild(modeHeading);
+
+    const modeContainer = document.createElement("div");
+    modeContainer.classList.add("game-mode-container");
+    this.containerDiv.appendChild(modeContainer);
+
+    const buildModeOption = (mode, labelText) => {
+      const label = document.createElement("label");
+      label.classList.add("game-mode-option");
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "game-mode";
+      radio.value = mode;
+      radio.checked = mode === this.selectedGameMode;
+      radio.onchange = () => {
+        if (radio.checked) {
+          this.selectedGameMode = mode;
+        }
+      };
+
+      const text = document.createElement("span");
+      text.textContent = labelText;
+
+      label.appendChild(radio);
+      label.appendChild(text);
+      return label;
+    };
+
+    modeContainer.appendChild(
+      buildModeOption("normal", "Normal (respawn on death)")
+    );
+    modeContainer.appendChild(
+      buildModeOption("hardcore", "Hardcore (1 life)")
+    );
 
     // -- Confirm
     const confirmBtn = document.createElement("button");
@@ -246,11 +293,16 @@ export default class CharacterCreationScene extends Phaser.Scene {
       alert("Please select a character skin!");
       return;
     }
+    if (!this.selectedGameMode) {
+      alert("Please select a game mode!");
+      return;
+    }
 
     playerProfile.name = chosenName;
     playerProfile.level = 1;
     playerProfile.totalExp = 0;
     playerProfile.selectedSkin = this.tempSelectedSkin;
+    playerProfile.gameMode = this.selectedGameMode;
 
     // Apply the allocated points
     playerBaseStats.intellect += this.intellectPoints;
