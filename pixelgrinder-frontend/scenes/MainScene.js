@@ -392,6 +392,9 @@ export default class MainScene extends Phaser.Scene {
     this.mobManager = new MobManager(this);
     this.mobManager.createMobs(this.map);
 
+    // Minimap
+    this.createMinimap();
+
     // Skill hotbar
     this.uiManager.setupSkills(playerSkills);
 
@@ -466,6 +469,8 @@ export default class MainScene extends Phaser.Scene {
     if (this.npcManager) {
       this.npcManager.update();
     }
+
+    this.updateMinimapEntities();
   }
 
   // ------------------------------
@@ -487,6 +492,147 @@ export default class MainScene extends Phaser.Scene {
     this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
     // Mark all tiles (except -1) as colliding in gather_rock layer
     this.gatherRockLayer.setCollisionByExclusion([-1]);
+  }
+
+  // ------------------------------
+  //          MINIMAP
+  // ------------------------------
+  createMinimap() {
+    const size = 130;
+    const padding = 12;
+    const zoom = 2;
+    const mapWidth = this.map.widthInPixels;
+    const mapHeight = this.map.heightInPixels;
+    const scale = (size / mapWidth) * zoom;
+
+    this.minimapConfig = {
+      size,
+      padding,
+      zoom,
+      scale,
+      mapWidth,
+      mapHeight,
+    };
+
+    this.minimapBase = this.add.graphics();
+    this.minimapBase.setScrollFactor(0);
+    this.minimapBase.setDepth(2000);
+
+    this.minimapEntities = this.add.graphics();
+    this.minimapEntities.setScrollFactor(0);
+    this.minimapEntities.setDepth(2001);
+
+    this.minimapFrame = this.add.graphics();
+    this.minimapFrame.setScrollFactor(0);
+    this.minimapFrame.setDepth(2002);
+
+    this.drawMinimapBase();
+    this.updateMinimapEntities();
+  }
+
+  getMinimapOrigin() {
+    const { size, padding } = this.minimapConfig;
+    const cam = this.cameras.main;
+    return {
+      x: cam.width - size - padding,
+      y: padding,
+    };
+  }
+
+  drawMinimapBase() {
+    const { size, scale } = this.minimapConfig;
+    const origin = this.getMinimapOrigin();
+    const tileW = this.map.tileWidth * scale;
+    const tileH = this.map.tileHeight * scale;
+
+    this.minimapBase.clear();
+    this.minimapBase.fillStyle(0x111111, 1);
+    this.minimapBase.fillRect(0, 0, this.minimapConfig.mapWidth * scale, this.minimapConfig.mapHeight * scale);
+    this.minimapBase.fillStyle(0x2a2a2a, 1);
+
+    for (let y = 0; y < this.map.height; y += 1) {
+      for (let x = 0; x < this.map.width; x += 1) {
+        const collisionTile = this.collisionLayer.getTileAt(x, y);
+        const gatherTile = this.gatherRockLayer.getTileAt(x, y);
+        if (
+          (collisionTile && collisionTile.collides) ||
+          (gatherTile && gatherTile.collides)
+        ) {
+          continue;
+        }
+        this.minimapBase.fillRect(x * tileW, y * tileH, tileW, tileH);
+      }
+    }
+  }
+
+  updateMinimapEntities() {
+    if (!this.minimapEntities || !this.playerManager?.player) return;
+    const { size, scale, mapWidth, mapHeight } = this.minimapConfig;
+    const origin = this.getMinimapOrigin();
+    const mapWidthScaled = mapWidth * scale;
+    const mapHeightScaled = mapHeight * scale;
+
+    const player = this.playerManager.player;
+    const playerScaledX = Phaser.Math.Clamp(player.x, 0, mapWidth) * scale;
+    const playerScaledY = Phaser.Math.Clamp(player.y, 0, mapHeight) * scale;
+    const viewX = Phaser.Math.Clamp(
+      playerScaledX - size / 2,
+      0,
+      Math.max(0, mapWidthScaled - size)
+    );
+    const viewY = Phaser.Math.Clamp(
+      playerScaledY - size / 2,
+      0,
+      Math.max(0, mapHeightScaled - size)
+    );
+
+    this.minimapBase.setPosition(origin.x - viewX, origin.y - viewY);
+    this.minimapEntities.setPosition(origin.x - viewX, origin.y - viewY);
+    this.minimapEntities.clear();
+    this.minimapEntities.fillStyle(0xffffff, 1);
+    this.drawMinimapPlayerPointer(playerScaledX, playerScaledY, 4);
+
+    if (this.mobManager?.mobs) {
+      this.minimapEntities.fillStyle(0xff3b30, 1);
+      this.mobManager.mobs.getChildren().forEach((mob) => {
+        if (!mob.active || mob.customData.isDead) return;
+        const mx = Phaser.Math.Clamp(mob.x, 0, mapWidth) * scale;
+        const my = Phaser.Math.Clamp(mob.y, 0, mapHeight) * scale;
+        this.minimapEntities.fillCircle(mx, my, 1.5);
+      });
+    }
+
+    this.minimapFrame.clear();
+    this.minimapFrame.setPosition(origin.x, origin.y);
+    this.minimapFrame.lineStyle(1, 0x3a3a3a, 1);
+    this.minimapFrame.strokeRect(0, 0, size, size);
+  }
+
+  drawMinimapPlayerPointer(x, y, size) {
+    const dir = this.playerManager?.lastDirection || "down";
+    let angle = 0;
+    if (dir === "up") angle = -Math.PI / 2;
+    if (dir === "right") angle = 0;
+    if (dir === "down") angle = Math.PI / 2;
+    if (dir === "left") angle = Math.PI;
+
+    const tipX = x + Math.cos(angle) * size;
+    const tipY = y + Math.sin(angle) * size;
+    const leftAngle = angle + Math.PI * 0.75;
+    const rightAngle = angle - Math.PI * 0.75;
+    const leftX = x + Math.cos(leftAngle) * (size * 0.8);
+    const leftY = y + Math.sin(leftAngle) * (size * 0.8);
+    const rightX = x + Math.cos(rightAngle) * (size * 0.8);
+    const rightY = y + Math.sin(rightAngle) * (size * 0.8);
+
+    this.minimapEntities.fillTriangle(
+      tipX,
+      tipY,
+      leftX,
+      leftY,
+      rightX,
+      rightY
+    );
   }
 
   // ------------------------------

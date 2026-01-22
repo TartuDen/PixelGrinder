@@ -193,16 +193,47 @@ export default class MobManager {
     );
   }
 
-  getRandomSpawnPosition(spawnZone) {
+  isWithinSpawnMargin(x, y, margin) {
+    const mapWidth = this.scene.map?.widthInPixels || 0;
+    const mapHeight = this.scene.map?.heightInPixels || 0;
+    if (!mapWidth || !mapHeight) return true;
+    return (
+      x >= margin &&
+      y >= margin &&
+      x <= mapWidth - margin &&
+      y <= mapHeight - margin
+    );
+  }
+
+  getRandomSpawnPosition(spawnZone, options = {}) {
     const baseX = spawnZone.x || 0;
     const baseY = spawnZone.y || 0;
     const width = Math.max(0, Math.floor(spawnZone.width || 0));
     const height = Math.max(0, Math.floor(spawnZone.height || 0));
-    const tries = 12;
+    const tries = options.tries || 24;
+    const margin = options.margin ?? 64;
+    const minDistanceSq = options.minDistanceSq ?? 0;
+    const existing = options.existing || [];
 
     for (let i = 0; i < tries; i += 1) {
       const x = baseX + Phaser.Math.Between(0, width);
       const y = baseY + Phaser.Math.Between(0, height);
+      if (!this.isWithinSpawnMargin(x, y, margin)) {
+        continue;
+      }
+      if (this.isWorldPointBlocked(x, y)) {
+        continue;
+      }
+      if (minDistanceSq > 0) {
+        const tooClose = existing.some((pos) => {
+          const dx = pos.x - x;
+          const dy = pos.y - y;
+          return dx * dx + dy * dy < minDistanceSq;
+        });
+        if (tooClose) {
+          continue;
+        }
+      }
       if (!this.isWorldPointBlocked(x, y)) {
         return { x, y };
       }
@@ -239,7 +270,6 @@ export default class MobManager {
     );
     this.scene.physics.add.collider(this.mobs, this.scene.collisionLayer);
     this.scene.physics.add.collider(this.mobs, this.scene.gatherRockLayer);
-    this.scene.physics.add.collider(this.mobs, this.mobs);
 
     const spawnLayer = tilemap.getObjectLayer("GameObjects");
     if (!spawnLayer) {
@@ -263,6 +293,7 @@ export default class MobManager {
       const spawnCount = Number.isFinite(Number(countProp?.value))
         ? Number(countProp.value)
         : 3;
+      const zoneSpawns = [];
 
       for (let i = 0; i < spawnCount; i += 1) {
         const mobTypeID = this.getMobIdForSpawn(
@@ -275,7 +306,12 @@ export default class MobManager {
         }
 
         const spriteKey = this.getMobSpriteKey(mobInfo);
-        const spawnPos = this.getRandomSpawnPosition(spawnZone);
+        const spawnPos = this.getRandomSpawnPosition(spawnZone, {
+          existing: zoneSpawns,
+          minDistanceSq: 48 * 48,
+          margin: 64,
+        });
+        zoneSpawns.push(spawnPos);
         const spawnX = spawnPos.x;
         const spawnY = spawnPos.y;
         const mob = this.mobs.create(
@@ -522,6 +558,15 @@ export default class MobManager {
         case "leashing":
           this.updateLeashing(mob, mobInfo, distanceToSpawn);
           break;
+      }
+
+      const isAttacking = mob.customData.state === "attacking";
+      const isCasting = mob.customData.isCastingSkill;
+      const velocitySq =
+        (mob.body?.velocity?.x || 0) * (mob.body?.velocity?.x || 0) +
+        (mob.body?.velocity?.y || 0) * (mob.body?.velocity?.y || 0);
+      if (!isAttacking && !isCasting && velocitySq < 1) {
+        mob.anims.stop();
       }
     });
 

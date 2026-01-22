@@ -1,6 +1,6 @@
 const mobsData = {
   slime: {
-    name: "Slime",
+    name: "Lost Soul",
     spriteKey: "mob0",
     level: 2,
     attackRange: 100,
@@ -33,7 +33,7 @@ const mobsData = {
   },
 
   goblin: {
-    name: "Goblin",
+    name: "Lost Soul",
     spriteKey: "mob1",
     level: 5,
     attackRange: 60,
@@ -45,8 +45,8 @@ const mobsData = {
     meleeDefense: 5,
     magicEvasion: 2,
     meleeEvasion: 2,
-    mobType: "enemy",
-    mobAgroRange: 220,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 1500,
     speed: 45,
     expReward: 22,
@@ -60,7 +60,7 @@ const mobsData = {
   },
 
   boar: {
-    name: "Boar",
+    name: "Lost Soul",
     spriteKey: "mob2",
     level: 3,
     attackRange: 35,
@@ -72,8 +72,8 @@ const mobsData = {
     meleeDefense: 6,
     magicEvasion: 1,
     meleeEvasion: 2,
-    mobType: "enemy",
-    mobAgroRange: 280,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 1600,
     speed: 60,
     expReward: 16,
@@ -87,7 +87,7 @@ const mobsData = {
   },
 
   wisp: {
-    name: "Wisp",
+    name: "Lost Soul",
     spriteKey: "mob3",
     level: 4,
     attackRange: 140,
@@ -99,8 +99,8 @@ const mobsData = {
     meleeDefense: 2,
     magicEvasion: 4,
     meleeEvasion: 1,
-    mobType: "enemy",
-    mobAgroRange: 320,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 2200,
     speed: 35,
     expReward: 20,
@@ -115,7 +115,7 @@ const mobsData = {
   },
 
   bandit: {
-    name: "Bandit",
+    name: "Lost Soul",
     spriteKey: "mob4",
     level: 6,
     attackRange: 45,
@@ -127,8 +127,8 @@ const mobsData = {
     meleeDefense: 7,
     magicEvasion: 3,
     meleeEvasion: 3,
-    mobType: "enemy",
-    mobAgroRange: 300,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 1400,
     speed: 75,
     expReward: 26,
@@ -142,7 +142,7 @@ const mobsData = {
   },
 
   skeleton: {
-    name: "Skeleton",
+    name: "Lost Soul",
     spriteKey: "mob5",
     level: 4,
     attackRange: 50,
@@ -154,8 +154,8 @@ const mobsData = {
     meleeDefense: 6,
     magicEvasion: 2,
     meleeEvasion: 2,
-    mobType: "enemy",
-    mobAgroRange: 260,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 1700,
     speed: 45,
     expReward: 18,
@@ -169,7 +169,7 @@ const mobsData = {
   },
 
   ghost: {
-    name: "Ghost",
+    name: "Lost Soul",
     spriteKey: "mob6",
     level: 5,
     attackRange: 120,
@@ -181,8 +181,8 @@ const mobsData = {
     meleeDefense: 3,
     magicEvasion: 4,
     meleeEvasion: 2,
-    mobType: "enemy",
-    mobAgroRange: 300,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 2100,
     speed: 40,
     expReward: 22,
@@ -196,7 +196,7 @@ const mobsData = {
   },
 
   spider: {
-    name: "Spider",
+    name: "Lost Soul",
     spriteKey: "mob7",
     level: 3,
     attackRange: 45,
@@ -208,8 +208,8 @@ const mobsData = {
     meleeDefense: 5,
     magicEvasion: 3,
     meleeEvasion: 3,
-    mobType: "enemy",
-    mobAgroRange: 240,
+    mobType: "friend",
+    mobAgroRange: 0,
     attackCooldown: 1500,
     speed: 50,
     expReward: 15,
