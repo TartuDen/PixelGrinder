@@ -1,5 +1,7 @@
 /* File: characterCreation.css */
 
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Uncial+Antiqua&display=swap');
+
 /* Container for the entire char creation UI */
 .char-creation-container {
   position: absolute;
@@ -8,12 +10,21 @@
   transform: translateX(-50%);
   width: 405px;
   padding: 20px;
-  background: rgba(30, 30, 30, 0.9);
-  border: 2px solid #999;
+  background:
+    linear-gradient(135deg, #efe2c6, #d8c29a),
+    repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0.02),
+      rgba(0, 0, 0, 0.02) 6px,
+      rgba(255, 255, 255, 0.02) 6px,
+      rgba(255, 255, 255, 0.02) 12px
+    );
+  border: 2px solid #d8c29a;
   border-radius: 8px;
-  color: #fff;
-  font-family: sans-serif;
+  color: #2b1d12;
+  font-family: "IM Fell English", serif;
   z-index: 9999; /* ensure it appears on top */
+  box-shadow: 0 10px 24px rgba(18, 10, 5, 0.5);
 }
 
 .char-creation-label {
@@ -25,6 +36,10 @@
   width: 100%;
   margin-bottom: 10px;
   padding: 6px;
+  border: 1px solid #d8c29a;
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #2b1d12;
+  font-family: "IM Fell English", serif;
 }
 
 .char-creation-points-remaining {
@@ -46,6 +61,9 @@
   width: 28px;
   margin: 0 6px;
   cursor: pointer;
+  background: linear-gradient(180deg, #efe2c6, #d8c29a);
+  border: 1px solid #cbb089;
+  color: #2b1d12;
 }
 
 .char-creation-stat-value {
@@ -61,11 +79,13 @@
   margin-top: 12px;
   padding: 8px 16px;
   cursor: pointer;
-  background-color: #4caf50;
-  border: none;
-  color: #fff;
+  background: linear-gradient(180deg, #7a4f2a, #5b3a1f);
+  border: 1px solid #4b2c17;
+  color: #fbe9c9;
   font-weight: bold;
   border-radius: 4px;
+  font-family: "Uncial Antiqua", serif;
+  letter-spacing: 1px;
 }
 
 /* Skin selection container */
@@ -82,14 +102,15 @@
   cursor: pointer;
   border: 2px solid transparent;
   padding: 5px;
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .skin-option:hover {
-  border: 2px solid #aaa;
+  border: 2px solid #cbb089;
 }
 
 .skin-option.selected-skin {
-  border: 3px solid gold; /* highlight chosen skin */
+  border: 3px solid #d5a54a; /* highlight chosen skin */
 }
 
 .skin-preview-img {

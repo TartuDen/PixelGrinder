@@ -459,8 +459,41 @@
                  "type":"",
                  "visible":true,
                  "width":96,
-                 "x":567.151515151515,
-                 "y":148.969696969697
+                 "x":2640,
+                 "y":1872
+                }, 
+                {
+                 "height":96,
+                 "id":6,
+                 "name":"MobSpawnZone3",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":112,
+                 "y":3120
+                }, 
+                {
+                 "height":96,
+                 "id":7,
+                 "name":"MobSpawnZone4",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":2096,
+                 "y":48
+                }, 
+                {
+                 "height":96,
+                 "id":8,
+                 "name":"MobSpawnZone5",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":944,
+                 "y":1520
                 }, 
                 {
                  "height":32,
@@ -481,8 +514,129 @@
                  "type":"",
                  "visible":true,
                  "width":96,
-                 "x":118.666666666667,
-                 "y":394.424242424242
+                 "x":80,
+                 "y":16
+                }, 
+                {
+                 "height":96,
+                 "id":9,
+                 "name":"MobSpawnZone6",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1616,
+                 "y":3120
+                }, 
+                {
+                 "height":96,
+                 "id":10,
+                 "name":"MobSpawnZone7",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":3056,
+                 "y":3152
+                }, 
+                {
+                 "height":96,
+                 "id":11,
+                 "name":"MobSpawnZone8",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":3120,
+                 "y":752
+                }, 
+                {
+                 "height":96,
+                 "id":12,
+                 "name":"MobSpawnZone9",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1904,
+                 "y":2576
+                }, 
+                {
+                 "height":96,
+                 "id":13,
+                 "name":"MobSpawnZone10",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":3120,
+                 "y":112
+                }, 
+                {
+                 "height":96,
+                 "id":14,
+                 "name":"MobSpawnZone11",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":48,
+                 "y":2064
+                }, 
+                {
+                 "height":96,
+                 "id":15,
+                 "name":"MobSpawnZone12",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1584,
+                 "y":848
+                }, 
+                {
+                 "height":96,
+                 "id":16,
+                 "name":"MobSpawnZone13",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":3120,
+                 "y":1648
+                }, 
+                {
+                 "height":96,
+                 "id":17,
+                 "name":"MobSpawnZone14",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":752,
+                 "y":3120
+                }, 
+                {
+                 "height":96,
+                 "id":18,
+                 "name":"MobSpawnZone15",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":496,
+                 "y":1072
+                }, 
+                {
+                 "height":96,
+                 "id":19,
+                 "name":"MobSpawnZone16",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":96,
+                 "x":1104,
+                 "y":1904
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -491,7 +645,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":6,
+ "nextobjectid":20,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.0",

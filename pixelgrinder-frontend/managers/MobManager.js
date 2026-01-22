@@ -24,6 +24,7 @@ export default class MobManager {
     this.tileHeight = 0;
     this.pathDebugEnabled = false;
     this.pathDebugGraphics = null;
+    this.lastDynamicCostUpdate = 0;
   }
 
   clearIdleWanderTimers(mob) {
@@ -131,6 +132,85 @@ export default class MobManager {
     this.easystar.disableCornerCutting();
   }
 
+  refreshDynamicPathCosts() {
+    if (!this.easystar || !this.pathGrid || !this.mobs) return;
+    const now = this.scene.time.now;
+    if (now - this.lastDynamicCostUpdate < 200) return;
+    this.lastDynamicCostUpdate = now;
+
+    this.easystar.removeAllAdditionalPointCosts();
+    const maxY = this.pathGrid.length;
+    const maxX = this.pathGrid[0].length;
+    const mobTileCost = 50;
+
+    this.mobs.getChildren().forEach((mob) => {
+      if (!mob.active || mob.customData.isDead) return;
+      const tx = this.worldToTileX(mob.x);
+      const ty = this.worldToTileY(mob.y);
+      if (tx < 0 || ty < 0 || ty >= maxY || tx >= maxX) return;
+      this.easystar.setAdditionalPointCost(tx, ty, mobTileCost);
+    });
+  }
+
+  getMobMoveSpeed(mobInfo) {
+    const playerSpeed = this.scene?.playerManager?.playerSpeed;
+    if (typeof playerSpeed === "number") {
+      return playerSpeed;
+    }
+    return mobInfo.speed;
+  }
+
+  getMobSpriteKey(mobInfo) {
+    return mobInfo.spriteKey || "goblinBeast";
+  }
+
+  getMobSpawnTextureKey(spriteKey) {
+    return spriteKey.startsWith("mob") ? "mobs-sheet" : `${spriteKey}-walk-down`;
+  }
+
+  getMobAnimKey(mob, action, direction) {
+    const spriteKey = mob.customData.spriteKey || "goblinBeast";
+    const preferred = `${spriteKey}-${action}-${direction}`;
+    if (this.scene.anims.exists(preferred)) return preferred;
+    const fallback = `${spriteKey}-walk-${direction}`;
+    if (this.scene.anims.exists(fallback)) return fallback;
+    return null;
+  }
+
+  playMobAnimation(mob, action, direction, loop) {
+    const key = this.getMobAnimKey(mob, action, direction);
+    if (key) {
+      mob.anims.play(key, loop);
+    }
+  }
+
+  isWorldPointBlocked(x, y) {
+    const collisionTile = this.scene.collisionLayer?.getTileAtWorldXY(x, y);
+    const gatherTile = this.scene.gatherRockLayer?.getTileAtWorldXY(x, y);
+    return (
+      (collisionTile && collisionTile.collides) ||
+      (gatherTile && gatherTile.collides)
+    );
+  }
+
+  getRandomSpawnPosition(spawnZone) {
+    const baseX = spawnZone.x || 0;
+    const baseY = spawnZone.y || 0;
+    const width = Math.max(0, Math.floor(spawnZone.width || 0));
+    const height = Math.max(0, Math.floor(spawnZone.height || 0));
+    const tries = 12;
+
+    for (let i = 0; i < tries; i += 1) {
+      const x = baseX + Phaser.Math.Between(0, width);
+      const y = baseY + Phaser.Math.Between(0, height);
+      if (!this.isWorldPointBlocked(x, y)) {
+        return { x, y };
+      }
+    }
+
+    return { x: baseX, y: baseY };
+  }
+
   worldToTileX(x) {
     if (!this.tileWidth) return 0;
     return Math.floor(x / this.tileWidth);
@@ -178,77 +258,97 @@ export default class MobManager {
     }
 
     mobSpawns.forEach((spawnZone, index) => {
-      const mobTypeID = this.getMobIdForSpawn(spawnZone, index);
-      const mobInfo = mobsData[mobTypeID];
-      if (!mobInfo) {
-        return;
+      const spawnProps = spawnZone.properties || [];
+      const countProp = spawnProps.find((prop) => prop.name === "count");
+      const spawnCount = Number.isFinite(Number(countProp?.value))
+        ? Number(countProp.value)
+        : 3;
+
+      for (let i = 0; i < spawnCount; i += 1) {
+        const mobTypeID = this.getMobIdForSpawn(
+          spawnZone,
+          index * spawnCount + i
+        );
+        const mobInfo = mobsData[mobTypeID];
+        if (!mobInfo) {
+          continue;
+        }
+
+        const spriteKey = this.getMobSpriteKey(mobInfo);
+        const spawnPos = this.getRandomSpawnPosition(spawnZone);
+        const spawnX = spawnPos.x;
+        const spawnY = spawnPos.y;
+        const mob = this.mobs.create(
+          spawnX,
+          spawnY,
+          this.getMobSpawnTextureKey(spriteKey)
+        );
+        mob.setPushable(false);
+
+        mob.customData = {
+          id: mobTypeID,
+          spriteKey,
+          hp: mobInfo.health,
+          mana: mobInfo.mana || 0,
+          magicDefense: mobInfo.magicDefense || 0,
+          meleeDefense: mobInfo.meleeDefense || 0,
+          magicEvasion: mobInfo.magicEvasion || 0,
+          meleeEvasion: mobInfo.meleeEvasion || 0,
+          spawnX,
+          spawnY,
+          spawnZoneX: spawnZone.x,
+          spawnZoneY: spawnZone.y,
+          spawnZoneW: spawnZone.width || 0,
+          spawnZoneH: spawnZone.height || 0,
+          isDead: false,
+          currentType: mobInfo.mobType, // 'friend' or 'enemy'
+          state: "idle",
+          lastAttackTime: 0,
+          droppedLoot: [],
+          // Skills extracted from loot
+          mobSkills: this.extractMobSkillsFromLoot(mobInfo.lootTable),
+          mobSkillCooldowns: {},
+          mobSkillTimers: {},
+          isCastingSkill: false,
+          // Heal threshold (50%)
+          healingThreshold: mobInfo.healingSkillHPThreshold || 0.5,
+          lastAggroTime: 0,
+          lastSeenPosition: null,
+          strafeUntil: 0,
+          lastPathTime: 0,
+          lastPathKey: null,
+          path: null,
+          pathIndex: 0,
+          waitingForPath: false,
+          lastPathLogTime: 0,
+
+          // Used for stuck checks
+          lastPosition: { x: spawnZone.x, y: spawnZone.y },
+          stuckCheckInterval: 1000,
+          lastStuckCheck: 0,
+          isUnsticking: false,
+
+          // For random wandering
+          wanderDirection: new Phaser.Math.Vector2(0, 0),
+          wanderBlockedUntil: 0,
+          lastIdleWanderChange: 0,
+
+          // Keep track of facing direction for animations
+          lastDirection: "down",
+        };
+
+        this.createMobUIContainer(mob, mobInfo);
+
+        mob.setInteractive({ useHandCursor: true });
+        mob.on("pointerdown", () => {
+          this.scene.onMobClicked(mob);
+        });
+
+        mob.setScale(1);
+        this.playMobAnimation(mob, "walk", "down", true);
+
+        this.assignRandomIdleOrWander(mob);
       }
-
-      const mob = this.mobs.create(
-        spawnZone.x,
-        spawnZone.y,
-        "goblinBeast-walk-down"
-      );
-      mob.setPushable(false);
-
-      mob.customData = {
-        id: mobTypeID,
-        hp: mobInfo.health,
-        mana: mobInfo.mana || 0,
-        magicDefense: mobInfo.magicDefense || 0,
-        meleeDefense: mobInfo.meleeDefense || 0,
-        magicEvasion: mobInfo.magicEvasion || 0,
-        meleeEvasion: mobInfo.meleeEvasion || 0,
-        spawnX: spawnZone.x,
-        spawnY: spawnZone.y,
-        isDead: false,
-        currentType: mobInfo.mobType, // 'friend' or 'enemy'
-        state: "idle",
-        lastAttackTime: 0,
-        droppedLoot: [],
-        // Skills extracted from loot
-        mobSkills: this.extractMobSkillsFromLoot(mobInfo.lootTable),
-        mobSkillCooldowns: {},
-        mobSkillTimers: {},
-        isCastingSkill: false,
-        // Heal threshold (50%)
-        healingThreshold: mobInfo.healingSkillHPThreshold || 0.5,
-        lastAggroTime: 0,
-        lastSeenPosition: null,
-        strafeUntil: 0,
-        lastPathTime: 0,
-        lastPathKey: null,
-        path: null,
-        pathIndex: 0,
-        waitingForPath: false,
-        lastPathLogTime: 0,
-
-        // Used for stuck checks
-        lastPosition: { x: spawnZone.x, y: spawnZone.y },
-        stuckCheckInterval: 1000,
-        lastStuckCheck: 0,
-        isUnsticking: false,
-
-        // For random wandering
-        wanderDirection: new Phaser.Math.Vector2(0, 0),
-        wanderBlockedUntil: 0,
-        lastIdleWanderChange: 0,
-
-        // Keep track of facing direction for animations
-        lastDirection: "down",
-      };
-
-      this.createMobUIContainer(mob, mobInfo);
-
-      mob.setInteractive({ useHandCursor: true });
-      mob.on("pointerdown", () => {
-        this.scene.onMobClicked(mob);
-      });
-
-      mob.setScale(1);
-      mob.anims.play("goblinBeast-walk-down");
-
-      this.assignRandomIdleOrWander(mob);
     });
   }
 
@@ -338,6 +438,7 @@ export default class MobManager {
   }
 
   updateMobs(player) {
+    this.refreshDynamicPathCosts();
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active || mob.customData.isDead) return;
 
@@ -496,20 +597,20 @@ export default class MobManager {
     mob.customData.wanderBlockedUntil = 0;
 
     const mobInfo = mobsData[mob.customData.id];
-    const speed = mobInfo.speed;
+    const speed = this.getMobMoveSpeed(mobInfo);
 
     const directions = [
-      { x: 1, y: 0, anim: "goblinBeast-walk-right", dir: "right" },
-      { x: -1, y: 0, anim: "goblinBeast-walk-left", dir: "left" },
-      { x: 0, y: 1, anim: "goblinBeast-walk-down", dir: "down" },
-      { x: 0, y: -1, anim: "goblinBeast-walk-up", dir: "up" },
+      { x: 1, y: 0, dir: "right" },
+      { x: -1, y: 0, dir: "left" },
+      { x: 0, y: 1, dir: "down" },
+      { x: 0, y: -1, dir: "up" },
     ];
     const chosen = Phaser.Utils.Array.GetRandom(directions);
 
     mob.customData.wanderDirection.set(chosen.x, chosen.y);
     mob.customData.lastDirection = chosen.dir;
     mob.body.setVelocity(chosen.x * speed, chosen.y * speed);
-    mob.anims.play(chosen.anim, true);
+    this.playMobAnimation(mob, "walk", chosen.dir, true);
 
     const wanderDuration = Phaser.Math.Between(3000, 7000);
     mob.customData.wanderTimer = this.scene.time.addEvent({
@@ -549,6 +650,7 @@ export default class MobManager {
    */
   updateChasing(mob, player, distanceToPlayer) {
     const mobInfo = mobsData[mob.customData.id];
+    const moveSpeed = this.getMobMoveSpeed(mobInfo);
     const behavior = this.getMobBehavior(mobInfo);
     const stopRange = Math.max(mobInfo.attackRange, behavior.preferredRange);
     const now = this.scene.time.now;
@@ -619,22 +721,16 @@ export default class MobManager {
           !this.followPathToTarget(
             mob,
             targetPos,
-            mobInfo.speed * MOB_CHASE_SPEED_MULT,
+            moveSpeed * MOB_CHASE_SPEED_MULT,
             now
           )
         ) {
-          if (targetPos) {
-            this.moveMobTowardsPosition(
-              mob,
-              targetPos,
-              mobInfo.speed * MOB_CHASE_SPEED_MULT
-            );
+          if (this.easystar) {
+            mob.body.setVelocity(0, 0);
+          } else if (targetPos) {
+            this.moveMobTowardsPosition(mob, targetPos, moveSpeed * MOB_CHASE_SPEED_MULT);
           } else {
-            this.moveMobTowards(
-              mob,
-              player,
-              mobInfo.speed * MOB_CHASE_SPEED_MULT
-            );
+            this.moveMobTowards(mob, player, moveSpeed * MOB_CHASE_SPEED_MULT);
           }
         }
       }
@@ -651,7 +747,20 @@ export default class MobManager {
         mob.customData.state = "attacking";
       } else {
         // Move closer
-        this.moveMobTowards(mob, player, mobInfo.speed * MOB_CHASE_SPEED_MULT);
+        if (
+          !this.followPathToTarget(
+            mob,
+            targetPos,
+            moveSpeed * MOB_CHASE_SPEED_MULT,
+            now
+          )
+        ) {
+          if (this.easystar) {
+            mob.body.setVelocity(0, 0);
+          } else {
+            this.moveMobTowards(mob, player, moveSpeed * MOB_CHASE_SPEED_MULT);
+          }
+        }
       }
       return;
     }
@@ -667,22 +776,16 @@ export default class MobManager {
         !this.followPathToTarget(
           mob,
           targetPos,
-          mobInfo.speed * MOB_CHASE_SPEED_MULT,
+          moveSpeed * MOB_CHASE_SPEED_MULT,
           now
         )
       ) {
-        if (targetPos) {
-          this.moveMobTowardsPosition(
-            mob,
-            targetPos,
-            mobInfo.speed * MOB_CHASE_SPEED_MULT
-          );
+        if (this.easystar) {
+          mob.body.setVelocity(0, 0);
+        } else if (targetPos) {
+          this.moveMobTowardsPosition(mob, targetPos, moveSpeed * MOB_CHASE_SPEED_MULT);
         } else {
-          this.moveMobTowards(
-            mob,
-            player,
-            mobInfo.speed * MOB_CHASE_SPEED_MULT
-          );
+          this.moveMobTowards(mob, player, moveSpeed * MOB_CHASE_SPEED_MULT);
         }
       }
     }
@@ -690,6 +793,7 @@ export default class MobManager {
 
   updateAttacking(mob, player, distanceToPlayer, behavior) {
     const mobInfo = mobsData[mob.customData.id];
+    const moveSpeed = this.getMobMoveSpeed(mobInfo);
     const now = this.scene.time.now;
 
     if (distanceToPlayer > mobInfo.mobAgroRange) {
@@ -730,7 +834,7 @@ export default class MobManager {
       const now = this.scene.time.now;
       if (now >= mob.customData.strafeUntil) {
         if (Math.random() < behavior.strafeChance) {
-          this.moveMobStrafe(mob, player, mobInfo.speed * 0.6);
+          this.moveMobStrafe(mob, player, moveSpeed * 0.6);
           mob.customData.strafeUntil = now + 500;
         }
       }
@@ -776,18 +880,18 @@ export default class MobManager {
     // Decide walk animation
     if (Math.abs(vx) > Math.abs(vy)) {
       if (vx > 0) {
-        mob.anims.play("goblinBeast-walk-right", true);
+        this.playMobAnimation(mob, "walk", "right", true);
         mob.customData.lastDirection = "right";
       } else {
-        mob.anims.play("goblinBeast-walk-left", true);
+        this.playMobAnimation(mob, "walk", "left", true);
         mob.customData.lastDirection = "left";
       }
     } else {
       if (vy > 0) {
-        mob.anims.play("goblinBeast-walk-down", true);
+        this.playMobAnimation(mob, "walk", "down", true);
         mob.customData.lastDirection = "down";
       } else {
-        mob.anims.play("goblinBeast-walk-up", true);
+        this.playMobAnimation(mob, "walk", "up", true);
         mob.customData.lastDirection = "up";
       }
     }
@@ -901,18 +1005,18 @@ export default class MobManager {
 
     if (Math.abs(vx) > Math.abs(vy)) {
       if (vx > 0) {
-        mob.anims.play("goblinBeast-walk-right", true);
+        this.playMobAnimation(mob, "walk", "right", true);
         mob.customData.lastDirection = "right";
       } else {
-        mob.anims.play("goblinBeast-walk-left", true);
+        this.playMobAnimation(mob, "walk", "left", true);
         mob.customData.lastDirection = "left";
       }
     } else {
       if (vy > 0) {
-        mob.anims.play("goblinBeast-walk-down", true);
+        this.playMobAnimation(mob, "walk", "down", true);
         mob.customData.lastDirection = "down";
       } else {
-        mob.anims.play("goblinBeast-walk-up", true);
+        this.playMobAnimation(mob, "walk", "up", true);
         mob.customData.lastDirection = "up";
       }
     }
@@ -927,15 +1031,9 @@ export default class MobManager {
     mob.body.setVelocity(vx, vy);
 
     if (Math.abs(vx) > Math.abs(vy)) {
-      mob.anims.play(
-        vx > 0 ? "goblinBeast-walk-right" : "goblinBeast-walk-left",
-        true
-      );
+      this.playMobAnimation(mob, "walk", vx > 0 ? "right" : "left", true);
     } else {
-      mob.anims.play(
-        vy > 0 ? "goblinBeast-walk-down" : "goblinBeast-walk-up",
-        true
-      );
+      this.playMobAnimation(mob, "walk", vy > 0 ? "down" : "up", true);
     }
   }
 
@@ -970,6 +1068,7 @@ export default class MobManager {
     if (!mob.active || mob.customData.isDead) return;
 
     const mobInfo = mobsData[mob.customData.id];
+    const moveSpeed = this.getMobMoveSpeed(mobInfo);
     const pickLeft = Phaser.Math.Between(0, 1) === 0;
     // If velocity is zero, pick a random direction
     let vx = mob.body.velocity.x;
@@ -987,15 +1086,20 @@ export default class MobManager {
     }
 
     mob.body.setVelocity(
-      turnDir.x * mobInfo.speed,
-      turnDir.y * mobInfo.speed
+      turnDir.x * moveSpeed,
+      turnDir.y * moveSpeed
     );
 
     // Quick animation
     if (Math.abs(turnDir.x) > Math.abs(turnDir.y)) {
-      mob.anims.play(turnDir.x > 0 ? "goblinBeast-walk-right" : "goblinBeast-walk-left", true);
+      this.playMobAnimation(
+        mob,
+        "walk",
+        turnDir.x > 0 ? "right" : "left",
+        true
+      );
     } else {
-      mob.anims.play(turnDir.y > 0 ? "goblinBeast-walk-down" : "goblinBeast-walk-up", true);
+      this.playMobAnimation(mob, "walk", turnDir.y > 0 ? "down" : "up", true);
     }
 
     this.scene.time.addEvent({
@@ -1020,7 +1124,8 @@ export default class MobManager {
       x: mob.customData.spawnX,
       y: mob.customData.spawnY,
     };
-    this.moveMobTowardsPosition(mob, spawnPosition, mobInfo.speed * 1.2);
+    const moveSpeed = this.getMobMoveSpeed(mobInfo);
+    this.moveMobTowardsPosition(mob, spawnPosition, moveSpeed * MOB_CHASE_SPEED_MULT);
   }
 
   // -------------------------
@@ -1254,7 +1359,7 @@ export default class MobManager {
     }
     mob.customData.lastDirection = direction;
 
-    mob.anims.play(`goblinBeast-attack-${direction}`, true);
+    this.playMobAnimation(mob, "attack", direction, true);
   }
 
   mobAttackPlayer(mob, mobInfo) {
@@ -1328,13 +1433,14 @@ export default class MobManager {
 
   handleMobDeath(mob) {
     mob.customData.isDead = true;
+    if (mob.customData.uiContainer) {
+      mob.customData.uiContainer.setVisible(false);
+    }
     mob.body.setVelocity(0, 0);
     mob.customData.hp = 0;
     this.updateMobUI(mob);
 
-    const lastDir = mob.customData.lastDirection || "down";
-    mob.anims.play(`goblinBeast-death-${lastDir}`, true);
-
+    mob.anims.stop();
     mob.body.setEnable(false);
 
     const mobInfo = mobsData[mob.customData.id];
@@ -1425,9 +1531,20 @@ export default class MobManager {
     mob.customData.mobSkillCooldowns = {};
     mob.customData.mobSkillTimers = {};
     mob.customData.isCastingSkill = false;
+    if (mob.customData.uiContainer) {
+      mob.customData.uiContainer.setVisible(true);
+    }
 
-    mob.x = mob.customData.spawnX;
-    mob.y = mob.customData.spawnY;
+    const spawnPos = this.getRandomSpawnPosition({
+      x: mob.customData.spawnZoneX ?? mob.customData.spawnX,
+      y: mob.customData.spawnZoneY ?? mob.customData.spawnY,
+      width: mob.customData.spawnZoneW ?? 0,
+      height: mob.customData.spawnZoneH ?? 0,
+    });
+    mob.customData.spawnX = spawnPos.x;
+    mob.customData.spawnY = spawnPos.y;
+    mob.x = spawnPos.x;
+    mob.y = spawnPos.y;
 
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
@@ -1435,7 +1552,7 @@ export default class MobManager {
     this.updateMobUI(mob);
 
     mob.body.setVelocity(0, 0);
-    mob.anims.play("goblinBeast-walk-down");
+    this.playMobAnimation(mob, "walk", "down", true);
     mob.clearTint();
 
     this.scene.chatManager.addMessage(

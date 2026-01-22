@@ -58,6 +58,10 @@ export default class MainScene extends Phaser.Scene {
     // =======================
     //  MOBS (NEW GoblinBeast)
     // =======================
+    this.load.spritesheet("mobs-sheet", "assets/mobs.png", {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
     // Walking (288x48 → 6 frames × 48px width)
     this.load.spritesheet(
       "goblinBeast-walk-down",
@@ -838,6 +842,31 @@ export default class MainScene extends Phaser.Scene {
     // =======================
     // Goblin Beast (for "slime")
     // =======================
+    const mobSheetKey = "mobs-sheet";
+    const mobCols = 12;
+    const mobFramesPerDir = 3;
+    const mobDirs = [
+      { name: "down", rowOffset: 0 },
+      { name: "left", rowOffset: 1 },
+      { name: "right", rowOffset: 2 },
+      { name: "up", rowOffset: 3 },
+    ];
+    for (let mobIndex = 0; mobIndex < 8; mobIndex += 1) {
+      const baseRow = Math.floor(mobIndex / 4) * 4;
+      const baseCol = (mobIndex % 4) * mobFramesPerDir;
+      mobDirs.forEach((dir) => {
+        const row = baseRow + dir.rowOffset;
+        const start = row * mobCols + baseCol;
+        const end = start + mobFramesPerDir - 1;
+        this.anims.create({
+          key: `mob${mobIndex}-walk-${dir.name}`,
+          frames: this.anims.generateFrameNumbers(mobSheetKey, { start, end }),
+          frameRate: 6,
+          repeat: -1,
+        });
+      });
+    }
+
     // Walk
     this.anims.create({
       key: "goblinBeast-walk-down",

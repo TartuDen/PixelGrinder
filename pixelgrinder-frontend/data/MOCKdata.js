@@ -174,7 +174,7 @@ const naturalRegeneration = {
 };
 
 const TAB_TARGET_RANGE = 400;
-const MOB_CHASE_SPEED_MULT = 2.0;
+const MOB_CHASE_SPEED_MULT = 1.05;
 const SKILL_RANGE_EXTENDER = 1.1;
 const GATHER_RANGE = 50;
 const MOB_CORPSE_DURATION = 8000;
