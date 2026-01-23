@@ -673,16 +673,23 @@ body {
    Admin Panel
 ------------------------------ */
 .admin-toggle-btn {
-  position: absolute;
-  top: 110px;
-  right: 12px;
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 3000;
-  padding: 6px 10px;
-  font-size: 12px;
-  border: 1px solid #3a3a3a;
-  background: #1b1b1b;
-  color: #e8e8e8;
+  padding: 10px 15px;
+  background: linear-gradient(180deg, var(--paper), var(--paper-edge));
+  border: 1px solid var(--paper-edge);
+  color: var(--ink);
+  font-family: "Uncial Antiqua", serif;
+  font-size: 14px;
+  border-radius: 5px;
   cursor: pointer;
+  letter-spacing: 1px;
+}
+.admin-toggle-btn:hover {
+  background-color: var(--paper);
 }
 
 .admin-panel {
@@ -818,6 +825,22 @@ body {
   font-size: 12px;
 }
 
+.admin-field-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1px solid #2f2f2f;
+  background: #1b1b1b;
+  color: #bdbdbd;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+}
+
 .admin-field input,
 .admin-field select {
   background: #1b1b1b;
@@ -870,6 +893,10 @@ body {
   background: #1e1e1e;
   border: none;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .admin-accordion-body {
@@ -878,6 +905,41 @@ body {
 
 .admin-accordion.collapsed .admin-accordion-body {
   display: none;
+}
+
+.admin-copy-btn {
+  padding: 2px 6px;
+  font-size: 10px;
+  border: 1px solid #2f2f2f;
+  background: #202020;
+  color: #d8d8d8;
+  cursor: pointer;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+
+.admin-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.admin-skill-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.admin-debug-text {
+  margin: 0;
+  padding: 8px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  color: #cfcfcf;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 900px) {

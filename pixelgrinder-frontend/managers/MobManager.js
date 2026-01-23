@@ -344,10 +344,15 @@ export default class MobManager {
           lastAttackTime: 0,
           droppedLoot: [],
           // Skills extracted from loot
-          mobSkills: this.extractMobSkillsFromLoot(mobInfo.lootTable),
+          mobSkills: this.extractMobSkillsFromLoot(
+            mobInfo.lootTable,
+            mobInfo.skillIds
+          ),
           mobSkillCooldowns: {},
           mobSkillTimers: {},
           isCastingSkill: false,
+          castStartTime: 0,
+          castDuration: 0,
           // Heal threshold (50%)
           healingThreshold: mobInfo.healingSkillHPThreshold || 0.5,
           lastAggroTime: 0,
@@ -401,12 +406,22 @@ export default class MobManager {
       mob.customData.pathIndex = 0;
       mob.customData.waitingForPath = false;
       mob.customData.isCastingSkill = false;
+      mob.customData.castStartTime = 0;
+      mob.customData.castDuration = 0;
       mob.body.setVelocity(0, 0);
     });
   }
 
   createMobUIContainer(mob, mobInfo) {
     const container = this.scene.add.container(mob.x, mob.y - 40);
+
+    const castBarBG = this.scene.add.graphics();
+    castBarBG.fillStyle(0x333333, 1);
+    castBarBG.fillRect(-20, -6, 40, 3);
+    castBarBG.setVisible(false);
+
+    const castBarFill = this.scene.add.graphics();
+    castBarFill.setVisible(false);
 
     const nameText = this.scene.add
       .text(0, 0, mobInfo.name, {
@@ -429,10 +444,20 @@ export default class MobManager {
 
     const manaBarFill = this.scene.add.graphics();
 
-    container.add([nameText, hpBarBG, hpBarFill, manaBarBG, manaBarFill]);
+    container.add([
+      castBarBG,
+      castBarFill,
+      nameText,
+      hpBarBG,
+      hpBarFill,
+      manaBarBG,
+      manaBarFill,
+    ]);
 
     mob.customData.uiContainer = container;
     mob.customData.nameText = nameText;
+    mob.customData.castBarBg = castBarBG;
+    mob.customData.castBarFill = castBarFill;
     mob.customData.hpBarFill = hpBarFill;
     mob.customData.manaBarFill = manaBarFill;
   }
@@ -450,8 +475,16 @@ export default class MobManager {
     mob.customData.debugText = debugText;
   }
 
-  extractMobSkillsFromLoot(lootTable) {
+  extractMobSkillsFromLoot(lootTable, skillIds = []) {
     const skillList = [];
+    if (Array.isArray(skillIds)) {
+      skillIds.forEach((skillId) => {
+        const skill = allGameSkills.find((sk) => sk.id === skillId);
+        if (skill) {
+          skillList.push({ ...skill });
+        }
+      });
+    }
     lootTable.forEach((entry) => {
       const skill = allGameSkills.find((sk) => sk.id === entry.itemId);
       if (skill) {
@@ -459,7 +492,11 @@ export default class MobManager {
         skillList.push({ ...skill });
       }
     });
-    return skillList;
+    const uniqueById = new Map();
+    skillList.forEach((skill) => {
+      uniqueById.set(skill.id, skill);
+    });
+    return Array.from(uniqueById.values());
   }
 
   updateMobUI(mob) {
@@ -478,6 +515,7 @@ export default class MobManager {
     }
 
     const mobInfo = mobsData[mob.customData.id];
+    this.updateMobCastBar(mob);
     const currentHP = mob.customData.hp;
     const maxHP = mobInfo.health;
     const hpPercent = Math.max(0, currentHP / maxHP);
@@ -514,6 +552,10 @@ export default class MobManager {
       );
 
       this.updateMobUI(mob);
+      if (mob.customData.isCastingSkill) {
+        mob.body.setVelocity(0, 0);
+        return;
+      }
 
       // If mob is friendly, just idle or wander
       if (mob.customData.currentType !== "enemy") {
@@ -1256,11 +1298,15 @@ export default class MobManager {
     );
 
     if (skill.castingTime && skill.castingTime > 0) {
+      mob.customData.castStartTime = this.scene.time.now;
+      mob.customData.castDuration = skill.castingTime * 1000;
       this.scene.time.delayedCall(
         skill.castingTime * 1000,
         () => {
           if (!mob.active || mob.customData.isDead) {
             mob.customData.isCastingSkill = false;
+            mob.customData.castStartTime = 0;
+            mob.customData.castDuration = 0;
             return;
           }
           this.executeMobSkill(mob, skill, targetSprite);
@@ -1275,6 +1321,8 @@ export default class MobManager {
 
   executeMobSkill(mob, skill, targetSprite) {
     mob.customData.isCastingSkill = false;
+    mob.customData.castStartTime = 0;
+    mob.customData.castDuration = 0;
     if (!mob.active || mob.customData.isDead) return;
 
     // Deduct Mana
@@ -1492,8 +1540,35 @@ export default class MobManager {
     }
   }
 
+  updateMobCastBar(mob) {
+    const castBarBg = mob.customData.castBarBg;
+    const castBarFill = mob.customData.castBarFill;
+    if (!castBarBg || !castBarFill) return;
+
+    const isCasting =
+      mob.customData.isCastingSkill && mob.customData.castDuration > 0;
+    if (!isCasting) {
+      castBarBg.setVisible(false);
+      castBarFill.setVisible(false);
+      castBarFill.clear();
+      return;
+    }
+
+    const now = this.scene.time.now;
+    const elapsed = now - mob.customData.castStartTime;
+    const pct = Phaser.Math.Clamp(elapsed / mob.customData.castDuration, 0, 1);
+    castBarBg.setVisible(true);
+    castBarFill.setVisible(true);
+    castBarFill.clear();
+    castBarFill.fillStyle(0x6a8b3d, 1);
+    castBarFill.fillRect(-20, -6, 40 * pct, 3);
+  }
+
   handleMobDeath(mob) {
     mob.customData.isDead = true;
+    mob.customData.isCastingSkill = false;
+    mob.customData.castStartTime = 0;
+    mob.customData.castDuration = 0;
     if (mob.customData.uiContainer) {
       mob.customData.uiContainer.setVisible(false);
     }
@@ -1566,7 +1641,10 @@ export default class MobManager {
       mob.customData.healingThreshold = mobInfo.healingSkillHPThreshold || 0.5;
       mob.customData.hp = Math.min(mob.customData.hp, mobInfo.health);
       mob.customData.mana = Math.min(mob.customData.mana, mobInfo.mana || 0);
-      mob.customData.mobSkills = this.extractMobSkillsFromLoot(mobInfo.lootTable);
+      mob.customData.mobSkills = this.extractMobSkillsFromLoot(
+        mobInfo.lootTable,
+        mobInfo.skillIds
+      );
       if (mob.customData.currentType === "enemy") {
         mob.customData.lastAggroTime = this.scene.time.now;
         if (this.scene.playerManager?.player) {
@@ -1591,7 +1669,10 @@ export default class MobManager {
     this.mobs.getChildren().forEach((mob) => {
       const mobInfo = mobsData[mob.customData.id];
       if (!mobInfo) return;
-      mob.customData.mobSkills = this.extractMobSkillsFromLoot(mobInfo.lootTable);
+      mob.customData.mobSkills = this.extractMobSkillsFromLoot(
+        mobInfo.lootTable,
+        mobInfo.skillIds
+      );
     });
   }
 
@@ -1653,7 +1734,10 @@ export default class MobManager {
     mob.customData.mobSkillTimers = {};
     mob.customData.isCastingSkill = false;
     mob.customData.healingThreshold = mobInfo.healingSkillHPThreshold || 0.5;
-    mob.customData.mobSkills = this.extractMobSkillsFromLoot(mobInfo.lootTable);
+    mob.customData.mobSkills = this.extractMobSkillsFromLoot(
+      mobInfo.lootTable,
+      mobInfo.skillIds
+    );
     if (mob.customData.uiContainer) {
       mob.customData.uiContainer.setVisible(true);
     }

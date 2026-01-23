@@ -94,8 +94,11 @@ export default class UIManager {
     this.adminSkillList = document.getElementById("admin-skills-list");
     this.adminSkillFields = document.getElementById("admin-skill-fields");
     this.adminSelectedMobId = null;
+    this.adminSelectedMobInstance = null;
     this.adminSelectedSkillId = null;
     this.adminSaveTimer = null;
+    this.adminDebugTimer = null;
+    this.adminMobDebug = null;
 
     // Keep track of up to 9 skill slots
     this.skillBarSlots = new Array(9).fill(null);
@@ -1302,6 +1305,7 @@ export default class UIManager {
       this.adminPanel.style.display = "block";
       this.isAdminOpen = true;
       this.renderAdminPanel();
+      this.startAdminDebugUpdates();
     }
   }
 
@@ -1309,11 +1313,13 @@ export default class UIManager {
     if (!this.adminPanel) return;
     this.adminPanel.style.display = "none";
     this.isAdminOpen = false;
+    this.stopAdminDebugUpdates();
   }
 
-  selectAdminMob(mobId) {
+  selectAdminMob(mobId, mobInstance = null) {
     if (!mobId || !mobsData[mobId]) return;
     this.adminSelectedMobId = mobId;
+    this.adminSelectedMobInstance = mobInstance || this.findAdminMobInstance(mobId);
     this.renderAdminMobsList();
     this.renderAdminMobDetails(mobId);
   }
@@ -1374,6 +1380,7 @@ export default class UIManager {
       item.appendChild(label);
       item.addEventListener("click", () => {
         this.adminSelectedMobId = mobId;
+        this.adminSelectedMobInstance = this.findAdminMobInstance(mobId);
         this.renderAdminMobsList();
         this.renderAdminMobDetails(mobId);
       });
@@ -1391,6 +1398,34 @@ export default class UIManager {
     if (typeof mobInfo.scale !== "number") {
       mobInfo.scale = 1;
     }
+    const fieldMeta = {
+      level: { unit: "lvl", help: "Mob level used for EXP scaling." },
+      attackRange: { unit: "px", help: "Distance required to attack." },
+      health: { unit: "hp", help: "Max health for this mob." },
+      mana: { unit: "mp", help: "Max mana for this mob." },
+      magicAttack: { help: "Base magic attack power." },
+      meleeAttack: { help: "Base melee attack power." },
+      magicDefense: { help: "Reduces incoming magic damage." },
+      meleeDefense: { help: "Reduces incoming melee damage." },
+      magicEvasion: { unit: "%", help: "Chance to evade magic attacks." },
+      meleeEvasion: { unit: "%", help: "Chance to evade melee attacks." },
+      mobType: { help: "friend = passive, enemy = aggressive." },
+      mobAgroRange: { unit: "px", help: "Range to acquire/refresh aggro." },
+      attackCooldown: { unit: "ms", help: "Delay between basic attacks." },
+      speed: { unit: "px/s", help: "Movement speed." },
+      expReward: { unit: "xp", help: "Base EXP awarded on kill." },
+      healingSkillHPThreshold: {
+        unit: "ratio",
+        help: "Heal when HP drops below this fraction (0-1).",
+      },
+      behaviorProfile: { help: "AI style: melee/caster/skirmisher." },
+      preferredRange: { unit: "px", help: "Preferred combat distance." },
+      leashRadius: { unit: "px", help: "Max distance from spawn before leashing." },
+      aggroDuration: { unit: "ms", help: "How long to remember aggro." },
+      strafeChance: { unit: "ratio", help: "Chance to strafe when fighting." },
+      fleeHpPct: { unit: "ratio", help: "HP fraction to begin fleeing." },
+      scale: { unit: "x", help: "Sprite scale multiplier." },
+    };
     this.adminMobFields.innerHTML = "";
     const { section: propsSection, body: propsBody } =
       this.createAccordionSection("Mob Properties");
@@ -1399,8 +1434,9 @@ export default class UIManager {
     propsBody.appendChild(fieldsGrid);
 
     Object.keys(mobInfo).forEach((key) => {
-      if (key === "lootTable") return;
+      if (key === "lootTable" || key === "skillIds") return;
       const value = mobInfo[key];
+      const meta = fieldMeta[key] || {};
       const options =
         key === "mobType"
           ? [
@@ -1413,6 +1449,8 @@ export default class UIManager {
         value: Array.isArray(value) ? value.join(", ") : value,
         valueType: Array.isArray(value) ? "array" : typeof value,
         options,
+        labelSuffix: meta.unit,
+        helpText: meta.help,
         onChange: (nextValue) => {
           if (Array.isArray(value)) {
             mobInfo[key] = nextValue;
@@ -1429,6 +1467,16 @@ export default class UIManager {
     });
     this.adminMobFields.appendChild(propsSection);
 
+    const { section: skillsSection, body: skillsBody } =
+      this.createAccordionSection("Skills", true);
+    this.adminMobFields.appendChild(skillsSection);
+    this.renderAdminMobSkills(mobId, skillsBody);
+
+    const { section: debugSection, body: debugBody } =
+      this.createAccordionSection("Debug", true);
+    this.adminMobFields.appendChild(debugSection);
+    this.renderAdminMobDebug(mobId, debugBody);
+
     const { section: lootSection, body: lootBody } =
       this.createAccordionSection("Loot Table", true);
     if (this.adminMobLoot && this.adminAddLootRow) {
@@ -1438,6 +1486,171 @@ export default class UIManager {
     this.adminMobFields.appendChild(lootSection);
 
     this.renderAdminMobLoot(mobId);
+  }
+
+  renderAdminMobSkills(mobId, container) {
+    if (!mobId || !container) return;
+    const mobInfo = mobsData[mobId];
+    if (!mobInfo) return;
+    if (!Array.isArray(mobInfo.skillIds)) {
+      mobInfo.skillIds = [];
+    }
+
+    container.innerHTML = "";
+    const list = document.createElement("div");
+    list.className = "admin-skill-list";
+
+    const skills = [...allGameSkills].sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "")
+    );
+    skills.forEach((skill) => {
+      const label = document.createElement("label");
+      label.className = "admin-skill-option";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = mobInfo.skillIds.includes(skill.id);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          if (!mobInfo.skillIds.includes(skill.id)) {
+            mobInfo.skillIds.push(skill.id);
+          }
+        } else {
+          mobInfo.skillIds = mobInfo.skillIds.filter((id) => id !== skill.id);
+        }
+        this.scene.mobManager?.applyMobTypeChanges(mobId);
+        this.scheduleAdminOverridesSave();
+      });
+
+      const text = document.createElement("span");
+      text.innerText = `${skill.name} (${skill.id})`;
+
+      label.appendChild(checkbox);
+      label.appendChild(text);
+      list.appendChild(label);
+    });
+
+    container.appendChild(list);
+  }
+
+  renderAdminMobDebug(mobId, container) {
+    if (!container) return;
+    container.innerHTML = "";
+    const pre = document.createElement("pre");
+    pre.className = "admin-debug-text";
+    pre.innerText = "Select a mob instance to see debug info.";
+    container.appendChild(pre);
+    this.adminMobDebug = pre;
+    this.updateAdminMobDebug(mobId);
+  }
+
+  startAdminDebugUpdates() {
+    if (this.adminDebugTimer) return;
+    this.adminDebugTimer = setInterval(() => {
+      if (!this.isAdminOpen) return;
+      this.updateAdminMobDebug(this.adminSelectedMobId);
+    }, 250);
+  }
+
+  stopAdminDebugUpdates() {
+    if (this.adminDebugTimer) {
+      clearInterval(this.adminDebugTimer);
+      this.adminDebugTimer = null;
+    }
+  }
+
+  findAdminMobInstance(mobId) {
+    const mobs = this.scene.mobManager?.mobs?.getChildren?.() || [];
+    const alive = mobs.find((mob) => mob.customData?.id === mobId && !mob.customData.isDead);
+    return alive || mobs.find((mob) => mob.customData?.id === mobId) || null;
+  }
+
+  updateAdminMobDebug(mobId) {
+    if (!this.adminMobDebug) return;
+    const mob = this.adminSelectedMobInstance || this.findAdminMobInstance(mobId);
+    if (!mob || !mob.customData) {
+      this.adminMobDebug.innerText = "No mob instance found.";
+      return;
+    }
+
+    const mobInfo = mobsData[mob.customData.id] || {};
+    const player = this.scene.playerManager?.player;
+    const distanceToPlayer = player
+      ? Phaser.Math.Distance.Between(mob.x, mob.y, player.x, player.y)
+      : null;
+    const distanceToSpawn = mob.customData.spawnX !== undefined
+      ? Phaser.Math.Distance.Between(
+          mob.x,
+          mob.y,
+          mob.customData.spawnX,
+          mob.customData.spawnY
+        )
+      : null;
+    const velocity = mob.body?.velocity || { x: 0, y: 0 };
+    const speedSq = (velocity.x || 0) * (velocity.x || 0) + (velocity.y || 0) * (velocity.y || 0);
+    const attackRange = Number.isFinite(mobInfo.attackRange) ? mobInfo.attackRange : null;
+    const aggroRange = Number.isFinite(mobInfo.mobAgroRange) ? mobInfo.mobAgroRange : null;
+    const inAttackRange =
+      distanceToPlayer !== null && attackRange !== null
+        ? distanceToPlayer <= attackRange
+        : null;
+    const inAggroRange =
+      distanceToPlayer !== null && aggroRange !== null
+        ? distanceToPlayer <= aggroRange
+        : null;
+    const leashRadius = Number.isFinite(mobInfo.leashRadius) ? mobInfo.leashRadius : null;
+    const leashExceeded =
+      distanceToSpawn !== null && leashRadius !== null
+        ? distanceToSpawn > leashRadius
+        : null;
+    const castRemaining =
+      mob.customData.castDuration > 0
+        ? Math.max(
+            0,
+            (mob.customData.castStartTime + mob.customData.castDuration - this.scene.time.now) / 1000
+          )
+        : 0;
+    const lastAttackAge = mob.customData.lastAttackTime
+      ? Math.max(0, this.scene.time.now - mob.customData.lastAttackTime)
+      : null;
+
+    this.adminMobDebug.innerText = [
+      `id: ${mob.customData.id}`,
+      `state: ${mob.customData.state}`,
+      `type: ${mob.customData.currentType}`,
+      `pos: ${Math.round(mob.x)}, ${Math.round(mob.y)}`,
+      `velocity: ${Math.round(velocity.x || 0)}, ${Math.round(velocity.y || 0)} (spd^2=${Math.round(speedSq)})`,
+      `hp: ${Math.round(mob.customData.hp)} / ${mobInfo.health ?? "?"}`,
+      `mana: ${Math.round(mob.customData.mana)} / ${mobInfo.mana ?? 0}`,
+      `casting: ${mob.customData.isCastingSkill ? "yes" : "no"}`,
+      `cast_remaining: ${castRemaining.toFixed(2)}s`,
+      `last_dir: ${mob.customData.lastDirection || "?"}`,
+      `aggro_age: ${mob.customData.lastAggroTime ? (this.scene.time.now - mob.customData.lastAggroTime) + "ms" : "none"}`,
+      `last_seen: ${
+        mob.customData.lastSeenPosition
+          ? `${Math.round(mob.customData.lastSeenPosition.x)}, ${Math.round(mob.customData.lastSeenPosition.y)}`
+          : "none"
+      }`,
+      `dist_to_player: ${distanceToPlayer !== null ? distanceToPlayer.toFixed(1) : "n/a"}`,
+      `in_aggro_range: ${inAggroRange === null ? "n/a" : inAggroRange ? "yes" : "no"}`,
+      `in_attack_range: ${inAttackRange === null ? "n/a" : inAttackRange ? "yes" : "no"}`,
+      `dist_to_spawn: ${distanceToSpawn !== null ? distanceToSpawn.toFixed(1) : "n/a"}`,
+      `leash_exceeded: ${leashExceeded === null ? "n/a" : leashExceeded ? "yes" : "no"}`,
+      `attack_range: ${attackRange ?? "n/a"}`,
+      `aggro_range: ${aggroRange ?? "n/a"}`,
+      `preferred_range: ${mobInfo.preferredRange ?? "n/a"}`,
+      `flee_hp_pct: ${mobInfo.fleeHpPct ?? "n/a"}`,
+      `healing_threshold: ${mob.customData.healingThreshold ?? "n/a"}`,
+      `attack_cooldown: ${mobInfo.attackCooldown ?? "n/a"}ms`,
+      `last_attack_age: ${lastAttackAge !== null ? `${lastAttackAge}ms` : "none"}`,
+      `speed: ${mobInfo.speed ?? "n/a"}`,
+      `path: ${mob.customData.path ? `${mob.customData.pathIndex}/${mob.customData.path.length}` : "none"}`,
+      `waiting_for_path: ${mob.customData.waitingForPath ? "yes" : "no"}`,
+      `leash_radius: ${leashRadius ?? "n/a"}`,
+      `aggro_duration: ${mobInfo.aggroDuration ?? "n/a"}`,
+      `behavior: ${mobInfo.behaviorProfile || "?"}`,
+      `unsticking: ${mob.customData.isUnsticking ? "yes" : "no"}`,
+    ].join("\n");
   }
 
   renderAdminMobLoot(mobId) {
@@ -1525,6 +1738,36 @@ export default class UIManager {
   renderAdminPlayerPanel() {
     if (!this.adminPlayerFields) return;
     this.adminPlayerFields.innerHTML = "";
+    const profileMeta = {
+      level: { unit: "lvl", help: "Player level." },
+      totalExp: { unit: "xp", help: "Total accumulated experience." },
+      gold: { unit: "gp", help: "Player gold." },
+      gameMode: { help: "normal = respawn, hardcore = permadeath." },
+    };
+    const baseMeta = {
+      health: { unit: "hp", help: "Base health pool." },
+      mana: { unit: "mp", help: "Base mana pool." },
+      intellect: { help: "Primary stat for magic damage/defense." },
+      strength: { help: "Primary stat for melee damage/defense." },
+      dexterity: { help: "Primary stat for evasion/accuracy." },
+      constitution: { help: "Primary stat for survivability." },
+      speed: { unit: "px/s", help: "Base movement speed." },
+      gatherSpeed: { unit: "x", help: "Gather speed multiplier." },
+    };
+    const growthMeta = {
+      health: { unit: "hp/lvl", help: "Health gained per level." },
+      mana: { unit: "mp/lvl", help: "Mana gained per level." },
+      intellect: { unit: "/lvl", help: "Intellect gained per level." },
+      strength: { unit: "/lvl", help: "Strength gained per level." },
+      dexterity: { unit: "/lvl", help: "Dexterity gained per level." },
+      constitution: { unit: "/lvl", help: "Constitution gained per level." },
+      speed: { unit: "px/s/lvl", help: "Speed gained per level." },
+    };
+    const regenMeta = {
+      manaRegen: { unit: "mp/tick", help: "Mana regen per tick." },
+      hpRegen: { unit: "hp/tick", help: "Health regen per tick." },
+      regenerationTime: { unit: "ms", help: "Time between regen ticks." },
+    };
 
     const profileSection = this.createAccordionSection("Profile", true);
     this.renderAdminObjectSection(
@@ -1551,7 +1794,8 @@ export default class UIManager {
         this.scene.emitStatsUpdate();
         this.scheduleAdminOverridesSave();
       },
-      profileSection.body
+      profileSection.body,
+      profileMeta
     );
     this.adminPlayerFields.appendChild(profileSection.section);
 
@@ -1566,7 +1810,8 @@ export default class UIManager {
         this.scene.emitStatsUpdate();
         this.scheduleAdminOverridesSave();
       },
-      baseSection.body
+      baseSection.body,
+      baseMeta
     );
     this.adminPlayerFields.appendChild(baseSection.section);
 
@@ -1581,7 +1826,8 @@ export default class UIManager {
         this.scene.emitStatsUpdate();
         this.scheduleAdminOverridesSave();
       },
-      growthSection.body
+      growthSection.body,
+      growthMeta
     );
     this.adminPlayerFields.appendChild(growthSection.section);
 
@@ -1593,7 +1839,8 @@ export default class UIManager {
         naturalRegeneration[key] = nextValue;
         this.scheduleAdminOverridesSave();
       },
-      regenSection.body
+      regenSection.body,
+      regenMeta
     );
     this.adminPlayerFields.appendChild(regenSection.section);
 
@@ -1695,6 +1942,17 @@ export default class UIManager {
     if (!this.adminSkillFields) return;
     const skill = allGameSkills.find((sk) => sk.id === skillId);
     if (!skill) return;
+    const skillMeta = {
+      manaCost: { unit: "mp", help: "Mana cost per cast." },
+      range: { unit: "px", help: "Max cast range." },
+      magicAttack: { help: "Magic damage added by the skill." },
+      meleeAttack: { help: "Melee damage added by the skill." },
+      castingTime: { unit: "s", help: "Cast time before effect." },
+      cooldown: { unit: "s", help: "Cooldown after cast." },
+      level: { unit: "lvl", help: "Skill level." },
+      healHP: { unit: "hp", help: "Health restored by the skill." },
+      healMP: { unit: "mp", help: "Mana restored by the skill." },
+    };
     this.adminSkillFields.innerHTML = "";
     const { section, body } = this.createAccordionSection("Skill Properties");
     const fieldsGrid = document.createElement("div");
@@ -1703,11 +1961,14 @@ export default class UIManager {
     Object.keys(skill).forEach((key) => {
       const value = skill[key];
       const isArray = Array.isArray(value);
+      const meta = skillMeta[key] || {};
       const field = this.createAdminField({
         label: key,
         value: isArray ? value.join(", ") : value,
         valueType: isArray ? "array" : typeof value,
         disabled: key === "id",
+        labelSuffix: meta.unit,
+        helpText: meta.help,
         onChange: (nextValue) => {
           if (isArray) {
             skill[key] = nextValue;
@@ -1735,11 +1996,12 @@ export default class UIManager {
     });
   }
 
-  renderAdminObjectSection(title, obj, onFieldChange, container) {
+  renderAdminObjectSection(title, obj, onFieldChange, container, fieldMeta = {}) {
     const target = container || this.adminPlayerFields;
     Object.keys(obj).forEach((key) => {
       const value = obj[key];
       const valueType = Array.isArray(value) ? "array" : typeof value;
+      const meta = fieldMeta[key] || {};
       const options =
         key === "selectedSkin"
           ? availableCharacterSkins.map((skin) => ({
@@ -1757,6 +2019,8 @@ export default class UIManager {
         value: value,
         valueType,
         options,
+        labelSuffix: meta.unit,
+        helpText: meta.help,
         onChange: (nextValue) => {
           if (valueType === "number" && !Number.isFinite(nextValue)) {
             return;
@@ -1775,11 +2039,27 @@ export default class UIManager {
       section.classList.add("collapsed");
     }
 
-    const header = document.createElement("button");
-    header.type = "button";
+    const header = document.createElement("div");
     header.className = "admin-accordion-header";
-    header.innerText = title;
-    header.addEventListener("click", () => {
+
+    const titleEl = document.createElement("span");
+    titleEl.innerText = title;
+    header.appendChild(titleEl);
+
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "admin-copy-btn";
+    copyButton.innerText = "Copy";
+    copyButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.copyAdminSection(title, body);
+    });
+    header.appendChild(copyButton);
+
+    header.addEventListener("click", (event) => {
+      if (event.target.closest(".admin-copy-btn")) {
+        return;
+      }
       section.classList.toggle("collapsed");
     });
 
@@ -1790,6 +2070,68 @@ export default class UIManager {
     section.appendChild(body);
 
     return { section, body };
+  }
+
+  copyAdminSection(title, body) {
+    if (!body) return;
+    const text = this.buildAdminSectionCopy(title, body);
+    if (!text) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text);
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+
+  buildAdminSectionCopy(title, body) {
+    const lines = [];
+    if (title) {
+      lines.push(title);
+    }
+    const fields = Array.from(body.querySelectorAll(".admin-field"));
+    if (fields.length > 0) {
+      fields.forEach((field) => {
+        const labelEl = field.querySelector("label");
+        const inputEl = field.querySelector("input, select, textarea");
+        const rawLabel = labelEl ? labelEl.textContent : "field";
+        const label = rawLabel.replace(/\s*\?\s*$/, "");
+        let value = "";
+        if (inputEl) {
+          if (inputEl.tagName === "SELECT") {
+            value = inputEl.value;
+          } else if (inputEl.type === "checkbox") {
+            value = inputEl.checked ? "true" : "false";
+          } else {
+            value = inputEl.value;
+          }
+        } else {
+          value = field.textContent || "";
+        }
+        lines.push(`${label}: ${value}`.trim());
+      });
+      return lines.join("\n").trim();
+    }
+
+    const pre = body.querySelector("pre");
+    if (pre) {
+      lines.push(pre.textContent || "");
+      return lines.join("\n").trim();
+    }
+
+    const text = body.innerText || body.textContent || "";
+    if (text) {
+      lines.push(text);
+    }
+    return lines.join("\n").trim();
   }
 
   applyLevelChange(oldLevel, newLevel) {
@@ -1808,11 +2150,28 @@ export default class UIManager {
     });
   }
 
-  createAdminField({ label, value, valueType, onChange, options, disabled }) {
+  createAdminField({
+    label,
+    value,
+    valueType,
+    onChange,
+    options,
+    disabled,
+    labelSuffix,
+    helpText,
+  }) {
     const wrapper = document.createElement("div");
     wrapper.className = "admin-field";
     const labelEl = document.createElement("label");
-    labelEl.innerText = label;
+    labelEl.innerText = labelSuffix ? `${label} (${labelSuffix})` : label;
+    if (helpText) {
+      labelEl.title = helpText;
+      const help = document.createElement("span");
+      help.className = "admin-field-help";
+      help.innerText = "?";
+      help.title = helpText;
+      labelEl.appendChild(help);
+    }
     wrapper.appendChild(labelEl);
 
     let input;

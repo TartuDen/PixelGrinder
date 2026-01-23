@@ -1346,7 +1346,7 @@ export default class MainScene extends Phaser.Scene {
   onMobClicked(mob) {
     this.mobManager.onMobClicked(mob);
     if (this.uiManager?.isAdminOpen) {
-      this.uiManager.selectAdminMob(mob.customData.id);
+      this.uiManager.selectAdminMob(mob.customData.id, mob);
     }
     this.emitStatsUpdate();
   }
