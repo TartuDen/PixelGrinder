@@ -1,0 +1,37 @@
+name: Deploy to itch.io
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: pixelgrinder-frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+        working-directory: pixelgrinder-frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: pixelgrinder-frontend
+
+      - name: Install Butler
+        run: |
+          curl -L https://broth.itch.zone/butler/linux-amd64/latest/archive/default -o butler.zip
+          unzip butler.zip -d butler
+          chmod +x butler/butler
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+        run: ./butler/butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5

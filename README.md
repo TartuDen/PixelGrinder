@@ -6,20 +6,35 @@
 
 ## Table of Contents
 
-1. [Game Concept](#game-concept)  
-2. [The World](#the-world)  
-3. [Player Progression](#player-progression)  
-4. [Character Customization & Stats](#character-customization--stats)  
-5. [Core Mechanics](#core-mechanics)  
-6. [Equipment & Loot](#equipment--loot)  
-7. [Key Features](#key-features)  
-8. [Planned Features](#planned-features)  
-9. [Tech Stack & Implementation](#tech-stack--implementation)  
-10. [How to Play](#how-to-play)  
-11. [Roadmap](#roadmap)  
-12. [Contributing](#contributing)  
-13. [License](#license)  
-14. [Missing or Suggested Information](#missing-or-suggested-information)
+1. [Current Build](#current-build)  
+2. [Game Concept](#game-concept)  
+3. [The World](#the-world)  
+4. [Player Progression](#player-progression)  
+5. [Character Customization & Stats](#character-customization--stats)  
+6. [Core Mechanics](#core-mechanics)  
+7. [Equipment & Loot](#equipment--loot)  
+8. [Key Features](#key-features)  
+9. [Planned Features](#planned-features)  
+10. [Tech Stack & Implementation](#tech-stack--implementation)  
+11. [How to Play](#how-to-play)  
+12. [Roadmap](#roadmap)  
+13. [Contributing](#contributing)  
+14. [License](#license)  
+15. [Missing or Suggested Information](#missing-or-suggested-information)
+
+---
+
+## Current Build
+
+- Character creation flow (name, stat allocation, skin, game mode).  
+- Local saves with autosave + new game reset.  
+- Combat loop with skills, cooldowns, targeting, and damage flow.  
+- Mob AI with pathing, leashing, casting, and debug tools in Admin panel.  
+- Inventory, equipment, vendors, loot window, and gathering nodes.  
+- Minimap, chat log, skill bar, and in-game UI menus.  
+- Admin panel lets you tune player stats, mob behavior/skills/loot, and live debug states.  
+- Hardcore mode available at character creation (permadeath).  
+- Current build is a prototype focused on sandboxing difficulty: easy or aggressive mobs, fast or slow progression.  
 
 ---
 
