@@ -27,10 +27,11 @@ jobs:
 
       - name: Install Butler
         run: |
-          curl -L https://broth.itch.zone/butler/linux-amd64/latest/archive/default -o butler
-          chmod +x butler
+          curl -L https://github.com/itchio/butler/releases/latest/download/butler-linux-amd64.zip -o butler.zip
+          unzip butler.zip -d butler
+          chmod +x butler/butler
 
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
-        run: ./butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5
+        run: ./butler/butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5
