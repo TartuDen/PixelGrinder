@@ -12,6 +12,7 @@ jest.mock("../helpers/calculatePlayerStats.js", () => ({
 
 import MobManager from "../managers/MobManager.js";
 import * as calculatePlayerStats from "../helpers/calculatePlayerStats.js";
+import * as combat from "../helpers/combat.js";
 import {
   mobsData,
   MOB_CHASE_SPEED_MULT,
@@ -474,16 +475,16 @@ describe("MobManager", () => {
     });
 
     // Spy on isAttackEvaded to always return true
-    jest.spyOn(mobManager, "isAttackEvaded").mockReturnValue(true);
+    jest.spyOn(combat, "isAttackEvaded").mockReturnValue(true);
 
     // Call update
     mobManager.updateMobs(player);
 
     // Each mob tries to attack once, so isAttackEvaded is called
-    expect(mobManager.isAttackEvaded).toHaveBeenCalledTimes(2);
+    expect(combat.isAttackEvaded).toHaveBeenCalledTimes(2);
     // Slime uses meleeAttack, so we check player's meleeEvasion=10
-    expect(mobManager.isAttackEvaded).toHaveBeenCalledWith(10);
-    expect(mobManager.isAttackEvaded).toHaveBeenCalledWith(10);
+    expect(combat.isAttackEvaded).toHaveBeenCalledWith(10);
+    expect(combat.isAttackEvaded).toHaveBeenCalledWith(10);
 
     // Because all attacks were evaded, no damage
     expect(calculatePlayerStats.calculateMeleeDamage).not.toHaveBeenCalled();
@@ -492,7 +493,7 @@ describe("MobManager", () => {
     expect(mockScene.updateUI).not.toHaveBeenCalled();
 
     // Restore the spy
-    mobManager.isAttackEvaded.mockRestore();
+    combat.isAttackEvaded.mockRestore();
   });
 
   // -------------------------------------------------------------

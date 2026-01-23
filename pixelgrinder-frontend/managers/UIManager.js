@@ -18,41 +18,13 @@ import {
   SKILL_RANGE_EXTENDER,
 } from "../data/MOCKdata.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
+import { calculateLevelProgress } from "../helpers/experience.js";
+import { makeDraggable } from "../helpers/drag.js";
 import {
   saveAdminOverrides,
   clearAdminOverrides,
 } from "../services/AdminOverrides.js";
 import { clearSave } from "../services/SaveService.js";
-
-// Draggable helper
-function makeDraggable(elmnt, dragHandle) {
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-  dragHandle.onmousedown = dragMouseDown;
-
-  function dragMouseDown(e) {
-    if (e.target.closest("button, input, select, textarea, a, [data-no-drag]")) {
-      return;
-    }
-    e.preventDefault();
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    document.onmouseup = closeDragElement;
-    document.onmousemove = elementDrag;
-  }
-  function elementDrag(e) {
-    e.preventDefault();
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    elmnt.style.top = elmnt.offsetTop - pos2 + "px";
-    elmnt.style.left = elmnt.offsetLeft - pos1 + "px";
-  }
-  function closeDragElement() {
-    document.onmouseup = null;
-    document.onmousemove = null;
-  }
-}
 
 export default class UIManager {
   constructor(scene) {
@@ -155,6 +127,49 @@ export default class UIManager {
     document.addEventListener("mousemove", (ev) => {
       this.updateTooltipPosition(ev);
     });
+  }
+
+  createInGameMenuButtons() {
+    const existingMenu = document.getElementById("game-menu-container");
+    if (existingMenu) {
+      return;
+    }
+    const menuContainer = document.createElement("div");
+    menuContainer.id = "game-menu-container";
+    document.body.appendChild(menuContainer);
+
+    const playerInfoBtn = document.createElement("button");
+    playerInfoBtn.textContent = "PLAYER INFO";
+    playerInfoBtn.classList.add("in-game-menu-button");
+    playerInfoBtn.onclick = () => {
+      this.scene.toggleInventoryMenu();
+    };
+    menuContainer.appendChild(playerInfoBtn);
+
+    const skillBookBtn = document.createElement("button");
+    skillBookBtn.textContent = "SKILL BOOK";
+    skillBookBtn.classList.add("in-game-menu-button");
+    skillBookBtn.onclick = () => {
+      this.toggleSkillBook();
+    };
+    menuContainer.appendChild(skillBookBtn);
+
+    const newGameBtn = document.createElement("button");
+    newGameBtn.textContent = "NEW GAME";
+    newGameBtn.classList.add("in-game-menu-button");
+    newGameBtn.onclick = () => {
+      const confirmed = window.confirm(
+        "Start a new game? Your current save will be deleted."
+      );
+      if (!confirmed) return;
+      clearSave();
+      const menuContainer = document.getElementById("game-menu-container");
+      if (menuContainer) {
+        menuContainer.remove();
+      }
+      this.scene.scene.start("CharacterCreationScene");
+    };
+    menuContainer.appendChild(newGameBtn);
   }
 
   // -----------------------------
@@ -275,16 +290,8 @@ export default class UIManager {
       this.uiMode.innerText = `Mode: ${modeLabel}`;
     }
 
-    // Compute % exp to next level
-    let expForNextLevel = 100,
-      accumulatedExp = 0,
-      tempLevel = 1;
-    while (xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
-      accumulatedExp += expForNextLevel;
-      tempLevel++;
-      expForNextLevel = Math.floor(expForNextLevel * 1.5);
-    }
-    const currentExp = xp - accumulatedExp;
+    const { currentExp, nextLevelExp } = calculateLevelProgress(xp);
+    const expForNextLevel = nextLevelExp;
     const expPct = (currentExp / expForNextLevel) * 100;
     if (this.uiExpFill && this.uiExpText) {
       this.uiExpFill.style.width = `${expPct}%`;

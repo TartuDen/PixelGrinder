@@ -12,6 +12,7 @@ import {
   calculateMeleeDamage,
   calculateMagicDamage,
 } from "../helpers/calculatePlayerStats.js";
+import { isAttackEvaded, triggerSkillAnimation } from "../helpers/combat.js";
 import EasyStar from "easystarjs";
 
 export default class MobManager {
@@ -1298,7 +1299,7 @@ export default class MobManager {
       this.scene.chatManager.addMessage(
         `Mob "${mob.customData.id}" healed itself with ${skill.name}.`
       );
-      this.triggerSkillAnimation(skill, mob);
+      triggerSkillAnimation(this.scene, skill, mob);
     } else {
       // Offensive skill
       if (!targetSprite || !targetSprite.active) {
@@ -1307,7 +1308,7 @@ export default class MobManager {
       const playerStats = this.scene.playerManager.getPlayerStats();
       let damage = 0;
       if (skill.magicAttack > 0) {
-        if (this.isAttackEvaded(playerStats.magicEvasion || 0)) {
+        if (isAttackEvaded(playerStats.magicEvasion || 0)) {
           this.scene.chatManager.addMessage(
             `Player evaded mob "${mob.customData.id}"'s ${skill.name} (magic).`
           );
@@ -1326,10 +1327,10 @@ export default class MobManager {
             this.scene.handlePlayerDeath();
           }
           this.scene.updateUI();
-          this.triggerSkillAnimation(skill, targetSprite);
+          triggerSkillAnimation(this.scene, skill, targetSprite);
         }
       } else if (skill.meleeAttack > 0) {
-        if (this.isAttackEvaded(playerStats.meleeEvasion || 0)) {
+        if (isAttackEvaded(playerStats.meleeEvasion || 0)) {
           this.scene.chatManager.addMessage(
             `Player evaded mob "${mob.customData.id}"'s ${skill.name} (melee).`
           );
@@ -1348,7 +1349,7 @@ export default class MobManager {
             this.scene.handlePlayerDeath();
           }
           this.scene.updateUI();
-          this.triggerSkillAnimation(skill, targetSprite);
+          triggerSkillAnimation(this.scene, skill, targetSprite);
         }
       }
     }
@@ -1391,31 +1392,6 @@ export default class MobManager {
     }
   }
 
-  isAttackEvaded(evasionStat) {
-    const roll = Phaser.Math.FloatBetween(0, 100);
-    return roll < evasionStat;
-  }
-
-  triggerSkillAnimation(skill, targetSprite) {
-    if (!targetSprite) return;
-    const skillSprite = this.scene.add.sprite(
-      targetSprite.x,
-      targetSprite.y,
-      `${skill.name}_anim`
-    );
-    skillSprite.setScale(1);
-    skillSprite.play(`${skill.name}_anim`);
-
-    skillSprite.on("animationcomplete", () => {
-      this.scene.tweens.add({
-        targets: skillSprite,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => skillSprite.destroy(),
-      });
-    });
-  }
-
   playAttackAnimation(mob, target) {
     const dx = target.x - mob.x;
     const dy = target.y - mob.y;
@@ -1447,7 +1423,7 @@ export default class MobManager {
 
     // Basic logic: whichever is higher, do that type of attack
     if (mobInfo.meleeAttack >= mobInfo.magicAttack) {
-      if (this.isAttackEvaded(playerStats.meleeEvasion || 0)) {
+      if (isAttackEvaded(playerStats.meleeEvasion || 0)) {
         this.scene.chatManager.addMessage(
           `Player evaded melee attack from Mob "${mob.customData.id}".`
         );
@@ -1458,7 +1434,7 @@ export default class MobManager {
         `Mob "${mob.customData.id}" attacks player for ${damage} melee damage.`
       );
     } else {
-      if (this.isAttackEvaded(playerStats.magicEvasion || 0)) {
+      if (isAttackEvaded(playerStats.magicEvasion || 0)) {
         this.scene.chatManager.addMessage(
           `Player evaded magic attack from Mob "${mob.customData.id}".`
         );

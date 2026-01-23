@@ -5,6 +5,7 @@ import {
   calculateMagicDamage,
   calculateMeleeDamage,
 } from "../helpers/calculatePlayerStats.js";
+import { isAttackEvaded, triggerSkillAnimation } from "../helpers/combat.js";
 
 export default class SkillManager {
   constructor(scene, getPlayerStatsCallback) {
@@ -29,11 +30,6 @@ export default class SkillManager {
   createSkillAnimations() {
     // If your MainScene already defines skill animations,
     // you can skip or keep this empty.
-  }
-
-  isAttackEvaded(evasionStat) {
-    const roll = Phaser.Math.FloatBetween(0, 100);
-    return roll < evasionStat;
   }
 
   useSkill(skill) {
@@ -217,7 +213,7 @@ export default class SkillManager {
       );
 
       // Optional animation near the player
-      this.triggerSkillAnimation(skill, this.scene.playerManager.player);
+      triggerSkillAnimation(this.scene, skill, this.scene.playerManager.player);
 
     } else {
       // =====================
@@ -229,7 +225,7 @@ export default class SkillManager {
 
         // MAGIC Attack check
         if (skill.magicAttack > 0) {
-          const evaded = this.isAttackEvaded(mobStats.magicEvasion || 0);
+          const evaded = isAttackEvaded(mobStats.magicEvasion || 0);
           if (evaded) {
             this.scene.chatManager.addMessage(
               `${skill.name} was evaded by Mob ${targetedMob.customData.id}.`
@@ -247,12 +243,12 @@ export default class SkillManager {
             this.scene.chatManager.addMessage(
               `${skill.name} hit Mob ${targetedMob.customData.id} for ${damage} magic damage.`
             );
-            this.triggerSkillAnimation(skill, targetedMob);
+            triggerSkillAnimation(this.scene, skill, targetedMob);
           }
         }
         // MELEE Attack check
         else if (skill.meleeAttack > 0) {
-          const evaded = this.isAttackEvaded(mobStats.meleeEvasion || 0);
+          const evaded = isAttackEvaded(mobStats.meleeEvasion || 0);
           if (evaded) {
             this.scene.chatManager.addMessage(
               `${skill.name} was evaded by Mob ${targetedMob.customData.id}.`
@@ -270,7 +266,7 @@ export default class SkillManager {
             this.scene.chatManager.addMessage(
               `${skill.name} hit Mob ${targetedMob.customData.id} for ${damage} melee damage.`
             );
-            this.triggerSkillAnimation(skill, targetedMob);
+            triggerSkillAnimation(this.scene, skill, targetedMob);
           }
         }
       }
@@ -295,26 +291,6 @@ export default class SkillManager {
 
     // Finally update UI
     this.scene.emitStatsUpdate();
-  }
-
-  triggerSkillAnimation(skill, targetSprite) {
-    if (!targetSprite) return;
-    const scene = this.scene;
-
-    // Create an animation sprite at the target's position
-    const skillSprite = scene.add.sprite(targetSprite.x, targetSprite.y, `${skill.name}_anim`);
-    skillSprite.setScale(1);
-    skillSprite.play(`${skill.name}_anim`);
-
-    // Fade it out upon completion
-    skillSprite.on("animationcomplete", () => {
-      scene.tweens.add({
-        targets: skillSprite,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => skillSprite.destroy(),
-      });
-    });
   }
 
   cancelCasting() {

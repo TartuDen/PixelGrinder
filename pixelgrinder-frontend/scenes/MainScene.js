@@ -19,6 +19,7 @@ import {
   playerGrowthStats,
   allGameSkills,
 } from "../data/MOCKdata.js";
+import { calculateLevelProgress } from "../helpers/experience.js";
 import {
   loadSave,
   saveGame as persistSave,
@@ -451,7 +452,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // In-game menu
-    this.createInGameMenuButtons();
+    this.uiManager.createInGameMenuButtons();
 
     this.startAutoSave();
   }
@@ -1210,65 +1211,13 @@ export default class MainScene extends Phaser.Scene {
   // ------------------------------
   //     UI + MENUS
   // ------------------------------
-  createInGameMenuButtons() {
-    const existingMenu = document.getElementById("game-menu-container");
-    if (existingMenu) {
-      return;
-    }
-    const menuContainer = document.createElement("div");
-    menuContainer.id = "game-menu-container";
-    document.body.appendChild(menuContainer);
-
-    const playerInfoBtn = document.createElement("button");
-    playerInfoBtn.textContent = "PLAYER INFO";
-    playerInfoBtn.classList.add("in-game-menu-button");
-    playerInfoBtn.onclick = () => {
-      this.toggleInventoryMenu();
-    };
-    menuContainer.appendChild(playerInfoBtn);
-
-    const skillBookBtn = document.createElement("button");
-    skillBookBtn.textContent = "SKILL BOOK";
-    skillBookBtn.classList.add("in-game-menu-button");
-    skillBookBtn.onclick = () => {
-      this.uiManager.toggleSkillBook();
-    };
-    menuContainer.appendChild(skillBookBtn);
-
-    const newGameBtn = document.createElement("button");
-    newGameBtn.textContent = "NEW GAME";
-    newGameBtn.classList.add("in-game-menu-button");
-    newGameBtn.onclick = () => {
-      const confirmed = window.confirm(
-        "Start a new game? Your current save will be deleted."
-      );
-      if (!confirmed) return;
-      clearSave();
-      const menuContainer = document.getElementById("game-menu-container");
-      if (menuContainer) {
-        menuContainer.remove();
-      }
-      this.scene.start("CharacterCreationScene");
-    };
-    menuContainer.appendChild(newGameBtn);
-  }
-
   // ------------------------------
   //     PLAYER LEVEL, EXP
   // ------------------------------
   calculatePlayerLevel(totalExp) {
     const oldLevel = playerProfile.level;
-    let level = 1;
-    let expForNextLevel = 100;
-    let accumulatedExp = 0;
-
-    while (totalExp >= accumulatedExp + expForNextLevel && level < 50) {
-      accumulatedExp += expForNextLevel;
-      level += 1;
-      expForNextLevel = Math.floor(expForNextLevel * 1.5);
-    }
-    const currentExp = totalExp - accumulatedExp;
-    const nextLevelExp = expForNextLevel;
+    const { level, currentExp, nextLevelExp } =
+      calculateLevelProgress(totalExp);
 
     if (level > oldLevel) {
       for (let lvl = oldLevel; lvl < level; lvl++) {

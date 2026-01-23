@@ -4,7 +4,7 @@ import {
   playerProfile,
   playerEquippedItems,
   playerBackpack,
-  allItems,
+  itemsMap,
 } from "../data/MOCKdata.js";
 
 export default class PlayerManager {
@@ -151,7 +151,7 @@ export default class PlayerManager {
   equipItem(slot, itemId) {
     const currentlyEquippedId = playerEquippedItems[slot];
     if (currentlyEquippedId) {
-      const oldItem = allItems.find((it) => it.id === currentlyEquippedId);
+      const oldItem = itemsMap[currentlyEquippedId];
       if (oldItem) {
         const emptyCell = this.findEmptyBackpackCell();
         if (emptyCell) {
@@ -168,7 +168,7 @@ export default class PlayerManager {
     }
 
     playerEquippedItems[slot] = itemId;
-    const newItem = allItems.find((it) => it.id === itemId);
+    const newItem = itemsMap[itemId];
     if (newItem) {
       this.scene.chatManager.addMessage(
         `Equipped ${newItem.name} (id=${itemId}) to slot="${slot}".`
@@ -200,7 +200,7 @@ export default class PlayerManager {
       return;
     }
 
-    const itemData = allItems.find((i) => i.id === equippedItemId);
+    const itemData = itemsMap[equippedItemId];
     if (!itemData) {
       this.scene.chatManager.addMessage(
         `Could not find item data for equipped item ID=${equippedItemId}`

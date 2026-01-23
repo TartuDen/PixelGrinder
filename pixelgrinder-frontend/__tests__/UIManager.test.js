@@ -9,6 +9,7 @@ import {
   playerBaseStats,
   playerGrowthStats,
 } from "../data/MOCKdata.js";
+import { calculateLevelProgress } from "../helpers/experience.js";
 
 // 2. Mock Phaser globally
 global.Phaser = {
@@ -398,21 +399,13 @@ describe("UIManager", () => {
     const expText = document.getElementById("exp-text");
 
     // Calculate expected EXP for level 1: level=5
-    let expForNextLevel = 100;
-    let accumulatedExp = 0;
-    let tempLevel = 1;
-
-    while (uiStats.xp >= accumulatedExp + expForNextLevel && tempLevel < 50) {
-      accumulatedExp += expForNextLevel;
-      tempLevel += 1;
-      expForNextLevel = Math.floor(expForNextLevel * 1.5);
-    }
-
-    const currentExp = uiStats.xp - accumulatedExp;
-    const expPercent = (currentExp / expForNextLevel) * 100;
+    const { currentExp, nextLevelExp } = calculateLevelProgress(uiStats.xp);
+    const expPercent = (currentExp / nextLevelExp) * 100;
 
     expect(parseFloat(expFill.style.width)).toBeCloseTo(expPercent, 1);
-    expect(expText.textContent).toBe(`EXP: ${currentExp}/${expForNextLevel} (${expPercent.toFixed(1)}%)`);
+    expect(expText.textContent).toBe(
+      `EXP: ${currentExp}/${nextLevelExp} (${expPercent.toFixed(1)}%)`
+    );
   });
 
   // 12. Test updateUI for EXP bar and text
@@ -438,9 +431,8 @@ describe("UIManager", () => {
     const expFill = document.getElementById("exp-fill");
     const expText = document.getElementById("exp-text");
     // Calculate expected EXP for level 3: Level 1->2: 100, Level 2->3: 150, total 250
-    const expectedCurrentExp = 250 - 100 - 150; // 0
-    const expectedNextLevelExp = 225; // 150 * 1.5
-
+    const { currentExp: expectedCurrentExp, nextLevelExp: expectedNextLevelExp } =
+      calculateLevelProgress(uiStats.xp);
     const expPercent = (expectedCurrentExp / expectedNextLevelExp) * 100; // 0%
 
     expect(expFill.style.width).toBe("0%");
