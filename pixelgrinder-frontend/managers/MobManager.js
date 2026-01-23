@@ -153,10 +153,6 @@ export default class MobManager {
   }
 
   getMobMoveSpeed(mobInfo) {
-    const playerSpeed = this.scene?.playerManager?.playerSpeed;
-    if (typeof playerSpeed === "number") {
-      return playerSpeed;
-    }
     return mobInfo.speed;
   }
 
@@ -320,6 +316,11 @@ export default class MobManager {
           this.getMobSpawnTextureKey(spriteKey)
         );
         mob.setPushable(false);
+        const mobScale =
+          typeof mobInfo.scale === "number" && mobInfo.scale > 0
+            ? mobInfo.scale
+            : 1;
+        mob.setScale(mobScale);
 
         mob.customData = {
           id: mobTypeID,
@@ -374,13 +375,13 @@ export default class MobManager {
         };
 
         this.createMobUIContainer(mob, mobInfo);
+        this.createMobDebugText(mob);
 
         mob.setInteractive({ useHandCursor: true });
         mob.on("pointerdown", () => {
           this.scene.onMobClicked(mob);
         });
 
-        mob.setScale(1);
         this.playMobAnimation(mob, "walk", "down", true);
 
         this.assignRandomIdleOrWander(mob);
@@ -435,6 +436,19 @@ export default class MobManager {
     mob.customData.manaBarFill = manaBarFill;
   }
 
+  createMobDebugText(mob) {
+    const debugText = this.scene.add
+      .text(mob.x, mob.y - 62, "", {
+        font: "10px Arial",
+        fill: "#ffd479",
+        stroke: "#000000",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5, 0);
+    debugText.setVisible(false);
+    mob.customData.debugText = debugText;
+  }
+
   extractMobSkillsFromLoot(lootTable) {
     const skillList = [];
     lootTable.forEach((entry) => {
@@ -451,6 +465,16 @@ export default class MobManager {
     const container = mob.customData.uiContainer;
     if (!container) return;
     container.setPosition(mob.x, mob.y - 40);
+
+    if (mob.customData.debugText) {
+      mob.customData.debugText.setVisible(
+        Boolean(this.scene.uiManager?.isAdminOpen)
+      );
+      mob.customData.debugText.setPosition(mob.x, mob.y - 62);
+      mob.customData.debugText.setText(
+        `${mob.customData.id} (${mob.customData.spriteKey || "?"})`
+      );
+    }
 
     const mobInfo = mobsData[mob.customData.id];
     const currentHP = mob.customData.hp;
@@ -1468,10 +1492,26 @@ export default class MobManager {
       // if it was 'friend', become enemy
       if (mob.customData.currentType === "friend") {
         mob.customData.currentType = "enemy";
+        mob.customData.lastAggroTime = this.scene.time.now;
+        if (this.scene.playerManager?.player) {
+          mob.customData.lastSeenPosition = {
+            x: this.scene.playerManager.player.x,
+            y: this.scene.playerManager.player.y,
+          };
+        }
         mob.customData.state = "chasing";
         this.scene.chatManager.addMessage(
           `Mob "${mob.customData.id}" became enemy (now chasing).`
         );
+      } else if (mob.customData.state !== "chasing") {
+        mob.customData.lastAggroTime = this.scene.time.now;
+        if (this.scene.playerManager?.player) {
+          mob.customData.lastSeenPosition = {
+            x: this.scene.playerManager.player.x,
+            y: this.scene.playerManager.player.y,
+          };
+        }
+        mob.customData.state = "chasing";
       }
     }
   }
@@ -1480,6 +1520,12 @@ export default class MobManager {
     mob.customData.isDead = true;
     if (mob.customData.uiContainer) {
       mob.customData.uiContainer.setVisible(false);
+    }
+    if (mob.customData.castBarBg) {
+      mob.customData.castBarBg.setVisible(false);
+    }
+    if (mob.customData.castBarFill) {
+      mob.customData.castBarFill.setVisible(false);
     }
     mob.body.setVelocity(0, 0);
     mob.customData.hp = 0;
@@ -1516,6 +1562,60 @@ export default class MobManager {
       callback: () => {
         this.respawnMob(mob);
       },
+    });
+  }
+
+  applyMobTypeChanges(mobTypeId) {
+    if (!this.mobs) return;
+    const mobInfo = mobsData[mobTypeId];
+    if (!mobInfo) return;
+
+    const updatedScale =
+      typeof mobInfo.scale === "number" && mobInfo.scale > 0
+        ? mobInfo.scale
+        : 1;
+
+    this.mobs.getChildren().forEach((mob) => {
+      if (mob.customData.id !== mobTypeId) return;
+      mob.customData.spriteKey = this.getMobSpriteKey(mobInfo);
+      const textureKey = this.getMobSpawnTextureKey(mob.customData.spriteKey);
+      if (mob.texture?.key !== textureKey) {
+        mob.setTexture(textureKey);
+      }
+      mob.setScale(updatedScale);
+      if (mob.body) {
+        mob.body.setSize(mob.width, mob.height, true);
+      }
+      mob.customData.currentType = mobInfo.mobType;
+      mob.customData.healingThreshold = mobInfo.healingSkillHPThreshold || 0.5;
+      mob.customData.hp = Math.min(mob.customData.hp, mobInfo.health);
+      mob.customData.mana = Math.min(mob.customData.mana, mobInfo.mana || 0);
+      mob.customData.mobSkills = this.extractMobSkillsFromLoot(mobInfo.lootTable);
+      if (mob.customData.currentType === "enemy") {
+        mob.customData.lastAggroTime = this.scene.time.now;
+        if (this.scene.playerManager?.player) {
+          mob.customData.lastSeenPosition = {
+            x: this.scene.playerManager.player.x,
+            y: this.scene.playerManager.player.y,
+          };
+        }
+        if (!mob.customData.isDead) {
+          mob.customData.state = "chasing";
+        }
+      }
+      if (mob.customData.nameText) {
+        mob.customData.nameText.setText(mobInfo.name);
+      }
+      this.updateMobUI(mob);
+    });
+  }
+
+  refreshMobSkillsFromLoot() {
+    if (!this.mobs) return;
+    this.mobs.getChildren().forEach((mob) => {
+      const mobInfo = mobsData[mob.customData.id];
+      if (!mobInfo) return;
+      mob.customData.mobSkills = this.extractMobSkillsFromLoot(mobInfo.lootTable);
     });
   }
 
@@ -1576,6 +1676,8 @@ export default class MobManager {
     mob.customData.mobSkillCooldowns = {};
     mob.customData.mobSkillTimers = {};
     mob.customData.isCastingSkill = false;
+    mob.customData.healingThreshold = mobInfo.healingSkillHPThreshold || 0.5;
+    mob.customData.mobSkills = this.extractMobSkillsFromLoot(mobInfo.lootTable);
     if (mob.customData.uiContainer) {
       mob.customData.uiContainer.setVisible(true);
     }
@@ -1593,6 +1695,14 @@ export default class MobManager {
 
     mob.setActive(true).setVisible(true);
     mob.body.setEnable(true);
+    const mobScale =
+      typeof mobInfo.scale === "number" && mobInfo.scale > 0
+        ? mobInfo.scale
+        : 1;
+    mob.setScale(mobScale);
+    if (mob.body) {
+      mob.body.setSize(mob.width, mob.height, true);
+    }
 
     this.updateMobUI(mob);
 

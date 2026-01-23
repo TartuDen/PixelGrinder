@@ -1,6 +1,6 @@
 const mobsData = {
-  slime: {
-    name: "Lost Soul",
+  alien: {
+    name: "Alien",
     spriteKey: "mob0",
     level: 2,
     attackRange: 100,
@@ -32,8 +32,8 @@ const mobsData = {
     fleeHpPct: 0.0,
   },
 
-  goblin: {
-    name: "Lost Soul",
+  bandit: {
+    name: "Bandit",
     spriteKey: "mob1",
     level: 5,
     attackRange: 60,
@@ -59,8 +59,8 @@ const mobsData = {
     fleeHpPct: 0.0,
   },
 
-  boar: {
-    name: "Lost Soul",
+  dead_girl: {
+    name: "Dead Girl",
     spriteKey: "mob2",
     level: 3,
     attackRange: 35,
@@ -86,8 +86,8 @@ const mobsData = {
     fleeHpPct: 0.0,
   },
 
-  wisp: {
-    name: "Lost Soul",
+  frost_wisp: {
+    name: "Frost Wisp",
     spriteKey: "mob3",
     level: 4,
     attackRange: 140,
@@ -114,8 +114,8 @@ const mobsData = {
     fleeHpPct: 0.15,
   },
 
-  bandit: {
-    name: "Lost Soul",
+  slime: {
+    name: "Slime",
     spriteKey: "mob4",
     level: 6,
     attackRange: 45,
@@ -141,8 +141,8 @@ const mobsData = {
     fleeHpPct: 0.1,
   },
 
-  skeleton: {
-    name: "Lost Soul",
+  spider: {
+    name: "Spider",
     spriteKey: "mob5",
     level: 4,
     attackRange: 50,
@@ -168,8 +168,8 @@ const mobsData = {
     fleeHpPct: 0.0,
   },
 
-  ghost: {
-    name: "Lost Soul",
+  ichor_ghost: {
+    name: "Ichor Ghost",
     spriteKey: "mob6",
     level: 5,
     attackRange: 120,
@@ -195,8 +195,8 @@ const mobsData = {
     fleeHpPct: 0.2,
   },
 
-  spider: {
-    name: "Lost Soul",
+  jade_spider: {
+    name: "Jade Spider",
     spriteKey: "mob7",
     level: 3,
     attackRange: 45,

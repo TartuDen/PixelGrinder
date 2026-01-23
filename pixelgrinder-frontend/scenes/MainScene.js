@@ -432,7 +432,12 @@ export default class MainScene extends Phaser.Scene {
     // Natural regen
     this.time.addEvent({
       delay: naturalRegeneration.regenerationTime,
-      callback: () => this.playerManager.regenerateStats(naturalRegeneration),
+      callback: () => {
+        if (this.uiManager?.isAdminOpen) {
+          return;
+        }
+        this.playerManager.regenerateStats(naturalRegeneration);
+      },
       loop: true,
     });
 
@@ -1391,6 +1396,9 @@ export default class MainScene extends Phaser.Scene {
 
   onMobClicked(mob) {
     this.mobManager.onMobClicked(mob);
+    if (this.uiManager?.isAdminOpen) {
+      this.uiManager.selectAdminMob(mob.customData.id);
+    }
     this.emitStatsUpdate();
   }
 

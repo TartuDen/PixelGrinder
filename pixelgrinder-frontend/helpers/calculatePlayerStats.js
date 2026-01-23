@@ -14,8 +14,16 @@ import {
  */
 export function calculatePlayerStats() {
   // Start with base stats
-  let { health, mana, intellect, strength, dexterity, constitution, speed } =
-    playerBaseStats;
+  let {
+    health,
+    mana,
+    intellect,
+    strength,
+    dexterity,
+    constitution,
+    speed,
+    gatherSpeed,
+  } = playerBaseStats;
 
   // Initialize derived stats
   let magicAttack = 0;
@@ -41,6 +49,7 @@ export function calculatePlayerStats() {
 
   // We'll accumulate total speed separately from the base "speed".
   let totalSpeed = speed;
+  let totalGatherSpeed = gatherSpeed || 1;
 
   // 2) Add equipment contributions
   //    We assume that playerEquippedItems has keys: "weapon", "head", "chest", "shoulders", "legs", "feet".
@@ -73,6 +82,7 @@ export function calculatePlayerStats() {
     magicEvasion,
     meleeEvasion,
     speed: totalSpeed,
+    gatherSpeed: totalGatherSpeed,
   };
 }
 

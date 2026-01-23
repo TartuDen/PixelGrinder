@@ -181,6 +181,9 @@ const mockScene = {
     sprite: jest.fn(),
     text: jest.fn(() => mockText),
   },
+  chatManager: {
+    addMessage: jest.fn(),
+  },
   // [NEW] Mock collisionLayer with a getTileAtWorldXY method for obstacle checks
   collisionLayer: {
     getTileAtWorldXY: jest.fn().mockReturnValue(null), // By default, no obstacle
@@ -576,4 +579,38 @@ describe("MobManager", () => {
     mobManager.performUnsticking.mockRestore();
   });
   
+});
+
+describe("MobManager aggro on damage", () => {
+  let localManager;
+  let localScene;
+
+  beforeEach(() => {
+    localScene = {
+      time: { now: 1234 },
+      chatManager: { addMessage: jest.fn() },
+      playerManager: { player: { x: 10, y: 20 } },
+    };
+    localManager = new MobManager(localScene);
+  });
+
+  test("applyDamageToMob sets enemy state and aggro timers when hit", () => {
+    const mob = {
+      customData: {
+        id: "slime",
+        hp: 50,
+        currentType: "friend",
+        state: "idle",
+        isDead: false,
+      },
+      body: { setVelocity: jest.fn() },
+    };
+
+    localManager.applyDamageToMob(mob, 1);
+
+    expect(mob.customData.currentType).toBe("enemy");
+    expect(mob.customData.state).toBe("chasing");
+    expect(mob.customData.lastAggroTime).toBe(1234);
+    expect(mob.customData.lastSeenPosition).toEqual({ x: 10, y: 20 });
+  });
 });

@@ -10,6 +10,7 @@ import {
 import { mobsData, expModifierRules } from "./content/mobs.js";
 import { zones } from "./content/zones.js";
 import { npcVendors } from "./content/npcs.js";
+import { applyAdminOverrides, loadAdminOverrides } from "../services/AdminOverrides.js";
 
 // --- Player Profile (Meta info) ---
 const playerProfile = {
@@ -179,6 +180,19 @@ const SKILL_RANGE_EXTENDER = 1.1;
 const GATHER_RANGE = 50;
 const MOB_CORPSE_DURATION = 8000;
 
+const defaultMobsData = JSON.parse(JSON.stringify(mobsData));
+
+const adminOverrides = loadAdminOverrides();
+applyAdminOverrides(adminOverrides, {
+  playerProfile,
+  playerBaseStats,
+  playerGrowthStats,
+  naturalRegeneration,
+  playerEquippedItems,
+  mobsData,
+  allGameSkills,
+});
+
 export {
   playerProfile,
   availableCharacterSkins,
@@ -205,4 +219,5 @@ export {
   MOB_CORPSE_DURATION,
   zones,
   npcVendors,
+  defaultMobsData,
 };

@@ -84,6 +84,45 @@
       <div id="shop-content"></div>
     </div>
 
+    <button id="admin-toggle-button" class="admin-toggle-btn">Admin</button>
+    <div id="admin-panel" class="admin-panel" style="display: none">
+      <div class="admin-panel-header">
+        <div class="admin-tabs">
+          <button class="admin-tab active" data-tab="mobs">Mobs</button>
+          <button class="admin-tab" data-tab="player">Player</button>
+          <button class="admin-tab" data-tab="skills">Skills</button>
+        </div>
+        <div class="admin-header-actions">
+          <button id="admin-reset" class="admin-btn">Reset</button>
+          <button id="admin-close" class="admin-btn">Close</button>
+        </div>
+      </div>
+      <div class="admin-panel-body">
+        <div id="admin-tab-mobs" class="admin-tab-panel active">
+          <div class="admin-split">
+            <div id="admin-mobs-list" class="admin-list"></div>
+            <div class="admin-detail">
+              <div id="admin-mob-fields" class="admin-section-container"></div>
+              <div class="admin-section-title">Loot Table</div>
+              <div id="admin-mob-loot"></div>
+              <button id="admin-add-loot-row" class="admin-btn">Add Loot Row</button>
+            </div>
+          </div>
+        </div>
+        <div id="admin-tab-player" class="admin-tab-panel">
+          <div id="admin-player-fields" class="admin-section-container"></div>
+        </div>
+        <div id="admin-tab-skills" class="admin-tab-panel">
+          <div class="admin-split">
+            <div id="admin-skills-list" class="admin-list"></div>
+            <div class="admin-detail">
+              <div id="admin-skill-fields" class="admin-section-container"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Main game logic -->
     <script type="module" src="./main.js"></script>
   </body>

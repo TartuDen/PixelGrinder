@@ -668,3 +668,230 @@ body {
 .mob-mana-fill {
   background-color: #3498db;
 }
+
+/* ------------------------------
+   Admin Panel
+------------------------------ */
+.admin-toggle-btn {
+  position: absolute;
+  top: 110px;
+  right: 12px;
+  z-index: 3000;
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid #3a3a3a;
+  background: #1b1b1b;
+  color: #e8e8e8;
+  cursor: pointer;
+}
+
+.admin-panel {
+  position: absolute;
+  top: 140px;
+  right: 20px;
+  z-index: 3001;
+  width: 780px;
+  max-width: 92vw;
+  max-height: 70vh;
+  background: rgba(18, 18, 18, 0.96);
+  border: 1px solid #3a3a3a;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  color: #e6e6e6;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #2c2c2c;
+  background: #141414;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-tab {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid #2f2f2f;
+  background: #1c1c1c;
+  color: #cfcfcf;
+  cursor: pointer;
+}
+
+.admin-tab.active {
+  background: #2a2a2a;
+  color: #ffffff;
+  border-color: #4a4a4a;
+}
+
+.admin-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid #2f2f2f;
+  background: #202020;
+  color: #d8d8d8;
+  cursor: pointer;
+}
+
+.admin-panel-body {
+  padding: 10px;
+  overflow: auto;
+}
+
+.admin-tab-panel {
+  display: none;
+}
+
+.admin-tab-panel.active {
+  display: block;
+}
+
+.admin-split {
+  display: flex;
+  gap: 12px;
+}
+
+.admin-list {
+  width: 240px;
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid #2a2a2a;
+  background: #151515;
+}
+
+.admin-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #1f1f1f;
+  font-size: 12px;
+}
+
+.admin-list-item.active {
+  background: #262626;
+}
+
+.admin-thumb {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #2f2f2f;
+  background: #0f0f0f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #bdbdbd;
+}
+
+.admin-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.admin-section-container {
+  display: block;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.admin-field input,
+.admin-field select {
+  background: #1b1b1b;
+  border: 1px solid #2f2f2f;
+  color: #e0e0e0;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.admin-section-title {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #bdbdbd;
+  grid-column: 1 / -1;
+}
+
+.admin-loot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.admin-loot-table th,
+.admin-loot-table td {
+  border: 1px solid #2a2a2a;
+  padding: 4px 6px;
+}
+
+.admin-loot-table th {
+  background: #1c1c1c;
+}
+
+.admin-accordion {
+  border: 1px solid #2a2a2a;
+  background: #161616;
+  margin-bottom: 10px;
+}
+
+.admin-accordion-header {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #cfcfcf;
+  background: #1e1e1e;
+  border: none;
+  cursor: pointer;
+}
+
+.admin-accordion-body {
+  padding: 10px;
+}
+
+.admin-accordion.collapsed .admin-accordion-body {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .admin-panel {
+    width: 94vw;
+    right: 3vw;
+  }
+  .admin-split {
+    flex-direction: column;
+  }
+  .admin-list {
+    width: 100%;
+  }
+  .admin-fields {
+    grid-template-columns: 1fr;
+  }
+}

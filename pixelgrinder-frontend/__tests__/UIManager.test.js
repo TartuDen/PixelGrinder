@@ -4,6 +4,11 @@
 
 // 1. Import necessary modules
 import UIManager from "../managers/UIManager.js";
+import {
+  playerProfile,
+  playerBaseStats,
+  playerGrowthStats,
+} from "../data/MOCKdata.js";
 
 // 2. Mock Phaser globally
 global.Phaser = {
@@ -116,6 +121,71 @@ describe("UIManager", () => {
 
     // Initialize UIManager
     uiManager = new UIManager(mockScene);
+  });
+
+  test("admin level change applies growth stats and refreshes base stats fields", () => {
+    document.body.innerHTML = `
+      <div id="player-name"></div>
+      <div id="health-fill"></div>
+      <div id="mana-fill"></div>
+      <div id="player-level"></div>
+      <div id="exp-fill"></div>
+      <div id="exp-text"></div>
+      <div id="health-text"></div>
+      <div id="mana-text"></div>
+      <div id="stats-menu" style="display: none;">
+        <div id="stats-content"></div>
+        <button id="close-stats">Close</button>
+      </div>
+      <div id="casting-bar"></div>
+      <button id="admin-toggle-button"></button>
+      <div id="admin-panel">
+        <div class="admin-panel-header">
+          <button class="admin-tab" data-tab="player"></button>
+        </div>
+        <div id="admin-tab-player" class="admin-tab-panel active">
+          <div id="admin-player-fields"></div>
+        </div>
+        <button id="admin-reset"></button>
+        <button id="admin-close"></button>
+      </div>
+    `;
+
+    mockScene = new Phaser.Scene();
+    mockScene.playerManager = {
+      currentHealth: 10,
+      currentMana: 20,
+      updatePlayerStats: jest.fn(),
+      selectedSkinKey: "necromancer",
+    };
+    mockScene.updateUI = jest.fn();
+    mockScene.emitStatsUpdate = jest.fn();
+
+    uiManager = new UIManager(mockScene);
+    uiManager.init();
+    uiManager.adminPlayerFields = document.getElementById("admin-player-fields");
+
+    const originalLevel = playerProfile.level;
+    const originalHealth = playerBaseStats.health;
+    const originalGrowthHealth = playerGrowthStats.health;
+
+    playerProfile.level = 1;
+    playerBaseStats.health = 100;
+    playerGrowthStats.health = 5;
+
+    uiManager.applyLevelChange(1, 3);
+    uiManager.renderAdminPlayerPanel();
+
+    expect(playerBaseStats.health).toBe(110);
+
+    const healthField = Array.from(document.querySelectorAll(".admin-field"))
+      .find((field) => field.querySelector("label")?.textContent === "health");
+    const healthInput = healthField.querySelector("input");
+    expect(Number(healthInput.value)).toBe(110);
+
+    playerProfile.level = originalLevel;
+    playerBaseStats.health = originalHealth;
+    playerGrowthStats.health = originalGrowthHealth;
   });
 
   afterEach(() => {

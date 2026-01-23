@@ -1,17 +1,28 @@
 // File: managers/UIManager.js
 
 import {
+  availableCharacterSkins,
   playerProfile,
+  playerBaseStats,
+  playerGrowthStats,
   playerBackpack,
   itemsMap,
   deletedItems,
   playerEquippedItems,
   playerSkills,
   allGameSkills,
+  mobsData,
+  defaultMobsData,
+  naturalRegeneration,
   skillEnhancements,
   SKILL_RANGE_EXTENDER,
 } from "../data/MOCKdata.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
+import {
+  saveAdminOverrides,
+  clearAdminOverrides,
+} from "../services/AdminOverrides.js";
+import { clearSave } from "../services/SaveService.js";
 
 // Draggable helper
 function makeDraggable(elmnt, dragHandle) {
@@ -19,6 +30,9 @@ function makeDraggable(elmnt, dragHandle) {
   dragHandle.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
+    if (e.target.closest("button, input, select, textarea, a, [data-no-drag]")) {
+      return;
+    }
     e.preventDefault();
     pos3 = e.clientX;
     pos4 = e.clientY;
@@ -93,6 +107,24 @@ export default class UIManager {
     this.tooltipEl.style.display = "none";
     document.body.appendChild(this.tooltipEl);
 
+    // Admin panel
+    this.adminToggleButton = document.getElementById("admin-toggle-button");
+    this.adminPanel = document.getElementById("admin-panel");
+    this.adminCloseButton = document.getElementById("admin-close");
+    this.adminResetButton = document.getElementById("admin-reset");
+    this.adminTabs = document.querySelectorAll(".admin-tab");
+    this.adminTabPanels = document.querySelectorAll(".admin-tab-panel");
+    this.adminMobList = document.getElementById("admin-mobs-list");
+    this.adminMobFields = document.getElementById("admin-mob-fields");
+    this.adminMobLoot = document.getElementById("admin-mob-loot");
+    this.adminAddLootRow = document.getElementById("admin-add-loot-row");
+    this.adminPlayerFields = document.getElementById("admin-player-fields");
+    this.adminSkillList = document.getElementById("admin-skills-list");
+    this.adminSkillFields = document.getElementById("admin-skill-fields");
+    this.adminSelectedMobId = null;
+    this.adminSelectedSkillId = null;
+    this.adminSaveTimer = null;
+
     // Keep track of up to 9 skill slots
     this.skillBarSlots = new Array(9).fill(null);
 
@@ -161,6 +193,8 @@ export default class UIManager {
     if (this.scene.events) {
       this.scene.events.on("statsUpdated", this.handleStatsUpdate, this);
     }
+
+    this.initAdminPanel();
   }
 
   handleStatsUpdate(stats) {
@@ -1220,6 +1254,712 @@ export default class UIManager {
       this.openInventory();
     }
     this.openLootWindow(mob);
+  }
+
+  // -----------------------------
+  // ADMIN PANEL
+  // -----------------------------
+  initAdminPanel() {
+    if (!this.adminToggleButton || !this.adminPanel) return;
+    this.adminToggleButton.addEventListener("click", () =>
+      this.toggleAdminPanel()
+    );
+    const adminHeader = this.adminPanel.querySelector(".admin-panel-header");
+    if (adminHeader) {
+      makeDraggable(this.adminPanel, adminHeader);
+    }
+    if (this.adminCloseButton) {
+      this.adminCloseButton.addEventListener("click", () =>
+        this.hideAdminPanel()
+      );
+    }
+    if (this.adminResetButton) {
+      this.adminResetButton.addEventListener("click", () => {
+        this.hardResetAdminOverrides();
+      });
+    }
+    this.adminTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        this.switchAdminTab(tab.dataset.tab);
+      });
+    });
+    this.renderAdminPanel();
+  }
+
+  toggleAdminPanel() {
+    if (!this.adminPanel) return;
+    const isOpen = this.adminPanel.style.display === "block";
+    if (isOpen) {
+      this.hideAdminPanel();
+    } else {
+      this.adminPanel.style.display = "block";
+      this.isAdminOpen = true;
+      this.renderAdminPanel();
+    }
+  }
+
+  hideAdminPanel() {
+    if (!this.adminPanel) return;
+    this.adminPanel.style.display = "none";
+    this.isAdminOpen = false;
+  }
+
+  selectAdminMob(mobId) {
+    if (!mobId || !mobsData[mobId]) return;
+    this.adminSelectedMobId = mobId;
+    this.renderAdminMobsList();
+    this.renderAdminMobDetails(mobId);
+  }
+
+  hardResetAdminOverrides() {
+    clearAdminOverrides();
+    clearSave();
+    if (defaultMobsData && typeof defaultMobsData === "object") {
+      Object.keys(mobsData).forEach((key) => delete mobsData[key]);
+      Object.keys(defaultMobsData).forEach((key) => {
+        mobsData[key] = JSON.parse(JSON.stringify(defaultMobsData[key]));
+        this.scene.mobManager?.applyMobTypeChanges(key);
+      });
+      this.renderAdminPanel();
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("reset", Date.now().toString());
+    window.location.href = url.toString();
+  }
+
+  switchAdminTab(tabId) {
+    if (!tabId) return;
+    this.adminTabs.forEach((tab) => {
+      tab.classList.toggle("active", tab.dataset.tab === tabId);
+    });
+    this.adminTabPanels.forEach((panel) => {
+      panel.classList.toggle(
+        "active",
+        panel.id === `admin-tab-${tabId}`
+      );
+    });
+  }
+
+  renderAdminPanel() {
+    this.renderAdminMobsList();
+    this.renderAdminPlayerPanel();
+    this.renderAdminSkillsList();
+  }
+
+  renderAdminMobsList() {
+    if (!this.adminMobList) return;
+    const mobIds = Object.keys(mobsData);
+    this.adminMobList.innerHTML = "";
+    if (!this.adminSelectedMobId || !mobsData[this.adminSelectedMobId]) {
+      this.adminSelectedMobId = mobIds[0] || null;
+    }
+    mobIds.forEach((mobId) => {
+      const mobInfo = mobsData[mobId];
+      const item = document.createElement("div");
+      item.className = "admin-list-item";
+      item.classList.toggle("active", mobId === this.adminSelectedMobId);
+
+      const thumb = this.createMobThumbnail(mobId, mobInfo);
+      const label = document.createElement("div");
+      label.innerText = mobInfo.name ? `${mobInfo.name} (${mobId})` : mobId;
+
+      item.appendChild(thumb);
+      item.appendChild(label);
+      item.addEventListener("click", () => {
+        this.adminSelectedMobId = mobId;
+        this.renderAdminMobsList();
+        this.renderAdminMobDetails(mobId);
+      });
+      this.adminMobList.appendChild(item);
+    });
+    if (this.adminSelectedMobId) {
+      this.renderAdminMobDetails(this.adminSelectedMobId);
+    }
+  }
+
+  renderAdminMobDetails(mobId) {
+    if (!this.adminMobFields || !mobId) return;
+    const mobInfo = mobsData[mobId];
+    if (!mobInfo) return;
+    if (typeof mobInfo.scale !== "number") {
+      mobInfo.scale = 1;
+    }
+    this.adminMobFields.innerHTML = "";
+    const { section: propsSection, body: propsBody } =
+      this.createAccordionSection("Mob Properties");
+    const fieldsGrid = document.createElement("div");
+    fieldsGrid.className = "admin-fields";
+    propsBody.appendChild(fieldsGrid);
+
+    Object.keys(mobInfo).forEach((key) => {
+      if (key === "lootTable") return;
+      const value = mobInfo[key];
+      const options =
+        key === "mobType"
+          ? [
+              { value: "friend", label: "friend" },
+              { value: "enemy", label: "enemy" },
+            ]
+          : null;
+      const field = this.createAdminField({
+        label: key,
+        value: Array.isArray(value) ? value.join(", ") : value,
+        valueType: Array.isArray(value) ? "array" : typeof value,
+        options,
+        onChange: (nextValue) => {
+          if (Array.isArray(value)) {
+            mobInfo[key] = nextValue;
+          } else if (typeof value === "number") {
+            mobInfo[key] = Number.isFinite(nextValue) ? nextValue : value;
+          } else {
+            mobInfo[key] = nextValue;
+          }
+          this.scene.mobManager?.applyMobTypeChanges(mobId);
+          this.scheduleAdminOverridesSave();
+        },
+      });
+      fieldsGrid.appendChild(field);
+    });
+    this.adminMobFields.appendChild(propsSection);
+
+    const { section: lootSection, body: lootBody } =
+      this.createAccordionSection("Loot Table", true);
+    if (this.adminMobLoot && this.adminAddLootRow) {
+      lootBody.appendChild(this.adminMobLoot);
+      lootBody.appendChild(this.adminAddLootRow);
+    }
+    this.adminMobFields.appendChild(lootSection);
+
+    this.renderAdminMobLoot(mobId);
+  }
+
+  renderAdminMobLoot(mobId) {
+    if (!this.adminMobLoot || !this.adminAddLootRow) return;
+    const mobInfo = mobsData[mobId];
+    if (!mobInfo) return;
+    if (!Array.isArray(mobInfo.lootTable)) {
+      mobInfo.lootTable = [];
+    }
+
+    this.adminMobLoot.innerHTML = "";
+    const table = document.createElement("table");
+    table.className = "admin-loot-table";
+    const header = document.createElement("tr");
+    ["Item", "Chance", ""].forEach((label) => {
+      const th = document.createElement("th");
+      th.innerText = label;
+      header.appendChild(th);
+    });
+    table.appendChild(header);
+
+    mobInfo.lootTable.forEach((entry, index) => {
+      const row = document.createElement("tr");
+
+      const itemCell = document.createElement("td");
+      const itemSelect = document.createElement("select");
+      const itemIds = Object.keys(itemsMap)
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id))
+        .sort((a, b) => a - b);
+      itemIds.forEach((id) => {
+        const option = document.createElement("option");
+        const item = itemsMap[id];
+        option.value = id;
+        option.textContent = item ? `${id} - ${item.name}` : `${id}`;
+        itemSelect.appendChild(option);
+      });
+      itemSelect.value = entry.itemId ?? "";
+      itemSelect.addEventListener("change", (event) => {
+        entry.itemId = Number(event.target.value);
+        this.scene.mobManager?.applyMobTypeChanges(mobId);
+        this.scheduleAdminOverridesSave();
+      });
+      itemCell.appendChild(itemSelect);
+
+      const chanceCell = document.createElement("td");
+      const chanceInput = document.createElement("input");
+      chanceInput.type = "number";
+      chanceInput.step = "0.1";
+      chanceInput.value = entry.chance ?? 0;
+      chanceInput.addEventListener("change", (event) => {
+        entry.chance = Number(event.target.value) || 0;
+        this.scene.mobManager?.applyMobTypeChanges(mobId);
+        this.scheduleAdminOverridesSave();
+      });
+      chanceCell.appendChild(chanceInput);
+
+      const removeCell = document.createElement("td");
+      const removeButton = document.createElement("button");
+      removeButton.className = "admin-btn";
+      removeButton.innerText = "Remove";
+      removeButton.addEventListener("click", () => {
+        mobInfo.lootTable.splice(index, 1);
+        this.scene.mobManager?.applyMobTypeChanges(mobId);
+        this.renderAdminMobLoot(mobId);
+        this.scheduleAdminOverridesSave();
+      });
+      removeCell.appendChild(removeButton);
+
+      row.appendChild(itemCell);
+      row.appendChild(chanceCell);
+      row.appendChild(removeCell);
+      table.appendChild(row);
+    });
+
+    this.adminMobLoot.appendChild(table);
+    this.adminAddLootRow.onclick = () => {
+      mobInfo.lootTable.push({ itemId: 0, chance: 0 });
+      this.scene.mobManager?.applyMobTypeChanges(mobId);
+      this.renderAdminMobLoot(mobId);
+      this.scheduleAdminOverridesSave();
+    };
+  }
+
+  renderAdminPlayerPanel() {
+    if (!this.adminPlayerFields) return;
+    this.adminPlayerFields.innerHTML = "";
+
+    const profileSection = this.createAccordionSection("Profile", true);
+    this.renderAdminObjectSection(
+      "Profile",
+      playerProfile,
+      (key, nextValue) => {
+        if (key === "level") {
+          const oldLevel = playerProfile.level;
+          const safeLevel = Math.max(1, Math.floor(Number(nextValue) || 1));
+          this.applyLevelChange(oldLevel, safeLevel);
+          playerProfile.level = safeLevel;
+          this.scene.playerManager.updatePlayerStats();
+          this.scene.updateUI();
+          this.scene.emitStatsUpdate();
+          this.renderAdminPlayerPanel();
+          this.scheduleAdminOverridesSave();
+          return;
+        }
+        playerProfile[key] = nextValue;
+        if (key === "selectedSkin" && nextValue) {
+          this.scene.playerManager.selectedSkinKey = nextValue;
+        }
+        this.scene.updateUI();
+        this.scene.emitStatsUpdate();
+        this.scheduleAdminOverridesSave();
+      },
+      profileSection.body
+    );
+    this.adminPlayerFields.appendChild(profileSection.section);
+
+    const baseSection = this.createAccordionSection("Base Stats", true);
+    this.renderAdminObjectSection(
+      "Base Stats",
+      playerBaseStats,
+      (key, nextValue) => {
+        playerBaseStats[key] = nextValue;
+        this.scene.playerManager.updatePlayerStats();
+        this.scene.updateUI();
+        this.scene.emitStatsUpdate();
+        this.scheduleAdminOverridesSave();
+      },
+      baseSection.body
+    );
+    this.adminPlayerFields.appendChild(baseSection.section);
+
+    const growthSection = this.createAccordionSection("Growth Stats", false);
+    this.renderAdminObjectSection(
+      "Growth Stats",
+      playerGrowthStats,
+      (key, nextValue) => {
+        playerGrowthStats[key] = nextValue;
+        this.scene.playerManager.updatePlayerStats();
+        this.scene.updateUI();
+        this.scene.emitStatsUpdate();
+        this.scheduleAdminOverridesSave();
+      },
+      growthSection.body
+    );
+    this.adminPlayerFields.appendChild(growthSection.section);
+
+    const regenSection = this.createAccordionSection("Regeneration", false);
+    this.renderAdminObjectSection(
+      "Regeneration",
+      naturalRegeneration,
+      (key, nextValue) => {
+        naturalRegeneration[key] = nextValue;
+        this.scheduleAdminOverridesSave();
+      },
+      regenSection.body
+    );
+    this.adminPlayerFields.appendChild(regenSection.section);
+
+    const stateSection = this.createAccordionSection("Current State", false);
+    this.renderAdminPlayerStateSection(stateSection.body);
+    this.adminPlayerFields.appendChild(stateSection.section);
+
+    const equippedSection = this.createAccordionSection("Equipped Items", false);
+    this.renderAdminEquippedItemsSection(equippedSection.body);
+    this.adminPlayerFields.appendChild(equippedSection.section);
+  }
+
+  renderAdminPlayerStateSection(container) {
+    const currentHealthField = this.createAdminField({
+      label: "currentHealth",
+      value: this.scene.playerManager.currentHealth,
+      valueType: "number",
+      onChange: (nextValue) => {
+        this.scene.playerManager.currentHealth = Number.isFinite(nextValue)
+          ? nextValue
+          : this.scene.playerManager.currentHealth;
+        this.scene.updateUI();
+        this.scene.emitStatsUpdate();
+      },
+    });
+    const currentManaField = this.createAdminField({
+      label: "currentMana",
+      value: this.scene.playerManager.currentMana,
+      valueType: "number",
+      onChange: (nextValue) => {
+        this.scene.playerManager.currentMana = Number.isFinite(nextValue)
+          ? nextValue
+          : this.scene.playerManager.currentMana;
+        this.scene.updateUI();
+        this.scene.emitStatsUpdate();
+      },
+    });
+    container.appendChild(currentHealthField);
+    container.appendChild(currentManaField);
+  }
+
+  renderAdminEquippedItemsSection(container) {
+    Object.keys(playerEquippedItems).forEach((slot) => {
+      const options = this.getItemOptionsForSlot(slot);
+      const field = this.createAdminField({
+        label: slot,
+        value: playerEquippedItems[slot] ?? "",
+        valueType: "select",
+        options,
+        onChange: (nextValue) => {
+          playerEquippedItems[slot] = nextValue ? Number(nextValue) : null;
+          this.scene.playerManager.updatePlayerStats();
+          this.scene.updateUI();
+          this.scene.emitStatsUpdate();
+          this.scheduleAdminOverridesSave();
+        },
+      });
+      container.appendChild(field);
+    });
+  }
+
+  renderAdminSkillsList() {
+    if (!this.adminSkillList) return;
+    this.adminSkillList.innerHTML = "";
+    const skillIds = allGameSkills.map((skill) => skill.id);
+    if (
+      !this.adminSelectedSkillId ||
+      !allGameSkills.find((skill) => skill.id === this.adminSelectedSkillId)
+    ) {
+      this.adminSelectedSkillId = skillIds[0] || null;
+    }
+    allGameSkills.forEach((skill) => {
+      const item = document.createElement("div");
+      item.className = "admin-list-item";
+      item.classList.toggle("active", skill.id === this.adminSelectedSkillId);
+
+      const thumb = document.createElement("div");
+      thumb.className = "admin-thumb";
+      thumb.innerText = skill.name?.slice(0, 2) || "SK";
+
+      const label = document.createElement("div");
+      label.innerText = skill.name || `Skill ${skill.id}`;
+
+      item.appendChild(thumb);
+      item.appendChild(label);
+      item.addEventListener("click", () => {
+        this.adminSelectedSkillId = skill.id;
+        this.renderAdminSkillsList();
+        this.renderAdminSkillDetails(skill.id);
+      });
+      this.adminSkillList.appendChild(item);
+    });
+    if (this.adminSelectedSkillId) {
+      this.renderAdminSkillDetails(this.adminSelectedSkillId);
+    }
+  }
+
+  renderAdminSkillDetails(skillId) {
+    if (!this.adminSkillFields) return;
+    const skill = allGameSkills.find((sk) => sk.id === skillId);
+    if (!skill) return;
+    this.adminSkillFields.innerHTML = "";
+    const { section, body } = this.createAccordionSection("Skill Properties");
+    const fieldsGrid = document.createElement("div");
+    fieldsGrid.className = "admin-fields";
+    body.appendChild(fieldsGrid);
+    Object.keys(skill).forEach((key) => {
+      const value = skill[key];
+      const isArray = Array.isArray(value);
+      const field = this.createAdminField({
+        label: key,
+        value: isArray ? value.join(", ") : value,
+        valueType: isArray ? "array" : typeof value,
+        disabled: key === "id",
+        onChange: (nextValue) => {
+          if (isArray) {
+            skill[key] = nextValue;
+          } else if (typeof value === "number") {
+            skill[key] = Number.isFinite(nextValue) ? nextValue : value;
+          } else {
+            skill[key] = nextValue;
+          }
+          this.syncPlayerSkillsWithGameSkills();
+          this.scene.mobManager?.refreshMobSkillsFromLoot();
+          this.setupSkills(playerSkills);
+          this.scheduleAdminOverridesSave();
+        },
+      });
+      fieldsGrid.appendChild(field);
+    });
+    this.adminSkillFields.appendChild(section);
+  }
+
+  syncPlayerSkillsWithGameSkills() {
+    playerSkills.forEach((playerSkill) => {
+      const skill = allGameSkills.find((sk) => sk.id === playerSkill.id);
+      if (!skill) return;
+      Object.assign(playerSkill, { ...skill });
+    });
+  }
+
+  renderAdminObjectSection(title, obj, onFieldChange, container) {
+    const target = container || this.adminPlayerFields;
+    Object.keys(obj).forEach((key) => {
+      const value = obj[key];
+      const valueType = Array.isArray(value) ? "array" : typeof value;
+      const options =
+        key === "selectedSkin"
+          ? availableCharacterSkins.map((skin) => ({
+              value: skin.key,
+              label: skin.displayName,
+            }))
+          : key === "gameMode"
+            ? [
+                { value: "normal", label: "Normal" },
+                { value: "hardcore", label: "Hardcore" },
+              ]
+          : null;
+      const field = this.createAdminField({
+        label: key,
+        value: value,
+        valueType,
+        options,
+        onChange: (nextValue) => {
+          if (valueType === "number" && !Number.isFinite(nextValue)) {
+            return;
+          }
+          onFieldChange(key, nextValue);
+        },
+      });
+      target.appendChild(field);
+    });
+  }
+
+  createAccordionSection(title, startOpen = true) {
+    const section = document.createElement("div");
+    section.className = "admin-accordion";
+    if (!startOpen) {
+      section.classList.add("collapsed");
+    }
+
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "admin-accordion-header";
+    header.innerText = title;
+    header.addEventListener("click", () => {
+      section.classList.toggle("collapsed");
+    });
+
+    const body = document.createElement("div");
+    body.className = "admin-accordion-body";
+
+    section.appendChild(header);
+    section.appendChild(body);
+
+    return { section, body };
+  }
+
+  applyLevelChange(oldLevel, newLevel) {
+    if (!Number.isFinite(oldLevel) || !Number.isFinite(newLevel)) return;
+    const delta = newLevel - oldLevel;
+    if (delta === 0) return;
+    Object.keys(playerGrowthStats).forEach((statKey) => {
+      const growth = playerGrowthStats[statKey];
+      if (!Number.isFinite(growth)) return;
+      const updated = (playerBaseStats[statKey] || 0) + growth * delta;
+      if (statKey === "health" || statKey === "mana") {
+        playerBaseStats[statKey] = Math.max(1, updated);
+      } else {
+        playerBaseStats[statKey] = Math.max(0, updated);
+      }
+    });
+  }
+
+  createAdminField({ label, value, valueType, onChange, options, disabled }) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "admin-field";
+    const labelEl = document.createElement("label");
+    labelEl.innerText = label;
+    wrapper.appendChild(labelEl);
+
+    let input;
+    if (options && Array.isArray(options)) {
+      input = document.createElement("select");
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "-- none --";
+      input.appendChild(empty);
+      options.forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt.value;
+        option.textContent = opt.label;
+        input.appendChild(option);
+      });
+      input.value = value ?? "";
+    } else {
+      input = document.createElement("input");
+      if (valueType === "number") {
+        input.type = "number";
+        input.step = "0.1";
+        input.value = Number.isFinite(value) ? value : 0;
+      } else {
+        input.type = "text";
+        input.value = value ?? "";
+      }
+      if (valueType === "array") {
+        input.type = "text";
+        input.value = Array.isArray(value) ? value.join(", ") : value ?? "";
+      }
+    }
+    if (disabled) {
+      input.disabled = true;
+    }
+    input.addEventListener("change", (event) => {
+      const rawValue = event.target.value;
+      let nextValue = rawValue;
+      if (valueType === "number") {
+        nextValue = Number(rawValue);
+      } else if (valueType === "array") {
+        nextValue = rawValue
+          .split(",")
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0)
+          .map((part) => Number(part))
+          .filter((num) => Number.isFinite(num));
+      }
+      if (onChange) {
+        onChange(nextValue);
+      }
+    });
+    wrapper.appendChild(input);
+    return wrapper;
+  }
+
+  getItemOptionsForSlot(slot) {
+    const items = Object.values(itemsMap).filter((item) => {
+      if (!item || !item.slot) return false;
+      return item.slot === slot;
+    });
+    return items.map((item) => ({
+      value: item.id,
+      label: `${item.id} - ${item.name}`,
+    }));
+  }
+
+  createMobThumbnail(mobId, mobInfo) {
+    const thumb = document.createElement("div");
+    thumb.className = "admin-thumb";
+    const spriteKey = mobInfo.spriteKey || "";
+    const mobIndex =
+      spriteKey.startsWith("mob") && Number.isFinite(Number(spriteKey.slice(3)))
+        ? Number(spriteKey.slice(3))
+        : null;
+    const frameIndex =
+      mobIndex !== null && mobIndex >= 0 && mobIndex < 8
+        ? Math.floor(mobIndex / 4) * 4 * 12 + (mobIndex % 4) * 3
+        : null;
+
+    if (frameIndex !== null && this.scene.textures.exists("mobs-sheet")) {
+      const texture = this.scene.textures.get("mobs-sheet");
+      const frame = texture.get(String(frameIndex));
+      if (frame && frame.source && frame.source.image) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 26;
+        canvas.height = 26;
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          frame.source.image,
+          frame.cutX,
+          frame.cutY,
+          frame.cutWidth,
+          frame.cutHeight,
+          0,
+          0,
+          26,
+          26
+        );
+        thumb.appendChild(canvas);
+        return thumb;
+      }
+    }
+
+    const spriteTextureKey = `${spriteKey}-walk-down`;
+    if (spriteKey && this.scene.textures.exists(spriteTextureKey)) {
+      const texture = this.scene.textures.get(spriteTextureKey);
+      const frame = texture.get(0);
+      if (frame && frame.source && frame.source.image) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 26;
+        canvas.height = 26;
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          frame.source.image,
+          frame.cutX,
+          frame.cutY,
+          frame.cutWidth,
+          frame.cutHeight,
+          0,
+          0,
+          26,
+          26
+        );
+        thumb.appendChild(canvas);
+        return thumb;
+      }
+    }
+
+    thumb.innerText = mobInfo.name?.slice(0, 2) || mobId.slice(0, 2);
+    return thumb;
+  }
+
+  scheduleAdminOverridesSave() {
+    if (this.adminSaveTimer) {
+      clearTimeout(this.adminSaveTimer);
+    }
+    this.adminSaveTimer = setTimeout(() => {
+      this.saveAdminOverridesNow();
+    }, 250);
+  }
+
+  saveAdminOverridesNow() {
+    const payload = {
+      mobsData: JSON.parse(JSON.stringify(mobsData)),
+      playerProfile: JSON.parse(JSON.stringify(playerProfile)),
+      playerBaseStats: JSON.parse(JSON.stringify(playerBaseStats)),
+      playerGrowthStats: JSON.parse(JSON.stringify(playerGrowthStats)),
+      naturalRegeneration: JSON.parse(JSON.stringify(naturalRegeneration)),
+      playerEquippedItems: JSON.parse(JSON.stringify(playerEquippedItems)),
+      allGameSkills: JSON.parse(JSON.stringify(allGameSkills)),
+    };
+    saveAdminOverrides(payload);
   }
 
   // -----------------------------
