@@ -32,8 +32,21 @@ jobs:
 
       - name: Install Butler
         run: |
-          go install github.com/itchio/butler@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          mkdir -p butler
+          gh release download --repo itchio/butler --pattern "butler*linux*amd64*" --dir butler
+          ARCHIVE=$(ls butler/* | head -n 1)
+          if file "$ARCHIVE" | grep -qi "zip"; then
+            unzip "$ARCHIVE" -d butler
+          else
+            tar -xf "$ARCHIVE" -C butler
+          fi
+          BIN=$(find butler -maxdepth 2 -type f -name butler | head -n 1)
+          if [ -z "$BIN" ]; then
+            echo "butler binary not found after extraction."
+            exit 1
+          fi
+          chmod +x "$BIN"
+          mv "$BIN" butler/butler
 
       - name: Push to itch.io
         env:
