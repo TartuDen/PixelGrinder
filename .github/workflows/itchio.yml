@@ -27,35 +27,21 @@ jobs:
 
       - name: Install Butler
         run: |
-          python - <<'PY'
-          import json
-          import urllib.request
-
-          api = "https://api.github.com/repos/itchio/butler/releases/latest"
-          data = json.load(urllib.request.urlopen(api))
-          urls = [
-              asset["browser_download_url"]
-              for asset in data.get("assets", [])
-              if "linux-amd64" in asset.get("name", "")
-          ]
-          if not urls:
-              raise SystemExit("No linux-amd64 asset found for butler.")
-          print(urls[0])
-          PY
           BUTLER_URL=$(python - <<'PY'
           import json
           import urllib.request
 
           api = "https://api.github.com/repos/itchio/butler/releases/latest"
-          data = json.load(urllib.request.urlopen(api))
-          urls = [
-              asset["browser_download_url"]
-              for asset in data.get("assets", [])
-              if "linux-amd64" in asset.get("name", "")
+          req = urllib.request.Request(api, headers={"User-Agent": "butler-download"})
+          data = json.load(urllib.request.urlopen(req))
+          assets = data.get("assets", [])
+          candidates = [
+              asset for asset in assets if "linux-amd64" in asset.get("name", "")
           ]
-          if not urls:
-              raise SystemExit("No linux-amd64 asset found for butler.")
-          print(urls[0])
+          if not candidates:
+              names = ", ".join(asset.get("name", "") for asset in assets)
+              raise SystemExit(f"No linux-amd64 asset found for butler. Available: {names}")
+          print(candidates[0]["browser_download_url"])
           PY
           )
           curl -L "$BUTLER_URL" -o butler-archive
