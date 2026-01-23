@@ -32,7 +32,7 @@ jobs:
 
       - name: Install Butler
         run: |
-          go install github.com/itchio/butler/cmd/butler@latest
+          go install github.com/itchio/butler@latest
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Push to itch.io
