@@ -27,10 +27,47 @@ jobs:
 
       - name: Install Butler
         run: |
-          curl -L https://broth.itch.zone/install.sh | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          api = "https://api.github.com/repos/itchio/butler/releases/latest"
+          data = json.load(urllib.request.urlopen(api))
+          urls = [
+              asset["browser_download_url"]
+              for asset in data.get("assets", [])
+              if "linux-amd64" in asset.get("name", "")
+          ]
+          if not urls:
+              raise SystemExit("No linux-amd64 asset found for butler.")
+          print(urls[0])
+          PY
+          BUTLER_URL=$(python - <<'PY'
+          import json
+          import urllib.request
+
+          api = "https://api.github.com/repos/itchio/butler/releases/latest"
+          data = json.load(urllib.request.urlopen(api))
+          urls = [
+              asset["browser_download_url"]
+              for asset in data.get("assets", [])
+              if "linux-amd64" in asset.get("name", "")
+          ]
+          if not urls:
+              raise SystemExit("No linux-amd64 asset found for butler.")
+          print(urls[0])
+          PY
+          )
+          curl -L "$BUTLER_URL" -o butler-archive
+          if file butler-archive | grep -qi "zip"; then
+            unzip butler-archive -d butler
+          else
+            mkdir -p butler
+            tar -xf butler-archive -C butler
+          fi
+          chmod +x butler/butler
 
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
-        run: butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5
+        run: ./butler/butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5
