@@ -25,23 +25,17 @@ jobs:
         run: npm run build
         working-directory: pixelgrinder-frontend
 
+      - name: Use Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
       - name: Install Butler
         run: |
-          VERSION=$(curl -sI -H "User-Agent: butler-download" https://github.com/itchio/butler/releases/latest \
-            | awk -F'/' '/location:/ {print $NF}' | tr -d '\r')
-          BASE_URL="https://github.com/itchio/butler/releases/download/${VERSION}"
-          mkdir -p butler
-          if curl -fL -H "User-Agent: butler-download" "${BASE_URL}/butler-linux-amd64.zip" -o butler-archive; then
-            unzip butler-archive -d butler
-          elif curl -fL -H "User-Agent: butler-download" "${BASE_URL}/butler-linux-amd64.tar.gz" -o butler-archive; then
-            tar -xf butler-archive -C butler
-          else
-            echo "Failed to download butler for ${VERSION}."
-            exit 1
-          fi
-          chmod +x butler/butler
+          go install github.com/itchio/butler/cmd/butler@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Push to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
-        run: ./butler/butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5
+        run: butler push pixelgrinder-frontend/dist tartuden/pixelgrinder:html5
