@@ -27,29 +27,17 @@ jobs:
 
       - name: Install Butler
         run: |
-          BUTLER_URL=$(python - <<'PY'
-          import json
-          import urllib.request
-
-          api = "https://api.github.com/repos/itchio/butler/releases/latest"
-          req = urllib.request.Request(api, headers={"User-Agent": "butler-download"})
-          data = json.load(urllib.request.urlopen(req))
-          assets = data.get("assets", [])
-          candidates = [
-              asset for asset in assets if "linux-amd64" in asset.get("name", "")
-          ]
-          if not candidates:
-              names = ", ".join(asset.get("name", "") for asset in assets)
-              raise SystemExit(f"No linux-amd64 asset found for butler. Available: {names}")
-          print(candidates[0]["browser_download_url"])
-          PY
-          )
-          curl -L "$BUTLER_URL" -o butler-archive
-          if file butler-archive | grep -qi "zip"; then
+          VERSION=$(curl -sI -H "User-Agent: butler-download" https://github.com/itchio/butler/releases/latest \
+            | awk -F'/' '/location:/ {print $NF}' | tr -d '\r')
+          BASE_URL="https://github.com/itchio/butler/releases/download/${VERSION}"
+          mkdir -p butler
+          if curl -fL -H "User-Agent: butler-download" "${BASE_URL}/butler-linux-amd64.zip" -o butler-archive; then
             unzip butler-archive -d butler
-          else
-            mkdir -p butler
+          elif curl -fL -H "User-Agent: butler-download" "${BASE_URL}/butler-linux-amd64.tar.gz" -o butler-archive; then
             tar -xf butler-archive -C butler
+          else
+            echo "Failed to download butler for ${VERSION}."
+            exit 1
           fi
           chmod +x butler/butler
 
