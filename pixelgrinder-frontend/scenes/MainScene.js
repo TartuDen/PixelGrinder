@@ -498,7 +498,7 @@ export default class MainScene extends Phaser.Scene {
   //          MINIMAP
   // ------------------------------
   createMinimap() {
-    const size = 130;
+    const size = Math.round(130 * 0.7);
     const padding = 12;
     const zoom = 2;
     const mapWidth = this.map.widthInPixels;
@@ -522,10 +522,19 @@ export default class MainScene extends Phaser.Scene {
     this.minimapEntities.setScrollFactor(0);
     this.minimapEntities.setDepth(2001);
 
+    this.minimapMask = this.add.graphics();
+    this.minimapMask.setScrollFactor(0);
+    this.minimapMask.setDepth(1999);
+    this.minimapMask.setVisible(false);
+    this.minimapMaskShape = this.minimapMask.createGeometryMask();
+    this.minimapBase.setMask(this.minimapMaskShape);
+    this.minimapEntities.setMask(this.minimapMaskShape);
+
     this.minimapFrame = this.add.graphics();
     this.minimapFrame.setScrollFactor(0);
     this.minimapFrame.setDepth(2002);
 
+    this.updateMinimapMask();
     this.drawMinimapBase();
     this.updateMinimapEntities();
   }
@@ -537,6 +546,16 @@ export default class MainScene extends Phaser.Scene {
       x: cam.width - size - padding,
       y: padding,
     };
+  }
+
+  updateMinimapMask() {
+    if (!this.minimapMask) return;
+    const { size } = this.minimapConfig;
+    const origin = this.getMinimapOrigin();
+    this.minimapMask.clear();
+    this.minimapMask.fillStyle(0xffffff, 1);
+    this.minimapMask.setPosition(origin.x, origin.y);
+    this.minimapMask.fillRect(0, 0, size, size);
   }
 
   drawMinimapBase() {
@@ -567,6 +586,7 @@ export default class MainScene extends Phaser.Scene {
 
   updateMinimapEntities() {
     if (!this.minimapEntities || !this.playerManager?.player) return;
+    this.updateMinimapMask();
     const { size, scale, mapWidth, mapHeight } = this.minimapConfig;
     const origin = this.getMinimapOrigin();
     const mapWidthScaled = mapWidth * scale;
