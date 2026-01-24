@@ -544,6 +544,10 @@ export default class MobManager {
     this.refreshDynamicPathCosts();
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active || mob.customData.isDead) return;
+      if (!this.isMobTypeEnabled(mob.customData.id)) {
+        this.suppressMob(mob);
+        return;
+      }
       if (mob.customData.isStandby) {
         mob.body.setVelocity(0, 0);
         mob.anims.stop();

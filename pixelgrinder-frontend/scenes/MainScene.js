@@ -343,6 +343,8 @@ export default class MainScene extends Phaser.Scene {
     this.mobManager = null;
     this.uiManager = null;
 
+    document.body.classList.remove("char-creation-active");
+
     if (!this.anims.__pgWrapped) {
       const originalCreate = this.anims.create.bind(this.anims);
       this.anims.create = (config) => {
