@@ -28,13 +28,15 @@ jobs:
       - name: Install Butler
         run: |
           mkdir -p butler
-          curl -L -o butler/archive https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
-          if file butler/archive | grep -qi "zip"; then
-            unzip -q butler/archive -d butler
-          elif file butler/archive | grep -qi "gzip"; then
-            tar -xzf butler/archive -C butler
+          ZIP_URL="https://github.com/itchio/butler/releases/latest/download/butler-linux-amd64.zip"
+          TGZ_URL="https://github.com/itchio/butler/releases/latest/download/butler-linux-amd64.tar.gz"
+          if curl -fsSL -o butler/archive.zip "$ZIP_URL"; then
+            unzip -q butler/archive.zip -d butler
+          elif curl -fsSL -o butler/archive.tar.gz "$TGZ_URL"; then
+            tar -xzf butler/archive.tar.gz -C butler
           else
-            tar -xf butler/archive -C butler
+            echo "Failed to download butler from GitHub releases."
+            exit 1
           fi
           BIN=$(find butler -maxdepth 2 -type f -name butler | head -n 1)
           if [ -z "$BIN" ]; then
