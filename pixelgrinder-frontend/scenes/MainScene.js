@@ -73,6 +73,10 @@ export default class MainScene extends Phaser.Scene {
     this.editorCurrentLayer = null;
     this.editorCameraDrag = null;
     this.editorPrevZoom = null;
+    this.editorRoadSet = null;
+    this.editorRoadOffset = 0;
+    this.editorRoadTargetLayer = "paths";
+    this.editorTileIndexOverlay = null;
 
     this.events = new Phaser.Events.EventEmitter();
   }
@@ -537,6 +541,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.updateMinimapEntities();
+    this.updateEditorTileOverlay();
   }
 
   // ------------------------------
@@ -632,6 +637,32 @@ export default class MainScene extends Phaser.Scene {
           <input id="map-editor-base-tile" type="number" min="-1" step="1" value="0" />
         </div>
         <div class="map-editor-row">
+          <label>Sets</label>
+          <select id="map-editor-road-set">
+            <option value="0" data-target="paths">road 1</option>
+            <option value="3" data-target="paths">road 2</option>
+            <option value="6" data-target="paths">road 3</option>
+            <option value="0" data-target="paths" data-row="6" data-col="0">grass 1</option>
+            <option value="0" data-target="paths" data-row="6" data-col="3">grass 2</option>
+            <option value="0" data-target="paths" data-row="6" data-col="6">grass 3</option>
+            <option value="0" data-target="paths" data-row="12" data-col="0">sand 1</option>
+            <option value="0" data-target="paths" data-row="12" data-col="3">sand 2</option>
+            <option value="0" data-target="collisions" data-row="6" data-col="9">tallGrass 1</option>
+            <option value="0" data-target="collisions" data-row="6" data-col="12">tallGrass 2</option>
+            <option value="0" data-target="collisions" data-row="6" data-col="15">tallGrass 3</option>
+            <option value="0" data-target="collisions" data-row="12" data-col="6">innerWater 1</option>
+            <option value="0" data-target="collisions" data-row="12" data-col="9">fire 1</option>
+            <option value="9" data-target="collisions">abyss 1</option>
+            <option value="12" data-target="collisions">abyss 2</option>
+            <option value="15" data-target="collisions">abyss 3</option>
+            <option value="18" data-target="collisions">water 1</option>
+          </select>
+        </div>
+        <div class="map-editor-row">
+          <label>Tile IDs</label>
+          <input id="map-editor-show-ids" type="checkbox" checked />
+        </div>
+        <div class="map-editor-row">
           <label>Auto</label>
           <input id="map-editor-autotile" type="checkbox" />
         </div>
@@ -692,6 +723,8 @@ export default class MainScene extends Phaser.Scene {
     const layerSelect = this.editorUI.querySelector("#map-editor-layer");
     const tileInput = this.editorUI.querySelector("#map-editor-tile");
     const baseTileInput = this.editorUI.querySelector("#map-editor-base-tile");
+    const roadSetInput = this.editorUI.querySelector("#map-editor-road-set");
+    const showIdsInput = this.editorUI.querySelector("#map-editor-show-ids");
     const autoToggle = this.editorUI.querySelector("#map-editor-autotile");
     const paletteCanvas = this.editorUI.querySelector("#map-editor-palette");
     const spawnList = this.editorUI.querySelector("#map-editor-spawn-list");
@@ -712,6 +745,7 @@ export default class MainScene extends Phaser.Scene {
     });
     layerSelect.addEventListener("change", () => {
       this.editorLayer = layerSelect.value;
+      this.updateEditorSetOptions(layerSelect, roadSetInput);
     });
     tileInput.addEventListener("change", () => {
       const nextValue = Number(tileInput.value);
@@ -725,6 +759,18 @@ export default class MainScene extends Phaser.Scene {
       if (Number.isFinite(nextValue)) {
         this.editorBlendBaseTile = Math.floor(nextValue);
       }
+    });
+    roadSetInput.addEventListener("change", () => {
+      const option = roadSetInput.selectedOptions[0];
+      if (!option) return;
+      this.applyEditorRoadSelection(option, layerSelect);
+    });
+    showIdsInput.addEventListener("change", () => {
+      if (!this.editorTileIndexOverlay) return;
+      this.editorTileIndexOverlay.enabled = showIdsInput.checked;
+      this.editorTileIndexOverlay.container.setVisible(
+        this.editorActive && this.editorTileIndexOverlay.enabled
+      );
     });
     autoToggle.addEventListener("change", () => {
       this.editorAutoTileEnabled = autoToggle.checked;
@@ -765,6 +811,11 @@ export default class MainScene extends Phaser.Scene {
           );
         }
       }
+      if (this.editorTileIndexOverlay) {
+        this.editorTileIndexOverlay.container.setVisible(
+          this.editorActive && this.editorTileIndexOverlay.enabled
+        );
+      }
     });
     document.addEventListener("contextmenu", (event) => {
       if (!this.editorActive) return;
@@ -784,7 +835,7 @@ export default class MainScene extends Phaser.Scene {
         pointer.event.preventDefault();
       }
       const zoomStep = 0.1;
-      const minZoom = 0.5;
+      const minZoom = 0.2;
       const maxZoom = 3;
       const direction = deltaY > 0 ? -1 : 1;
       const nextZoom = Phaser.Math.Clamp(
@@ -863,8 +914,154 @@ export default class MainScene extends Phaser.Scene {
 
     this.ensureEditorObjects();
     this.initEditorPalette(paletteCanvas);
+    this.updateEditorSetOptions(layerSelect, roadSetInput);
+    const selectedRoadOption = roadSetInput?.selectedOptions?.[0];
+    if (selectedRoadOption) {
+      this.applyEditorRoadSelection(selectedRoadOption, layerSelect);
+    } else {
+      this.editorRoadSet = this.createEditorRoadSet(this.editorRoadOffset);
+      this.editorRoadTargetLayer = "paths";
+    }
+    this.initEditorTileOverlay();
     this.updateEditorSpawnList();
     this.renderEditorSpawnOverlay();
+  }
+
+  createEditorRoadSet(offset = 0) {
+    const tiles = [
+      [42 + offset, 43 + offset, 44 + offset],
+      [63 + offset, 64 + offset, 65 + offset],
+      [84 + offset, 85 + offset, 86 + offset],
+    ];
+    const tileSet = new Set();
+    tiles.forEach((row) => row.forEach((idx) => tileSet.add(idx)));
+    const innerCorners = {
+      nw: 23 + offset,
+      ne: 22 + offset,
+      sw: 2 + offset,
+      se: 1 + offset,
+    };
+    Object.values(innerCorners).forEach((idx) => tileSet.add(idx));
+    return { tiles, tileSet, innerCorners };
+  }
+
+  getEditorRoadOffsetFromOption(option) {
+    if (!option) return 0;
+    const row = Number(option.dataset.row);
+    const col = Number(option.dataset.col);
+    if (Number.isFinite(row) || Number.isFinite(col)) {
+      const columns = this.editorPalette?.columns || 0;
+      if (!columns) return 0;
+      const rowOffset = Number.isFinite(row) ? row : 0;
+      const colOffset = Number.isFinite(col) ? col : 0;
+      return rowOffset * columns + colOffset;
+    }
+    const nextValue = Number(option.value);
+    return Number.isFinite(nextValue) ? Math.floor(nextValue) : 0;
+  }
+
+  applyEditorRoadSelection(option, layerSelect) {
+    this.editorRoadOffset = this.getEditorRoadOffsetFromOption(option);
+    this.editorRoadSet = this.createEditorRoadSet(this.editorRoadOffset);
+    this.editorRoadTargetLayer = option.dataset.target || "paths";
+    if (this.editorMode === "terrain") {
+      this.editorLayer = this.editorRoadTargetLayer;
+      if (layerSelect) {
+        layerSelect.value = this.editorLayer;
+      }
+    }
+  }
+
+  updateEditorSetOptions(layerSelect, roadSetInput) {
+    if (!layerSelect || !roadSetInput) return;
+    const activeLayer = layerSelect.value;
+    const options = Array.from(roadSetInput.options);
+    let firstVisible = null;
+    options.forEach((option) => {
+      const target = option.dataset.target || "paths";
+      const visible = target === activeLayer;
+      option.hidden = !visible;
+      if (visible && !firstVisible) {
+        firstVisible = option;
+      }
+    });
+    if (firstVisible && roadSetInput.selectedOptions[0]?.hidden) {
+      roadSetInput.value = firstVisible.value;
+      this.applyEditorRoadSelection(firstVisible, layerSelect);
+    }
+  }
+
+  initEditorTileOverlay() {
+    if (this.editorTileIndexOverlay) return;
+    const container = this.add.container(0, 0);
+    container.setDepth(3500);
+    container.setVisible(false);
+    this.editorTileIndexOverlay = {
+      container,
+      pool: [],
+      enabled: true,
+    };
+  }
+
+  updateEditorTileOverlay() {
+    if (!this.editorTileIndexOverlay) return;
+    const overlay = this.editorTileIndexOverlay;
+    if (!this.editorActive || !overlay.enabled || this.editorMode === "spawns") {
+      overlay.container.setVisible(false);
+      return;
+    }
+    const layer = this.getEditorLayer();
+    if (!layer) return;
+    overlay.container.setVisible(true);
+
+    const tileW = this.map.tileWidth;
+    const tileH = this.map.tileHeight;
+    const view = this.cameras.main.worldView;
+    const startX = Phaser.Math.Clamp(Math.floor(view.x / tileW) - 1, 0, this.map.width - 1);
+    const endX = Phaser.Math.Clamp(
+      Math.floor((view.x + view.width) / tileW) + 1,
+      0,
+      this.map.width - 1
+    );
+    const startY = Phaser.Math.Clamp(
+      Math.floor(view.y / tileH) - 1,
+      0,
+      this.map.height - 1
+    );
+    const endY = Phaser.Math.Clamp(
+      Math.floor((view.y + view.height) / tileH) + 1,
+      0,
+      this.map.height - 1
+    );
+
+    let index = 0;
+    for (let y = startY; y <= endY; y += 1) {
+      for (let x = startX; x <= endX; x += 1) {
+        const tile = layer.getTileAt(x, y);
+        const value = tile ? tile.index : -1;
+        let label = overlay.pool[index];
+        if (!label) {
+          label = this.add.text(0, 0, "", {
+            font: "10px Arial",
+            color: "#ffffff",
+            stroke: "#000000",
+            strokeThickness: 2,
+          });
+          label.setDepth(3500);
+          label.setAlpha(0.7);
+          overlay.container.add(label);
+          overlay.pool.push(label);
+        }
+        label.setPosition(x * tileW + 2, y * tileH + 2);
+        label.setText(String(value));
+        label.setVisible(true);
+        index += 1;
+      }
+    }
+
+    for (let i = index; i < overlay.pool.length; i += 1) {
+      overlay.pool[i].setVisible(false);
+    }
   }
 
   initEditorPalette(canvas) {
@@ -1329,14 +1526,24 @@ export default class MainScene extends Phaser.Scene {
   }
 
   handleEditorTerrainPaint(pointer) {
-    if (!this.editorAutoTile) return;
     const tileX = this.map.worldToTileX(pointer.worldX);
     const tileY = this.map.worldToTileY(pointer.worldY);
     if (tileX < 0 || tileY < 0 || tileX >= this.map.width || tileY >= this.map.height) {
       return;
     }
-    const layer = this.getEditorLayer();
+    const layer =
+      this.editorRoadTargetLayer === "collisions"
+        ? this.collisionLayer
+        : this.getEditorLayer();
     if (!layer) return;
+    const erase = pointer.event.shiftKey;
+    if (this.editorRoadTargetLayer === "paths" || this.editorRoadTargetLayer === "collisions") {
+      const autoSet = this.editorRoadSet || this.editorAutoTile;
+      if (!autoSet) return;
+      this.applyEditorAutoTile(layer, tileX, tileY, erase, this.editorCurrentChanges, autoSet);
+      return;
+    }
+    if (!this.editorAutoTile) return;
     this.applyEditorTerrainBlend(layer, tileX, tileY, this.editorCurrentChanges);
   }
 
@@ -1364,32 +1571,50 @@ export default class MainScene extends Phaser.Scene {
     return tile ? tile.index : -1;
   }
 
-  isEditorAutoTile(index) {
-    if (!this.editorAutoTile?.tileSet) return false;
-    return this.editorAutoTile.tileSet.has(index);
+  isEditorAutoTile(index, autoSet = this.editorAutoTile) {
+    if (!autoSet?.tileSet) return false;
+    return autoSet.tileSet.has(index);
   }
 
-  pickEditorAutoTileIndex(layer, tileX, tileY) {
+  pickEditorAutoTileIndex(layer, tileX, tileY, autoSet = this.editorAutoTile) {
     const hasNeighbor = (x, y) => {
       if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) {
         return false;
       }
       const idx = this.getEditorTileIndexAt(layer, x, y);
-      return this.isEditorAutoTile(idx);
+      return this.isEditorAutoTile(idx, autoSet);
     };
 
     const hasN = hasNeighbor(tileX, tileY - 1);
     const hasS = hasNeighbor(tileX, tileY + 1);
     const hasW = hasNeighbor(tileX - 1, tileY);
     const hasE = hasNeighbor(tileX + 1, tileY);
+    const hasNW = hasNeighbor(tileX - 1, tileY - 1);
+    const hasNE = hasNeighbor(tileX + 1, tileY - 1);
+    const hasSW = hasNeighbor(tileX - 1, tileY + 1);
+    const hasSE = hasNeighbor(tileX + 1, tileY + 1);
 
-    const { tiles } = this.editorAutoTile;
+    const { tiles } = autoSet || {};
+    if (!tiles) return this.editorTileIndex;
+    const innerCorners = autoSet?.innerCorners || {};
     const connections = [hasN, hasS, hasW, hasE].filter(Boolean).length;
     if (connections <= 1) {
       return tiles[1][1];
     }
     if ((hasN && hasS && !hasE && !hasW) || (hasE && hasW && !hasN && !hasS)) {
       return tiles[1][1];
+    }
+    if (hasN && hasW && !hasNW && innerCorners.nw !== undefined) {
+      return innerCorners.nw;
+    }
+    if (hasN && hasE && !hasNE && innerCorners.ne !== undefined) {
+      return innerCorners.ne;
+    }
+    if (hasS && hasW && !hasSW && innerCorners.sw !== undefined) {
+      return innerCorners.sw;
+    }
+    if (hasS && hasE && !hasSE && innerCorners.se !== undefined) {
+      return innerCorners.se;
     }
     if (!hasN && !hasW) return tiles[0][0];
     if (!hasN && !hasE) return tiles[0][2];
@@ -1402,13 +1627,13 @@ export default class MainScene extends Phaser.Scene {
     return tiles[1][1];
   }
 
-  hasEditorAutoTileNeighbor(layer, tileX, tileY) {
+  hasEditorAutoTileNeighbor(layer, tileX, tileY, autoSet = this.editorAutoTile) {
     const hasNeighbor = (x, y) => {
       if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) {
         return false;
       }
       const idx = this.getEditorTileIndexAt(layer, x, y);
-      return this.isEditorAutoTile(idx);
+      return this.isEditorAutoTile(idx, autoSet);
     };
     return (
       hasNeighbor(tileX, tileY - 1) ||
@@ -1456,11 +1681,11 @@ export default class MainScene extends Phaser.Scene {
     this.refreshEditorLayerCollision();
   }
 
-  applyEditorAutoTile(layer, tileX, tileY, erase, changes) {
+  applyEditorAutoTile(layer, tileX, tileY, erase, changes, autoSet = this.editorAutoTile) {
     if (erase) {
       this.setEditorTileValue(layer, tileX, tileY, -1, changes);
     } else {
-      const nextIndex = this.pickEditorAutoTileIndex(layer, tileX, tileY);
+      const nextIndex = this.pickEditorAutoTileIndex(layer, tileX, tileY, autoSet);
       this.setEditorTileValue(layer, tileX, tileY, nextIndex, changes);
     }
 
@@ -1471,8 +1696,8 @@ export default class MainScene extends Phaser.Scene {
     for (let y = minY; y <= maxY; y += 1) {
       for (let x = minX; x <= maxX; x += 1) {
         const idx = this.getEditorTileIndexAt(layer, x, y);
-        if (!this.isEditorAutoTile(idx)) continue;
-        const nextIndex = this.pickEditorAutoTileIndex(layer, x, y);
+        if (!this.isEditorAutoTile(idx, autoSet)) continue;
+        const nextIndex = this.pickEditorAutoTileIndex(layer, x, y, autoSet);
         if (nextIndex === idx) continue;
         this.setEditorTileValue(layer, x, y, nextIndex, changes);
       }
