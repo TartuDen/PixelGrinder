@@ -1,5 +1,7 @@
 # PixelGrinder
 
+[![Deploy to itch.io](https://github.com/TartuDen/PixelGrinder/actions/workflows/itchio.yml/badge.svg)](https://github.com/TartuDen/PixelGrinder/actions/workflows/itchio.yml)
+
 **PixelGrinder** is a single-player, browser-based top-down pixel art RPG that emphasizes level-based progression and flexible character builds. Journey through distinct zones, battle challenging mobs, and grow your character’s power step by step—all within your web browser.
 
 ---
@@ -254,3 +256,4 @@ We welcome contributions! Whether it’s bug fixes, new features, or general fee
 - **Asset Credits**: For music, sound effects, pixel art, etc.  
 - **Testing & QA**: Provide guidelines for reporting bugs or testing new features.  
 - **Platform Compatibility**: While primarily browser-based, note if mobile/tablet support is planned.
+

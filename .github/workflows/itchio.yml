@@ -25,20 +25,16 @@ jobs:
         run: npm run build
         working-directory: pixelgrinder-frontend
 
-      - name: Use Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-
       - name: Install Butler
         run: |
           mkdir -p butler
-          gh release download --repo itchio/butler --pattern "butler*linux*amd64*" --dir butler
-          ARCHIVE=$(ls butler/* | head -n 1)
-          if file "$ARCHIVE" | grep -qi "zip"; then
-            unzip "$ARCHIVE" -d butler
+          curl -L -o butler/archive https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          if file butler/archive | grep -qi "zip"; then
+            unzip -q butler/archive -d butler
+          elif file butler/archive | grep -qi "gzip"; then
+            tar -xzf butler/archive -C butler
           else
-            tar -xf "$ARCHIVE" -C butler
+            tar -xf butler/archive -C butler
           fi
           BIN=$(find butler -maxdepth 2 -type f -name butler | head -n 1)
           if [ -z "$BIN" ]; then
