@@ -46,6 +46,7 @@ export function applyAdminOverrides(overrides, refs) {
     playerEquippedItems,
     mobsData,
     allGameSkills,
+    spawnControls,
   } = refs;
 
   if (overrides.playerProfile && playerProfile) {
@@ -82,5 +83,17 @@ export function applyAdminOverrides(overrides, refs) {
         allGameSkills.push({ ...skillOverride });
       }
     });
+  }
+  if (overrides.spawnControls && spawnControls) {
+    const { enabledMobIds, perMobCap, globalCap } = overrides.spawnControls;
+    if (enabledMobIds && spawnControls.enabledMobIds) {
+      Object.assign(spawnControls.enabledMobIds, enabledMobIds);
+    }
+    if (perMobCap && spawnControls.perMobCap) {
+      Object.assign(spawnControls.perMobCap, perMobCap);
+    }
+    if (globalCap !== undefined) {
+      spawnControls.globalCap = globalCap;
+    }
   }
 }

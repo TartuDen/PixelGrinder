@@ -13,6 +13,14 @@ import {
   allGameSkills,
   mobsData,
   defaultMobsData,
+  spawnControls,
+  defaultSpawnControls,
+  defaultPlayerProfile,
+  defaultPlayerBaseStats,
+  defaultPlayerGrowthStats,
+  defaultNaturalRegeneration,
+  defaultPlayerEquippedItems,
+  defaultAllGameSkills,
   naturalRegeneration,
   skillEnhancements,
   SKILL_RANGE_EXTENDER,
@@ -93,6 +101,12 @@ export default class UIManager {
     this.adminPlayerFields = document.getElementById("admin-player-fields");
     this.adminSkillList = document.getElementById("admin-skills-list");
     this.adminSkillFields = document.getElementById("admin-skill-fields");
+    this.adminSpawnGlobal = document.getElementById("admin-spawn-global");
+    this.adminSpawnList = document.getElementById("admin-spawn-list");
+    this.adminResetMobsButton = document.getElementById("admin-reset-mobs");
+    this.adminResetPlayerButton = document.getElementById("admin-reset-player");
+    this.adminResetSkillsButton = document.getElementById("admin-reset-skills");
+    this.adminResetSpawnsButton = document.getElementById("admin-reset-spawns");
     this.adminSelectedMobId = null;
     this.adminSelectedMobInstance = null;
     this.adminSelectedSkillId = null;
@@ -1285,8 +1299,28 @@ export default class UIManager {
     }
     if (this.adminResetButton) {
       this.adminResetButton.addEventListener("click", () => {
-        this.hardResetAdminOverrides();
+        this.resetAdminActiveTab();
       });
+    }
+    if (this.adminResetMobsButton) {
+      this.adminResetMobsButton.addEventListener("click", () =>
+        this.resetAdminMobs()
+      );
+    }
+    if (this.adminResetPlayerButton) {
+      this.adminResetPlayerButton.addEventListener("click", () =>
+        this.resetAdminPlayer()
+      );
+    }
+    if (this.adminResetSkillsButton) {
+      this.adminResetSkillsButton.addEventListener("click", () =>
+        this.resetAdminSkills()
+      );
+    }
+    if (this.adminResetSpawnsButton) {
+      this.adminResetSpawnsButton.addEventListener("click", () =>
+        this.resetAdminSpawns()
+      );
     }
     this.adminTabs.forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -1305,6 +1339,9 @@ export default class UIManager {
       this.adminPanel.style.display = "block";
       this.isAdminOpen = true;
       this.renderAdminPanel();
+      if (this.adminSelectedMobInstance) {
+        this.scene.mobManager?.setMobStandby(this.adminSelectedMobInstance, true);
+      }
       this.startAdminDebugUpdates();
     }
   }
@@ -1313,13 +1350,22 @@ export default class UIManager {
     if (!this.adminPanel) return;
     this.adminPanel.style.display = "none";
     this.isAdminOpen = false;
+    if (this.adminSelectedMobInstance) {
+      this.scene.mobManager?.setMobStandby(this.adminSelectedMobInstance, false);
+    }
     this.stopAdminDebugUpdates();
   }
 
   selectAdminMob(mobId, mobInstance = null) {
     if (!mobId || !mobsData[mobId]) return;
+    if (this.adminSelectedMobInstance && this.adminSelectedMobInstance !== mobInstance) {
+      this.scene.mobManager?.setMobStandby(this.adminSelectedMobInstance, false);
+    }
     this.adminSelectedMobId = mobId;
     this.adminSelectedMobInstance = mobInstance || this.findAdminMobInstance(mobId);
+    if (this.isAdminOpen && this.adminSelectedMobInstance) {
+      this.scene.mobManager?.setMobStandby(this.adminSelectedMobInstance, true);
+    }
     this.renderAdminMobsList();
     this.renderAdminMobDetails(mobId);
   }
@@ -1351,12 +1397,94 @@ export default class UIManager {
         panel.id === `admin-tab-${tabId}`
       );
     });
+    if (tabId === "spawns") {
+      this.renderAdminSpawnPanel();
+    }
   }
 
   renderAdminPanel() {
     this.renderAdminMobsList();
     this.renderAdminPlayerPanel();
     this.renderAdminSkillsList();
+    this.renderAdminSpawnPanel();
+  }
+
+  getActiveAdminTabId() {
+    const activeTab = Array.from(this.adminTabs || []).find((tab) =>
+      tab.classList.contains("active")
+    );
+    return activeTab?.dataset?.tab || "mobs";
+  }
+
+  resetAdminActiveTab() {
+    const tabId = this.getActiveAdminTabId();
+    if (tabId === "player") {
+      this.resetAdminPlayer();
+    } else if (tabId === "skills") {
+      this.resetAdminSkills();
+    } else if (tabId === "spawns") {
+      this.resetAdminSpawns();
+    } else {
+      this.resetAdminMobs();
+    }
+  }
+
+  resetAdminMobs() {
+    Object.keys(mobsData).forEach((key) => delete mobsData[key]);
+    Object.assign(mobsData, JSON.parse(JSON.stringify(defaultMobsData)));
+    Object.keys(mobsData).forEach((mobId) => {
+      this.scene.mobManager?.applyMobTypeChanges(mobId);
+    });
+    this.scene.mobManager?.refreshMobSkillsFromLoot();
+    this.renderAdminMobsList();
+    if (this.adminSelectedMobId) {
+      this.renderAdminMobDetails(this.adminSelectedMobId);
+    }
+    this.scheduleAdminOverridesSave();
+  }
+
+  resetAdminPlayer() {
+    Object.assign(playerProfile, JSON.parse(JSON.stringify(defaultPlayerProfile)));
+    Object.assign(playerBaseStats, JSON.parse(JSON.stringify(defaultPlayerBaseStats)));
+    Object.assign(playerGrowthStats, JSON.parse(JSON.stringify(defaultPlayerGrowthStats)));
+    Object.assign(
+      naturalRegeneration,
+      JSON.parse(JSON.stringify(defaultNaturalRegeneration))
+    );
+    Object.keys(playerEquippedItems).forEach((key) => delete playerEquippedItems[key]);
+    Object.assign(
+      playerEquippedItems,
+      JSON.parse(JSON.stringify(defaultPlayerEquippedItems))
+    );
+    this.scene.playerManager.selectedSkinKey = playerProfile.selectedSkin;
+    this.scene.playerManager.updatePlayerStats();
+    this.scene.updateUI();
+    this.scene.emitStatsUpdate();
+    this.renderAdminPlayerPanel();
+    this.scheduleAdminOverridesSave();
+  }
+
+  resetAdminSkills() {
+    allGameSkills.length = 0;
+    JSON.parse(JSON.stringify(defaultAllGameSkills)).forEach((skill) => {
+      allGameSkills.push(skill);
+    });
+    this.syncPlayerSkillsWithGameSkills();
+    this.scene.mobManager?.refreshMobSkillsFromLoot();
+    this.setupSkills(playerSkills);
+    this.renderAdminSkillsList();
+    this.scheduleAdminOverridesSave();
+  }
+
+  resetAdminSpawns() {
+    const defaults = JSON.parse(JSON.stringify(defaultSpawnControls));
+    Object.keys(spawnControls.enabledMobIds).forEach((key) => delete spawnControls.enabledMobIds[key]);
+    Object.keys(spawnControls.perMobCap).forEach((key) => delete spawnControls.perMobCap[key]);
+    Object.assign(spawnControls.enabledMobIds, defaults.enabledMobIds || {});
+    Object.assign(spawnControls.perMobCap, defaults.perMobCap || {});
+    spawnControls.globalCap = defaults.globalCap ?? null;
+    this.applySpawnControlsAndPersist();
+    this.renderAdminSpawnPanel();
   }
 
   renderAdminMobsList() {
@@ -1473,7 +1601,7 @@ export default class UIManager {
     this.renderAdminMobSkills(mobId, skillsBody);
 
     const { section: debugSection, body: debugBody } =
-      this.createAccordionSection("Debug", true);
+      this.createAccordionSection("Debug", false);
     this.adminMobFields.appendChild(debugSection);
     this.renderAdminMobDebug(mobId, debugBody);
 
@@ -1560,13 +1688,27 @@ export default class UIManager {
   }
 
   findAdminMobInstance(mobId) {
-    const mobs = this.scene.mobManager?.mobs?.getChildren?.() || [];
+    const mobGroup = this.scene.mobManager?.mobs;
+    if (!mobGroup || !mobGroup.getChildren || !mobGroup.children?.entries) {
+      return null;
+    }
+    let mobs = [];
+    try {
+      mobs = mobGroup.getChildren();
+    } catch (err) {
+      return null;
+    }
     const alive = mobs.find((mob) => mob.customData?.id === mobId && !mob.customData.isDead);
     return alive || mobs.find((mob) => mob.customData?.id === mobId) || null;
   }
 
   updateAdminMobDebug(mobId) {
     if (!this.adminMobDebug) return;
+    const mobGroup = this.scene.mobManager?.mobs;
+    if (!mobGroup || !mobGroup.getChildren || !mobGroup.children?.entries) {
+      this.adminMobDebug.innerText = "Mob group not ready.";
+      return;
+    }
     const mob = this.adminSelectedMobInstance || this.findAdminMobInstance(mobId);
     if (!mob || !mob.customData) {
       this.adminMobDebug.innerText = "No mob instance found.";
@@ -1936,6 +2078,88 @@ export default class UIManager {
     if (this.adminSelectedSkillId) {
       this.renderAdminSkillDetails(this.adminSelectedSkillId);
     }
+  }
+
+  renderAdminSpawnPanel() {
+    if (!this.adminSpawnList || !this.adminSpawnGlobal) return;
+    this.adminSpawnGlobal.innerHTML = "";
+    this.adminSpawnList.innerHTML = "";
+
+    const globalRow = document.createElement("div");
+    globalRow.className = "admin-spawn-global";
+    const globalLabel = document.createElement("label");
+    globalLabel.innerText = "Global population cap";
+    const globalInput = document.createElement("input");
+    globalInput.type = "number";
+    globalInput.min = "0";
+    globalInput.placeholder = "No cap";
+    globalInput.className = "admin-spawn-cap";
+    globalInput.value = Number.isFinite(spawnControls.globalCap)
+      ? String(spawnControls.globalCap)
+      : "";
+    globalInput.addEventListener("change", () => {
+      const raw = globalInput.value.trim();
+      const nextValue = raw === "" ? null : Math.max(0, Math.floor(Number(raw)));
+      spawnControls.globalCap = Number.isFinite(nextValue) ? nextValue : null;
+      this.applySpawnControlsAndPersist();
+    });
+    globalRow.appendChild(globalLabel);
+    globalRow.appendChild(globalInput);
+    this.adminSpawnGlobal.appendChild(globalRow);
+
+    const mobIds = Object.keys(mobsData);
+    mobIds.sort((a, b) => {
+      const nameA = mobsData[a]?.name || a;
+      const nameB = mobsData[b]?.name || b;
+      return nameA.localeCompare(nameB);
+    });
+    mobIds.forEach((mobId) => {
+      if (!(mobId in spawnControls.enabledMobIds)) {
+        spawnControls.enabledMobIds[mobId] = true;
+      }
+      if (!(mobId in spawnControls.perMobCap)) {
+        spawnControls.perMobCap[mobId] = null;
+      }
+
+      const row = document.createElement("div");
+      row.className = "admin-spawn-row";
+
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = spawnControls.enabledMobIds[mobId] !== false;
+      toggle.addEventListener("change", () => {
+        spawnControls.enabledMobIds[mobId] = toggle.checked;
+        this.applySpawnControlsAndPersist();
+      });
+
+      const label = document.createElement("label");
+      label.innerText = mobsData[mobId]?.name || mobId;
+
+      const capInput = document.createElement("input");
+      capInput.type = "number";
+      capInput.min = "0";
+      capInput.placeholder = "No cap";
+      capInput.className = "admin-spawn-cap";
+      capInput.value = Number.isFinite(spawnControls.perMobCap[mobId])
+        ? String(spawnControls.perMobCap[mobId])
+        : "";
+      capInput.addEventListener("change", () => {
+        const raw = capInput.value.trim();
+        const nextValue = raw === "" ? null : Math.max(0, Math.floor(Number(raw)));
+        spawnControls.perMobCap[mobId] = Number.isFinite(nextValue) ? nextValue : null;
+        this.applySpawnControlsAndPersist();
+      });
+
+      row.appendChild(toggle);
+      row.appendChild(label);
+      row.appendChild(capInput);
+      this.adminSpawnList.appendChild(row);
+    });
+  }
+
+  applySpawnControlsAndPersist() {
+    this.scene.mobManager?.applySpawnControls(spawnControls);
+    this.scheduleAdminOverridesSave();
   }
 
   renderAdminSkillDetails(skillId) {
@@ -2324,6 +2548,7 @@ export default class UIManager {
       naturalRegeneration: JSON.parse(JSON.stringify(naturalRegeneration)),
       playerEquippedItems: JSON.parse(JSON.stringify(playerEquippedItems)),
       allGameSkills: JSON.parse(JSON.stringify(allGameSkills)),
+      spawnControls: JSON.parse(JSON.stringify(spawnControls)),
     };
     saveAdminOverrides(payload);
   }

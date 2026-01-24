@@ -756,6 +756,12 @@ body {
   overflow: auto;
 }
 
+.admin-tab-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 .admin-tab-panel {
   display: none;
 }
@@ -874,6 +880,43 @@ body {
 
 .admin-loot-table th {
   background: #1c1c1c;
+}
+
+.admin-spawn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-spawn-row {
+  display: grid;
+  grid-template-columns: 22px minmax(120px, 1fr) 120px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #2a2a2a;
+  background: #1b1b1b;
+  border-radius: 6px;
+}
+
+.admin-spawn-row label {
+  margin: 0;
+}
+
+.admin-spawn-cap {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #2f2f2f;
+  background: #141414;
+  color: #d8d8d8;
+  border-radius: 4px;
+}
+
+.admin-spawn-global {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 160px;
+  gap: 8px;
+  align-items: center;
 }
 
 .admin-accordion {

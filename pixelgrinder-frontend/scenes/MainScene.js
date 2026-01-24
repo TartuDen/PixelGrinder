@@ -340,13 +340,42 @@ export default class MainScene extends Phaser.Scene {
   }
 
   create() {
+    this.mobManager = null;
+    this.uiManager = null;
+
+    if (!this.anims.__pgWrapped) {
+      const originalCreate = this.anims.create.bind(this.anims);
+      this.anims.create = (config) => {
+        try {
+          return originalCreate(config);
+        } catch (err) {
+          const details = [
+            "Animation create failed",
+            `key: ${config?.key}`,
+            `frames: ${config?.frames ? "present" : "missing"}`,
+            `frameRate: ${config?.frameRate}`,
+            `repeat: ${config?.repeat}`,
+            err?.stack || err?.message || String(err),
+          ].join("\n");
+          console.error(details);
+          if (window.__pgDebugOverlay) {
+            window.__pgDebugOverlay("Animation create failed", details);
+          }
+          return null;
+        }
+      };
+      this.anims.__pgWrapped = true;
+    }
+
     this.previousLevel = playerProfile.level;
     this.playerSkills = playerSkills;
 
     // Create map
     this.createTilemap();
-    // Define animations for player, mobs, skills
-    this.defineAnimations();
+    // Define animations once (AnimationManager is global across scene restarts)
+    if (!this.anims.exists("necromancer-run-down")) {
+      this.defineAnimations();
+    }
 
     // Chat
     this.chatManager = new ChatManager();
@@ -1155,11 +1184,31 @@ export default class MainScene extends Phaser.Scene {
 
     // Skills
     allGameSkills.forEach((skill) => {
+      const animKey = `${skill.name}_anim`;
+      if (this.anims.exists(animKey)) {
+        return;
+      }
+      if (!this.textures.exists(animKey)) {
+        console.warn(`[anim] Missing texture for ${animKey}`);
+        return;
+      }
+      const texture = this.textures.get(animKey);
+      const frameNames = texture.getFrameNames();
+      const numericFrames = frameNames
+        .map((name) => Number(name))
+        .filter((value) => Number.isFinite(value));
+      const maxFrame = numericFrames.length > 0 ? Math.max(...numericFrames) : 0;
+      const start = Number.isFinite(skill.animationSeq?.[0])
+        ? skill.animationSeq[0]
+        : 0;
+      const end = Number.isFinite(skill.animationSeq?.[1])
+        ? Math.min(skill.animationSeq[1], maxFrame)
+        : start;
       this.anims.create({
-        key: `${skill.name}_anim`,
-        frames: this.anims.generateFrameNumbers(`${skill.name}_anim`, {
-          start: 0,
-          end: skill.animationSeq[1],
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(animKey, {
+          start,
+          end,
         }),
         frameRate: 15,
         repeat: 0,

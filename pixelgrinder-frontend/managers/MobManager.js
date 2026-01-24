@@ -7,6 +7,7 @@ import {
   expModifierRules,
   MOB_CORPSE_DURATION,
   allGameSkills,
+  spawnControls,
 } from "../data/MOCKdata.js";
 import {
   calculateMeleeDamage,
@@ -26,6 +27,7 @@ export default class MobManager {
     this.pathDebugEnabled = false;
     this.pathDebugGraphics = null;
     this.lastDynamicCostUpdate = 0;
+    this.spawnControls = spawnControls;
   }
 
   clearIdleWanderTimers(mob) {
@@ -338,8 +340,10 @@ export default class MobManager {
           spawnZoneY: spawnZone.y,
           spawnZoneW: spawnZone.width || 0,
           spawnZoneH: spawnZone.height || 0,
-          isDead: false,
-          currentType: mobInfo.mobType, // 'friend' or 'enemy'
+            isDead: false,
+            isSuppressed: false,
+            isStandby: false,
+            currentType: mobInfo.mobType, // 'friend' or 'enemy'
           state: "idle",
           lastAttackTime: 0,
           droppedLoot: [],
@@ -540,6 +544,12 @@ export default class MobManager {
     this.refreshDynamicPathCosts();
     this.mobs.getChildren().forEach((mob) => {
       if (!mob.active || mob.customData.isDead) return;
+      if (mob.customData.isStandby) {
+        mob.body.setVelocity(0, 0);
+        mob.anims.stop();
+        this.updateMobUI(mob);
+        return;
+      }
 
       const mobInfo = mobsData[mob.customData.id];
       const behavior = this.getMobBehavior(mobInfo);
@@ -1438,6 +1448,8 @@ export default class MobManager {
         },
       });
     }
+
+    this.applySpawnControls(this.spawnControls);
   }
 
   playAttackAnimation(mob, target) {
@@ -1723,12 +1735,17 @@ export default class MobManager {
   respawnMob(mob) {
     const mobInfo = mobsData[mob.customData.id];
     if (!mobInfo) return;
+    if (!this.isMobTypeEnabled(mob.customData.id) || !this.canSpawnMore(mob.customData.id)) {
+      this.suppressMob(mob);
+      return;
+    }
 
     mob.customData.hp = mobInfo.health;
     mob.customData.mana = mobInfo.mana || 0;
     mob.customData.currentType = mobInfo.mobType;
     mob.customData.state = "idle";
     mob.customData.isDead = false;
+    mob.customData.isSuppressed = false;
     mob.customData.droppedLoot = [];
     mob.customData.mobSkillCooldowns = {};
     mob.customData.mobSkillTimers = {};
@@ -1774,6 +1791,149 @@ export default class MobManager {
       `Respawning mob "${mob.customData.id}" at (${mob.x}, ${mob.y}).`
     );
     this.assignRandomIdleOrWander(mob);
+  }
+
+  setMobStandby(mob, shouldStandby) {
+    if (!mob || !mob.customData) return;
+    if (shouldStandby) {
+      mob.customData.isStandby = true;
+      mob.customData.state = "idle";
+      mob.customData.lastAggroTime = 0;
+      mob.customData.lastSeenPosition = null;
+      mob.customData.path = null;
+      mob.customData.pathIndex = 0;
+      mob.customData.waitingForPath = false;
+      mob.customData.isCastingSkill = false;
+      mob.customData.castStartTime = 0;
+      mob.customData.castDuration = 0;
+      this.clearIdleWanderTimers(mob);
+      mob.body.setVelocity(0, 0);
+      mob.anims.stop();
+      return;
+    }
+    mob.customData.isStandby = false;
+    if (!mob.customData.isDead && mob.active) {
+      this.assignRandomIdleOrWander(mob);
+    }
+  }
+
+  applySpawnControls(nextControls) {
+    if (!nextControls) return;
+    this.spawnControls = nextControls;
+    if (!this.mobs) return;
+
+    const globalCap = this.getGlobalCap();
+    const perMobCap = this.spawnControls.perMobCap || {};
+    const mobCounts = {};
+    let totalActive = 0;
+
+    this.mobs.getChildren().forEach((mob) => {
+      if (!mob || mob.customData.isDead) return;
+      if (!mob.active) return;
+      const mobId = mob.customData.id;
+      mobCounts[mobId] = (mobCounts[mobId] || 0) + 1;
+      totalActive += 1;
+    });
+
+    this.mobs.getChildren().forEach((mob) => {
+      if (!mob || mob.customData.isDead) return;
+      const mobId = mob.customData.id;
+      if (!this.isMobTypeEnabled(mobId)) {
+        this.suppressMob(mob);
+        return;
+      }
+      const cap = this.getPerMobCap(mobId, perMobCap);
+      if (cap !== null && mobCounts[mobId] > cap) {
+        this.suppressMob(mob);
+        mobCounts[mobId] -= 1;
+        totalActive = Math.max(0, totalActive - 1);
+        return;
+      }
+      if (globalCap !== null && totalActive > globalCap) {
+        this.suppressMob(mob);
+        totalActive = Math.max(0, totalActive - 1);
+      }
+    });
+
+    this.mobs.getChildren().forEach((mob) => {
+      if (!mob || mob.customData.isDead) return;
+      if (!mob.customData.isSuppressed) return;
+      const mobId = mob.customData.id;
+      if (!this.isMobTypeEnabled(mobId)) return;
+      const cap = this.getPerMobCap(mobId, perMobCap);
+      const currentCount = this.countActiveMobs(mobId);
+      if (cap !== null && currentCount >= cap) return;
+      if (globalCap !== null && this.countActiveMobs() >= globalCap) return;
+      this.respawnMob(mob);
+      mob.customData.isSuppressed = false;
+    });
+  }
+
+  isMobTypeEnabled(mobId) {
+    if (!this.spawnControls || !this.spawnControls.enabledMobIds) return true;
+    return this.spawnControls.enabledMobIds[mobId] !== false;
+  }
+
+  getPerMobCap(mobId, perMobCapOverride) {
+    const source = perMobCapOverride || this.spawnControls?.perMobCap;
+    const raw = source ? source[mobId] : null;
+    if (!Number.isFinite(raw)) return null;
+    return Math.max(0, Math.floor(raw));
+  }
+
+  getGlobalCap() {
+    const raw = this.spawnControls ? this.spawnControls.globalCap : null;
+    if (!Number.isFinite(raw)) return null;
+    return Math.max(0, Math.floor(raw));
+  }
+
+  countActiveMobs(mobId) {
+    if (!this.mobs) return 0;
+    let count = 0;
+    this.mobs.getChildren().forEach((mob) => {
+      if (!mob || !mob.active || mob.customData.isDead) return;
+      if (mob.customData.isSuppressed) return;
+      if (mobId && mob.customData.id !== mobId) return;
+      count += 1;
+    });
+    return count;
+  }
+
+  canSpawnMore(mobId) {
+    if (!this.isMobTypeEnabled(mobId)) return false;
+    const globalCap = this.getGlobalCap();
+    if (globalCap !== null && this.countActiveMobs() >= globalCap) return false;
+    const perCap = this.getPerMobCap(mobId);
+    if (perCap !== null && this.countActiveMobs(mobId) >= perCap) return false;
+    return true;
+  }
+
+  suppressMob(mob) {
+    if (!mob || !mob.customData) return;
+    mob.customData.isSuppressed = true;
+    mob.customData.isCastingSkill = false;
+    mob.customData.castStartTime = 0;
+    mob.customData.castDuration = 0;
+    mob.customData.state = "idle";
+    this.clearIdleWanderTimers(mob);
+    mob.body.setVelocity(0, 0);
+    mob.anims.stop();
+    if (mob.customData.uiContainer) {
+      mob.customData.uiContainer.setVisible(false);
+    }
+    if (mob.customData.debugText) {
+      mob.customData.debugText.setVisible(false);
+    }
+    if (mob.customData.castBarBg) {
+      mob.customData.castBarBg.setVisible(false);
+    }
+    if (mob.customData.castBarFill) {
+      mob.customData.castBarFill.setVisible(false);
+    }
+    mob.setActive(false).setVisible(false);
+    if (mob.body) {
+      mob.body.setEnable(false);
+    }
   }
 
   getStats(mob) {

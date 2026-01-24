@@ -2,6 +2,15 @@
 
 This repo auto-deploys the HTML5 build to itch.io via GitHub Actions + Butler.
 
+## Run locally
+
+From repo root:
+- `cd pixelgrinder-frontend`
+- `npm ci` (or `npm install` if `npm ci` fails)
+- `npm run dev`
+
+Open the URL Vite prints (usually `http://localhost:5173`).
+
 ## Manual ZIP upload (no Butler)
 
 Use this when you want to upload a ZIP manually in the itch.io UI.

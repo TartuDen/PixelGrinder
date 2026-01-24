@@ -180,7 +180,30 @@ const SKILL_RANGE_EXTENDER = 1.1;
 const GATHER_RANGE = 50;
 const MOB_CORPSE_DURATION = 8000;
 
+const defaultPlayerProfile = JSON.parse(JSON.stringify(playerProfile));
+const defaultPlayerBaseStats = JSON.parse(JSON.stringify(playerBaseStats));
+const defaultPlayerGrowthStats = JSON.parse(JSON.stringify(playerGrowthStats));
+const defaultNaturalRegeneration = JSON.parse(JSON.stringify(naturalRegeneration));
+const defaultPlayerEquippedItems = JSON.parse(JSON.stringify(playerEquippedItems));
+const defaultAllGameSkills = JSON.parse(JSON.stringify(allGameSkills));
 const defaultMobsData = JSON.parse(JSON.stringify(mobsData));
+
+const buildDefaultSpawnControls = () => {
+  const enabledMobIds = {};
+  const perMobCap = {};
+  Object.keys(mobsData).forEach((mobId) => {
+    enabledMobIds[mobId] = true;
+    perMobCap[mobId] = null;
+  });
+  return {
+    enabledMobIds,
+    perMobCap,
+    globalCap: null,
+  };
+};
+
+const spawnControls = buildDefaultSpawnControls();
+const defaultSpawnControls = JSON.parse(JSON.stringify(spawnControls));
 
 const adminOverrides = loadAdminOverrides();
 applyAdminOverrides(adminOverrides, {
@@ -191,6 +214,7 @@ applyAdminOverrides(adminOverrides, {
   playerEquippedItems,
   mobsData,
   allGameSkills,
+  spawnControls,
 });
 
 export {
@@ -219,5 +243,13 @@ export {
   MOB_CORPSE_DURATION,
   zones,
   npcVendors,
+  spawnControls,
   defaultMobsData,
+  defaultSpawnControls,
+  defaultPlayerProfile,
+  defaultPlayerBaseStats,
+  defaultPlayerGrowthStats,
+  defaultNaturalRegeneration,
+  defaultPlayerEquippedItems,
+  defaultAllGameSkills,
 };
