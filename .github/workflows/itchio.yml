@@ -26,17 +26,60 @@ jobs:
         working-directory: pixelgrinder-frontend
 
       - name: Install Butler
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           mkdir -p butler
-          ZIP_URL="https://github.com/itchio/butler/releases/latest/download/butler-linux-amd64.zip"
-          TGZ_URL="https://github.com/itchio/butler/releases/latest/download/butler-linux-amd64.tar.gz"
-          if curl -fsSL -o butler/archive.zip "$ZIP_URL"; then
-            unzip -q butler/archive.zip -d butler
-          elif curl -fsSL -o butler/archive.tar.gz "$TGZ_URL"; then
-            tar -xzf butler/archive.tar.gz -C butler
+          ASSET_URL=$(python3 - <<'PY'
+import json
+import os
+import sys
+import urllib.request
+
+url = "https://api.github.com/repos/itchio/butler/releases/latest"
+req = urllib.request.Request(url)
+token = os.environ.get("GITHUB_TOKEN")
+if token:
+    req.add_header("Authorization", f"Bearer {token}")
+
+with urllib.request.urlopen(req) as response:
+    data = json.load(response)
+
+assets = data.get("assets", [])
+candidates = []
+for asset in assets:
+    name = asset.get("name", "").lower()
+    if "linux" not in name:
+        continue
+    if "amd64" not in name and "x86_64" not in name:
+        continue
+    if not (name.endswith(".zip") or name.endswith(".tar.gz") or name.endswith(".tgz")):
+        continue
+    candidates.append(asset)
+
+if not candidates:
+    print("No linux amd64 butler asset found in latest release.", file=sys.stderr)
+    sys.exit(1)
+
+def rank(name):
+    if name.endswith(".zip"):
+        return 0
+    if name.endswith(".tar.gz") or name.endswith(".tgz"):
+        return 1
+    return 2
+
+candidates.sort(key=lambda a: rank(a.get("name", "").lower()))
+print(candidates[0]["browser_download_url"])
+PY
+          )
+          curl -fsSL -o butler/archive "$ASSET_URL"
+          if file butler/archive | grep -qi "zip"; then
+            unzip -q butler/archive -d butler
+          elif file butler/archive | grep -qi "gzip"; then
+            tar -xzf butler/archive -C butler
           else
-            echo "Failed to download butler from GitHub releases."
-            exit 1
+            tar -xf butler/archive -C butler
           fi
           BIN=$(find butler -maxdepth 2 -type f -name butler | head -n 1)
           if [ -z "$BIN" ]; then
