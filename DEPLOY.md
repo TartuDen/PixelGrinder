@@ -12,6 +12,15 @@ Use this when you want to upload a ZIP manually in the itch.io UI.
      - `npm ci`
      - `npm run build`
 
+   If `npm ci` fails on Windows with an EPERM unlink error (locked `esbuild.exe`):
+   - Close any running dev servers or editors watching `node_modules`.
+   - Delete `pixelgrinder-frontend/node_modules`.
+   - Re-run `npm ci`.
+   - If it still fails, use `npm install` as a fallback.
+
+   If `npm run build` says `vite` is not recognized, the install step failed.
+   Re-run the install step above before building.
+
 2) Create a ZIP with `index.html` at the root
    - From `pixelgrinder-frontend/dist`:
      - PowerShell: `Compress-Archive -Path * -DestinationPath ..\pixelgrinder-html5.zip`
