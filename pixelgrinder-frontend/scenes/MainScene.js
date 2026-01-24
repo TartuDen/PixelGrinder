@@ -894,8 +894,10 @@ export default class MainScene extends Phaser.Scene {
     };
     const getPaletteTile = (event) => {
       const rect = canvas.getBoundingClientRect();
-      const localX = event.clientX - rect.left;
-      const localY = event.clientY - rect.top;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const localX = (event.clientX - rect.left) * scaleX;
+      const localY = (event.clientY - rect.top) * scaleY;
       const tileX = Math.floor(localX / (tileWidth * scale));
       const tileY = Math.floor(localY / (tileHeight * scale));
       if (tileX < 0 || tileY < 0 || tileX >= columns || tileY >= rows) {
