@@ -1338,6 +1338,10 @@ export default class UIManager {
     } else {
       this.adminPanel.style.display = "block";
       this.isAdminOpen = true;
+      if (!this.adminSelectedMobInstance && this.scene.targetedMob?.customData?.id) {
+        this.adminSelectedMobInstance = this.scene.targetedMob;
+        this.adminSelectedMobId = this.scene.targetedMob.customData.id;
+      }
       this.renderAdminPanel();
       if (this.adminSelectedMobInstance) {
         this.scene.mobManager?.setMobStandby(this.adminSelectedMobInstance, true);
