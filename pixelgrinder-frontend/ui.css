@@ -1009,6 +1009,88 @@ body {
   white-space: pre-wrap;
 }
 
+/* ------------------------------
+   Map Editor
+------------------------------ */
+#map-editor {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 260px;
+  background: rgba(18, 18, 18, 0.96);
+  border: 1px solid #3a2c1f;
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 4000;
+  color: #e8dfd2;
+  font-size: 12px;
+}
+.map-editor-header {
+  font-family: "Uncial Antiqua", serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.map-editor-row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.map-editor-row button {
+  grid-column: 1 / -1;
+  padding: 6px 8px;
+  border: 1px solid #3a2c1f;
+  background: #1f1a15;
+  color: #e2d5c3;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.map-editor-row button + button {
+  margin-top: 6px;
+}
+.map-editor-row select,
+.map-editor-row input {
+  background: #1a1511;
+  border: 1px solid #3a2c1f;
+  color: #f0e2cf;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.map-editor-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #2b2118;
+}
+.map-editor-subheader {
+  font-family: "Uncial Antiqua", serif;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  color: #d2c2ad;
+}
+.map-editor-palette-wrap {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid #3a2c1f;
+  border-radius: 6px;
+  background: #0f0c09;
+  padding: 4px;
+}
+#map-editor-palette {
+  display: block;
+  image-rendering: pixelated;
+}
+.map-editor-help {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #c8b8a4;
+}
+
 @media (max-width: 900px) {
   .admin-panel {
     width: 94vw;

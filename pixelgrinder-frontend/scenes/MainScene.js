@@ -19,6 +19,9 @@ import {
   playerGrowthStats,
   allGameSkills,
 } from "../data/MOCKdata.js";
+import { map1Data } from "../data/generated/map1Data.js";
+import { generateProceduralMap } from "../data/generated/proceduralMap.js";
+import { mapMode, mapSeed, zoneWidth, zoneHeight, editorEnabled } from "../config.js";
 import { calculateLevelProgress } from "../helpers/experience.js";
 import {
   loadSave,
@@ -48,12 +51,23 @@ export default class MainScene extends Phaser.Scene {
     this.autoSaveTimer = null;
     this.isPlayerDead = false;
 
+    this.editorActive = false;
+    this.editorData = null;
+    this.editorUI = null;
+    this.editorLayer = "background";
+    this.editorTileIndex = 0;
+    this.editorIsPainting = false;
+    this.editorMode = "tiles";
+    this.editorSpawnSelection = null;
+    this.editorSpawnOverlay = null;
+    this.editorSpawnDrag = null;
+    this.editorPalette = null;
+
     this.events = new Phaser.Events.EventEmitter();
   }
 
   preload() {
-    // Tiled map
-    this.load.tilemapTiledJSON("Map1", "assets/map/map1.tmj");
+    // Tiled map (removed; using generated map data)
     this.load.image("terrain", "assets/map/terrain.png");
 
     // =======================
@@ -486,6 +500,10 @@ export default class MainScene extends Phaser.Scene {
     this.uiManager.createInGameMenuButtons();
 
     this.startAutoSave();
+
+    if (editorEnabled) {
+      this.initMapEditor();
+    }
   }
 
   update(time, delta) {
@@ -514,21 +532,660 @@ export default class MainScene extends Phaser.Scene {
   //      TILEMAP LAYERS
   // ------------------------------
   createTilemap() {
-    this.map = this.make.tilemap({ key: "Map1" });
+    let data =
+      mapMode === "procedural"
+        ? generateProceduralMap({
+            seed: mapSeed,
+            width: zoneWidth,
+            height: zoneHeight,
+          })
+        : map1Data;
+    const editorOverride = this.loadEditorMapOverride();
+    if (editorOverride) {
+      data = editorOverride;
+    }
+
+    this.map = this.make.tilemap({
+      tileWidth: data.tileWidth,
+      tileHeight: data.tileHeight,
+      width: data.width,
+      height: data.height,
+    });
     const tileset = this.map.addTilesetImage("terrain", "terrain");
 
-    // background, paths - walkable
-    this.backgroundLayer = this.map.createLayer("background", tileset, 0, 0);
-    this.pathsLayer = this.map.createLayer("paths", tileset, 0, 0);
+    this.backgroundLayer = this.map.createBlankLayer("background", tileset, 0, 0);
+    this.pathsLayer = this.map.createBlankLayer("paths", tileset, 0, 0);
+    this.collisionLayer = this.map.createBlankLayer("collisions", tileset, 0, 0);
+    this.gatherRockLayer = this.map.createBlankLayer("gather_rock", tileset, 0, 0);
 
-    // collisions, gather_rock - collidable
-    this.collisionLayer = this.map.createLayer("collisions", tileset, 0, 0);
-    // Mark all tiles (except -1) as colliding in collisions layer
-    this.collisionLayer.setCollisionByExclusion([-1]);
+    if (data.layers.background) {
+      this.backgroundLayer.putTilesAt(data.layers.background, 0, 0);
+    }
+    if (data.layers.paths) {
+      this.pathsLayer.putTilesAt(data.layers.paths, 0, 0);
+    }
+    if (data.layers.collisions) {
+      this.collisionLayer.putTilesAt(data.layers.collisions, 0, 0);
+      this.collisionLayer.setCollisionByExclusion([-1]);
+    }
+    if (data.layers.gather_rock) {
+      this.gatherRockLayer.putTilesAt(data.layers.gather_rock, 0, 0);
+      this.gatherRockLayer.setCollisionByExclusion([-1]);
+    }
 
-    this.gatherRockLayer = this.map.createLayer("gather_rock", tileset, 0, 0);
-    // Mark all tiles (except -1) as colliding in gather_rock layer
-    this.gatherRockLayer.setCollisionByExclusion([-1]);
+    const objects = Object.keys(data.objects || {}).map((name) => ({
+      name,
+      objects: data.objects[name],
+    }));
+    this.map.objects = objects;
+
+    this.editorData = data;
+  }
+
+  initMapEditor() {
+    this.editorActive = false;
+    this.editorLayer = "background";
+    this.editorTileIndex = 0;
+    this.editorMode = "tiles";
+
+    this.editorUI = document.getElementById("map-editor");
+    if (!this.editorUI) {
+      this.editorUI = document.createElement("div");
+      this.editorUI.id = "map-editor";
+      this.editorUI.style.display = "none";
+      this.editorUI.innerHTML = `
+        <div class="map-editor-header">Map Editor (F2)</div>
+        <div class="map-editor-row">
+          <label>Mode</label>
+          <select id="map-editor-mode">
+            <option value="tiles">tiles</option>
+            <option value="spawns">spawns</option>
+          </select>
+        </div>
+        <div class="map-editor-row">
+          <label>Layer</label>
+          <select id="map-editor-layer">
+            <option value="background">background</option>
+            <option value="paths">paths</option>
+            <option value="collisions">collisions</option>
+            <option value="gather_rock">gather_rock</option>
+          </select>
+        </div>
+        <div class="map-editor-row">
+          <label>Tile Index</label>
+          <input id="map-editor-tile" type="number" min="-1" step="1" value="0" />
+        </div>
+        <div class="map-editor-section">
+          <div class="map-editor-subheader">Palette</div>
+          <div class="map-editor-palette-wrap">
+            <canvas id="map-editor-palette"></canvas>
+          </div>
+        </div>
+        <div class="map-editor-section">
+          <div class="map-editor-subheader">Spawn Zones</div>
+          <div class="map-editor-row">
+            <label>Zone</label>
+            <select id="map-editor-spawn-list"></select>
+          </div>
+          <div class="map-editor-row">
+            <label>X</label>
+            <input id="map-editor-spawn-x" type="number" step="1" />
+          </div>
+          <div class="map-editor-row">
+            <label>Y</label>
+            <input id="map-editor-spawn-y" type="number" step="1" />
+          </div>
+          <div class="map-editor-row">
+            <label>W</label>
+            <input id="map-editor-spawn-w" type="number" min="1" step="1" />
+          </div>
+          <div class="map-editor-row">
+            <label>H</label>
+            <input id="map-editor-spawn-h" type="number" min="1" step="1" />
+          </div>
+          <div class="map-editor-row">
+            <button id="map-editor-spawn-add">Add Zone</button>
+            <button id="map-editor-spawn-remove">Remove Zone</button>
+          </div>
+          <div class="map-editor-row">
+            <button id="map-editor-spawn-apply">Apply Zone</button>
+          </div>
+        </div>
+        <div class="map-editor-row">
+          <button id="map-editor-save">Save Local</button>
+          <button id="map-editor-download">Download JSON</button>
+        </div>
+        <div class="map-editor-row">
+          <button id="map-editor-clear">Clear Layer</button>
+        </div>
+        <div class="map-editor-help">
+          Tiles: Paint LMB | Erase Shift+LMB | Pick Alt+LMB<br />
+          Spawns: Drag zone to move | Edit X/Y/W/H then Apply
+        </div>
+      `;
+      document.body.appendChild(this.editorUI);
+    }
+
+    const modeSelect = this.editorUI.querySelector("#map-editor-mode");
+    const layerSelect = this.editorUI.querySelector("#map-editor-layer");
+    const tileInput = this.editorUI.querySelector("#map-editor-tile");
+    const paletteCanvas = this.editorUI.querySelector("#map-editor-palette");
+    const spawnList = this.editorUI.querySelector("#map-editor-spawn-list");
+    const spawnX = this.editorUI.querySelector("#map-editor-spawn-x");
+    const spawnY = this.editorUI.querySelector("#map-editor-spawn-y");
+    const spawnW = this.editorUI.querySelector("#map-editor-spawn-w");
+    const spawnH = this.editorUI.querySelector("#map-editor-spawn-h");
+    const spawnAddBtn = this.editorUI.querySelector("#map-editor-spawn-add");
+    const spawnRemoveBtn = this.editorUI.querySelector("#map-editor-spawn-remove");
+    const spawnApplyBtn = this.editorUI.querySelector("#map-editor-spawn-apply");
+    const saveBtn = this.editorUI.querySelector("#map-editor-save");
+    const downloadBtn = this.editorUI.querySelector("#map-editor-download");
+    const clearBtn = this.editorUI.querySelector("#map-editor-clear");
+
+    modeSelect.addEventListener("change", () => {
+      this.editorMode = modeSelect.value;
+      this.renderEditorSpawnOverlay();
+    });
+    layerSelect.addEventListener("change", () => {
+      this.editorLayer = layerSelect.value;
+    });
+    tileInput.addEventListener("change", () => {
+      const nextValue = Number(tileInput.value);
+      if (Number.isFinite(nextValue)) {
+        this.editorTileIndex = Math.floor(nextValue);
+        this.renderEditorPalette();
+      }
+    });
+    saveBtn.addEventListener("click", () => this.saveEditorMap());
+    downloadBtn.addEventListener("click", () => this.downloadEditorMap());
+    clearBtn.addEventListener("click", () => this.clearEditorLayer());
+    spawnList.addEventListener("change", () => {
+      const selectedId = Number(spawnList.value);
+      const zone = this.getEditorSpawnZones().find((entry) => entry.id === selectedId);
+      this.selectEditorSpawnZone(zone || null);
+    });
+    spawnAddBtn.addEventListener("click", () => this.addEditorSpawnZone());
+    spawnRemoveBtn.addEventListener("click", () => this.removeEditorSpawnZone());
+    spawnApplyBtn.addEventListener("click", () =>
+      this.applyEditorSpawnInputs({
+        x: spawnX.value,
+        y: spawnY.value,
+        w: spawnW.value,
+        h: spawnH.value,
+      })
+    );
+
+    this.input.keyboard.on("keydown-F2", () => {
+      this.editorActive = !this.editorActive;
+      this.editorUI.style.display = this.editorActive ? "block" : "none";
+      this.renderEditorSpawnOverlay();
+    });
+
+    this.input.on("pointerdown", (pointer) => {
+      if (!this.editorActive) return;
+      if (pointer.rightButtonDown()) return;
+      if (this.editorMode === "spawns") {
+        this.handleEditorSpawnPointerDown(pointer);
+        return;
+      }
+      this.editorIsPainting = true;
+      this.handleEditorPaint(pointer);
+    });
+
+    this.input.on("pointerup", () => {
+      if (!this.editorActive) return;
+      if (this.editorMode === "spawns") {
+        this.editorSpawnDrag = null;
+        this.editorIsPainting = false;
+        return;
+      }
+      this.editorIsPainting = false;
+    });
+
+    this.input.on("pointermove", (pointer) => {
+      if (!this.editorActive) return;
+      if (this.editorMode === "spawns") {
+        this.handleEditorSpawnPointerMove(pointer);
+        return;
+      }
+      if (!this.editorIsPainting) return;
+      this.handleEditorPaint(pointer);
+    });
+
+    this.ensureEditorObjects();
+    this.initEditorPalette(paletteCanvas);
+    this.updateEditorSpawnList();
+    this.renderEditorSpawnOverlay();
+  }
+
+  initEditorPalette(canvas) {
+    if (!canvas) return;
+    const texture = this.textures.get("terrain");
+    const image = texture?.getSourceImage();
+    if (!image || !image.width || !image.height) {
+      return;
+    }
+    const tileWidth = this.map?.tileWidth || 32;
+    const tileHeight = this.map?.tileHeight || 32;
+    const maxWidth = 220;
+    const scale = Math.min(1, maxWidth / image.width);
+    const columns = Math.floor(image.width / tileWidth);
+    const rows = Math.floor(image.height / tileHeight);
+    canvas.width = Math.floor(image.width * scale);
+    canvas.height = Math.floor(image.height * scale);
+    this.editorPalette = {
+      canvas,
+      ctx: canvas.getContext("2d"),
+      image,
+      tileWidth,
+      tileHeight,
+      scale,
+      columns,
+      rows,
+    };
+    canvas.addEventListener("click", (event) => {
+      if (!this.editorPalette) return;
+      const rect = canvas.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+      const tileX = Math.floor(localX / (tileWidth * scale));
+      const tileY = Math.floor(localY / (tileHeight * scale));
+      if (tileX < 0 || tileY < 0 || tileX >= columns || tileY >= rows) {
+        return;
+      }
+      const nextIndex = tileY * columns + tileX;
+      this.editorTileIndex = nextIndex;
+      const tileInput = this.editorUI.querySelector("#map-editor-tile");
+      tileInput.value = String(nextIndex);
+      this.renderEditorPalette();
+    });
+    this.renderEditorPalette();
+  }
+
+  renderEditorPalette() {
+    if (!this.editorPalette) return;
+    const { ctx, image, tileWidth, tileHeight, scale, columns, rows, canvas } =
+      this.editorPalette;
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= columns; x += 1) {
+      const px = Math.floor(x * tileWidth * scale) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= rows; y += 1) {
+      const py = Math.floor(y * tileHeight * scale) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, py);
+      ctx.lineTo(canvas.width, py);
+      ctx.stroke();
+    }
+    if (Number.isFinite(this.editorTileIndex) && this.editorTileIndex >= 0) {
+      const tileX = this.editorTileIndex % columns;
+      const tileY = Math.floor(this.editorTileIndex / columns);
+      ctx.strokeStyle = "rgba(245,209,66,0.95)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        tileX * tileWidth * scale + 1,
+        tileY * tileHeight * scale + 1,
+        tileWidth * scale - 2,
+        tileHeight * scale - 2
+      );
+    }
+  }
+
+  ensureEditorObjects() {
+    if (!this.editorData) return;
+    if (!this.editorData.objects) {
+      this.editorData.objects = {};
+    }
+    if (!Array.isArray(this.editorData.objects.GameObjects)) {
+      this.editorData.objects.GameObjects = [];
+    }
+  }
+
+  getEditorSpawnZones() {
+    this.ensureEditorObjects();
+    if (!this.editorData || !this.editorData.objects?.GameObjects) {
+      return [];
+    }
+    return this.editorData.objects.GameObjects.filter((obj) =>
+      obj.name?.startsWith("MobSpawnZone")
+    );
+  }
+
+  updateEditorSpawnList() {
+    if (!this.editorUI) return;
+    const spawnList = this.editorUI.querySelector("#map-editor-spawn-list");
+    if (!spawnList) return;
+    const zones = this.getEditorSpawnZones();
+    spawnList.innerHTML = "";
+    zones.forEach((zone) => {
+      const option = document.createElement("option");
+      option.value = String(zone.id);
+      option.textContent = zone.name || `Zone ${zone.id}`;
+      spawnList.appendChild(option);
+    });
+    if (this.editorSpawnSelection) {
+      const exists = zones.some((zone) => zone.id === this.editorSpawnSelection.id);
+      if (!exists) {
+        this.editorSpawnSelection = null;
+      }
+    }
+    if (!this.editorSpawnSelection && zones.length > 0) {
+      this.editorSpawnSelection = zones[0];
+    }
+    if (this.editorSpawnSelection) {
+      spawnList.value = String(this.editorSpawnSelection.id);
+    }
+    this.syncEditorSpawnInputs();
+  }
+
+  syncEditorSpawnInputs() {
+    if (!this.editorUI) return;
+    const spawnX = this.editorUI.querySelector("#map-editor-spawn-x");
+    const spawnY = this.editorUI.querySelector("#map-editor-spawn-y");
+    const spawnW = this.editorUI.querySelector("#map-editor-spawn-w");
+    const spawnH = this.editorUI.querySelector("#map-editor-spawn-h");
+    if (!spawnX || !spawnY || !spawnW || !spawnH) return;
+    if (!this.editorSpawnSelection) {
+      spawnX.value = "";
+      spawnY.value = "";
+      spawnW.value = "";
+      spawnH.value = "";
+      return;
+    }
+    spawnX.value = String(Math.round(this.editorSpawnSelection.x || 0));
+    spawnY.value = String(Math.round(this.editorSpawnSelection.y || 0));
+    spawnW.value = String(Math.round(this.editorSpawnSelection.width || 0));
+    spawnH.value = String(Math.round(this.editorSpawnSelection.height || 0));
+  }
+
+  selectEditorSpawnZone(zone) {
+    this.editorSpawnSelection = zone;
+    this.syncEditorSpawnInputs();
+    this.renderEditorSpawnOverlay();
+  }
+
+  applyEditorSpawnInputs(values) {
+    if (!this.editorSpawnSelection) return;
+    const nextX = Number(values.x);
+    const nextY = Number(values.y);
+    const nextW = Number(values.w);
+    const nextH = Number(values.h);
+    if (Number.isFinite(nextX)) this.editorSpawnSelection.x = nextX;
+    if (Number.isFinite(nextY)) this.editorSpawnSelection.y = nextY;
+    if (Number.isFinite(nextW) && nextW > 0) {
+      this.editorSpawnSelection.width = nextW;
+    }
+    if (Number.isFinite(nextH) && nextH > 0) {
+      this.editorSpawnSelection.height = nextH;
+    }
+    this.clampSpawnZoneToBounds(this.editorSpawnSelection);
+    this.syncEditorObjectsToMap();
+    this.syncEditorSpawnInputs();
+    this.renderEditorSpawnOverlay();
+  }
+
+  addEditorSpawnZone() {
+    if (!this.editorData || !this.map) return;
+    this.ensureEditorObjects();
+    let maxIndex = 0;
+    let maxId = 0;
+    this.editorData.objects.GameObjects.forEach((obj) => {
+      if (Number.isFinite(obj.id)) {
+        maxId = Math.max(maxId, obj.id);
+      }
+      if (obj.name?.startsWith("MobSpawnZone")) {
+        const suffix = Number(obj.name.replace("MobSpawnZone", ""));
+        if (Number.isFinite(suffix)) {
+          maxIndex = Math.max(maxIndex, suffix);
+        }
+      }
+    });
+
+    const tileWidth = this.map?.tileWidth || 32;
+    const tileHeight = this.map?.tileHeight || 32;
+    const defaultSize = tileWidth * 3;
+    const spawnPos = this.getEditorSpawnAddPosition(defaultSize, defaultSize);
+    const newZone = {
+      id: maxId + 1,
+      name: `MobSpawnZone${maxIndex + 1}`,
+      type: "",
+      x: spawnPos.x,
+      y: spawnPos.y,
+      width: defaultSize,
+      height: defaultSize,
+      rotation: 0,
+      visible: true,
+    };
+    this.editorData.objects.GameObjects.push(newZone);
+    this.selectEditorSpawnZone(newZone);
+    this.updateEditorSpawnList();
+    this.syncEditorObjectsToMap();
+    this.renderEditorSpawnOverlay();
+  }
+
+  removeEditorSpawnZone() {
+    if (!this.editorSpawnSelection) return;
+    const zones = this.editorData.objects.GameObjects;
+    const index = zones.findIndex(
+      (zone) => zone.id === this.editorSpawnSelection.id
+    );
+    if (index === -1) return;
+    zones.splice(index, 1);
+    this.editorSpawnSelection = null;
+    this.updateEditorSpawnList();
+    this.syncEditorObjectsToMap();
+    this.renderEditorSpawnOverlay();
+  }
+
+  getEditorSpawnAddPosition(width, height) {
+    const pointer = this.input.activePointer;
+    const mapWidth = this.map?.widthInPixels || 0;
+    const mapHeight = this.map?.heightInPixels || 0;
+    let x = mapWidth / 2;
+    let y = mapHeight / 2;
+    if (
+      pointer &&
+      pointer.worldX >= 0 &&
+      pointer.worldY >= 0 &&
+      pointer.worldX <= mapWidth &&
+      pointer.worldY <= mapHeight
+    ) {
+      x = pointer.worldX;
+      y = pointer.worldY;
+    } else if (this.playerManager?.player) {
+      x = this.playerManager.player.x;
+      y = this.playerManager.player.y;
+    }
+    x -= width / 2;
+    y -= height / 2;
+    return {
+      x: Math.max(0, Math.min(mapWidth - width, Math.round(x))),
+      y: Math.max(0, Math.min(mapHeight - height, Math.round(y))),
+    };
+  }
+
+  clampSpawnZoneToBounds(zone) {
+    if (!this.map) return;
+    const mapWidth = this.map.widthInPixels;
+    const mapHeight = this.map.heightInPixels;
+    zone.width = Math.max(1, Math.round(zone.width || 0));
+    zone.height = Math.max(1, Math.round(zone.height || 0));
+    zone.x = Math.max(0, Math.min(mapWidth - zone.width, Math.round(zone.x || 0)));
+    zone.y = Math.max(0, Math.min(mapHeight - zone.height, Math.round(zone.y || 0)));
+  }
+
+  syncEditorObjectsToMap() {
+    if (!this.editorData) return;
+    const objects = Object.keys(this.editorData.objects || {}).map((name) => ({
+      name,
+      objects: this.editorData.objects[name],
+    }));
+    this.map.objects = objects;
+  }
+
+  renderEditorSpawnOverlay() {
+    if (!this.editorSpawnOverlay) {
+      this.editorSpawnOverlay = this.add.graphics();
+      this.editorSpawnOverlay.setDepth(3000);
+    }
+    this.editorSpawnOverlay.clear();
+    if (!this.editorActive || this.editorMode !== "spawns") return;
+    const zones = this.getEditorSpawnZones();
+    zones.forEach((zone) => {
+      const isSelected =
+        this.editorSpawnSelection && this.editorSpawnSelection.id === zone.id;
+      const stroke = isSelected ? 0xf5d142 : 0x6abf69;
+      const fill = isSelected ? 0xf5d142 : 0x6abf69;
+      this.editorSpawnOverlay.lineStyle(2, stroke, 0.9);
+      this.editorSpawnOverlay.fillStyle(fill, 0.12);
+      this.editorSpawnOverlay.strokeRect(zone.x, zone.y, zone.width, zone.height);
+      this.editorSpawnOverlay.fillRect(zone.x, zone.y, zone.width, zone.height);
+    });
+  }
+
+  findEditorSpawnZoneAt(x, y) {
+    const zones = this.getEditorSpawnZones();
+    for (let i = zones.length - 1; i >= 0; i -= 1) {
+      const zone = zones[i];
+      if (
+        x >= zone.x &&
+        y >= zone.y &&
+        x <= zone.x + zone.width &&
+        y <= zone.y + zone.height
+      ) {
+        return zone;
+      }
+    }
+    return null;
+  }
+
+  handleEditorSpawnPointerDown(pointer) {
+    const zone = this.findEditorSpawnZoneAt(pointer.worldX, pointer.worldY);
+    if (!zone) {
+      this.selectEditorSpawnZone(null);
+      return;
+    }
+    this.selectEditorSpawnZone(zone);
+    this.editorSpawnDrag = {
+      zone,
+      offsetX: pointer.worldX - zone.x,
+      offsetY: pointer.worldY - zone.y,
+    };
+  }
+
+  handleEditorSpawnPointerMove(pointer) {
+    if (!this.editorSpawnDrag) return;
+    const zone = this.editorSpawnDrag.zone;
+    zone.x = pointer.worldX - this.editorSpawnDrag.offsetX;
+    zone.y = pointer.worldY - this.editorSpawnDrag.offsetY;
+    this.clampSpawnZoneToBounds(zone);
+    this.syncEditorObjectsToMap();
+    this.syncEditorSpawnInputs();
+    this.renderEditorSpawnOverlay();
+  }
+
+  handleEditorPaint(pointer) {
+    const tileX = this.map.worldToTileX(pointer.worldX);
+    const tileY = this.map.worldToTileY(pointer.worldY);
+    if (tileX < 0 || tileY < 0 || tileX >= this.map.width || tileY >= this.map.height) {
+      return;
+    }
+    const erase = pointer.event.shiftKey;
+    const pick = pointer.event.altKey;
+    const layer = this.getEditorLayer();
+    if (!layer) return;
+
+    if (pick) {
+      const tile = layer.getTileAt(tileX, tileY);
+      if (tile) {
+        this.editorTileIndex = tile.index;
+        const tileInput = this.editorUI.querySelector("#map-editor-tile");
+        tileInput.value = String(this.editorTileIndex);
+        this.renderEditorPalette();
+      }
+      return;
+    }
+
+    const value = erase ? -1 : this.editorTileIndex;
+    layer.putTileAt(value, tileX, tileY);
+    if (this.editorData?.layers?.[this.editorLayer]) {
+      this.editorData.layers[this.editorLayer][tileY][tileX] = value;
+    }
+    if (this.editorLayer === "collisions") {
+      this.collisionLayer.setCollisionByExclusion([-1]);
+    }
+    if (this.editorLayer === "gather_rock") {
+      this.gatherRockLayer.setCollisionByExclusion([-1]);
+    }
+  }
+
+  getEditorLayer() {
+    if (this.editorLayer === "background") return this.backgroundLayer;
+    if (this.editorLayer === "paths") return this.pathsLayer;
+    if (this.editorLayer === "collisions") return this.collisionLayer;
+    if (this.editorLayer === "gather_rock") return this.gatherRockLayer;
+    return null;
+  }
+
+  saveEditorMap() {
+    if (!this.editorData) return;
+    localStorage.setItem("pg_editor_map", JSON.stringify(this.editorData));
+    if (window.__pgDebugOverlay) {
+      window.__pgDebugOverlay("Editor", "Saved map to localStorage.");
+    }
+  }
+
+  downloadEditorMap() {
+    if (!this.editorData) return;
+    const blob = new Blob([JSON.stringify(this.editorData)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pg_map.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  clearEditorLayer() {
+    const layer = this.getEditorLayer();
+    if (!layer || !this.editorData?.layers?.[this.editorLayer]) return;
+    const rows = this.editorData.layers[this.editorLayer];
+    for (let y = 0; y < rows.length; y += 1) {
+      for (let x = 0; x < rows[y].length; x += 1) {
+        rows[y][x] = -1;
+        layer.putTileAt(-1, x, y);
+      }
+    }
+    if (this.editorLayer === "collisions") {
+      this.collisionLayer.setCollisionByExclusion([-1]);
+    }
+    if (this.editorLayer === "gather_rock") {
+      this.gatherRockLayer.setCollisionByExclusion([-1]);
+    }
+  }
+
+  loadEditorMapOverride() {
+    if (!editorEnabled) return null;
+    try {
+      const raw = localStorage.getItem("pg_editor_map");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.layers || !parsed.width || !parsed.height) {
+        return null;
+      }
+      return parsed;
+    } catch (err) {
+      return null;
+    }
   }
 
   // ------------------------------
