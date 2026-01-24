@@ -62,6 +62,17 @@ export default class MainScene extends Phaser.Scene {
     this.editorSpawnOverlay = null;
     this.editorSpawnDrag = null;
     this.editorPalette = null;
+    this.editorAutoTile = null;
+    this.editorAutoTileEnabled = false;
+    this.editorPaletteSelection = null;
+    this.editorPaletteSelecting = false;
+    this.editorPaletteSelectionStart = null;
+    this.editorBlendBaseTile = 0;
+    this.editorUndoStack = [];
+    this.editorCurrentChanges = null;
+    this.editorCurrentLayer = null;
+    this.editorCameraDrag = null;
+    this.editorPrevZoom = null;
 
     this.events = new Phaser.Events.EventEmitter();
   }
@@ -599,6 +610,7 @@ export default class MainScene extends Phaser.Scene {
           <label>Mode</label>
           <select id="map-editor-mode">
             <option value="tiles">tiles</option>
+            <option value="terrain">terrain</option>
             <option value="spawns">spawns</option>
           </select>
         </div>
@@ -614,6 +626,14 @@ export default class MainScene extends Phaser.Scene {
         <div class="map-editor-row">
           <label>Tile Index</label>
           <input id="map-editor-tile" type="number" min="-1" step="1" value="0" />
+        </div>
+        <div class="map-editor-row">
+          <label>Base Tile</label>
+          <input id="map-editor-base-tile" type="number" min="-1" step="1" value="0" />
+        </div>
+        <div class="map-editor-row">
+          <label>Auto</label>
+          <input id="map-editor-autotile" type="checkbox" />
         </div>
         <div class="map-editor-section">
           <div class="map-editor-subheader">Palette</div>
@@ -660,6 +680,8 @@ export default class MainScene extends Phaser.Scene {
         </div>
         <div class="map-editor-help">
           Tiles: Paint LMB | Erase Shift+LMB | Pick Alt+LMB<br />
+          Auto: Drag 3x3 palette block | Draw to auto-edge<br />
+          Terrain: Blend edges using Base Tile + Auto set<br />
           Spawns: Drag zone to move | Edit X/Y/W/H then Apply
         </div>
       `;
@@ -669,6 +691,8 @@ export default class MainScene extends Phaser.Scene {
     const modeSelect = this.editorUI.querySelector("#map-editor-mode");
     const layerSelect = this.editorUI.querySelector("#map-editor-layer");
     const tileInput = this.editorUI.querySelector("#map-editor-tile");
+    const baseTileInput = this.editorUI.querySelector("#map-editor-base-tile");
+    const autoToggle = this.editorUI.querySelector("#map-editor-autotile");
     const paletteCanvas = this.editorUI.querySelector("#map-editor-palette");
     const spawnList = this.editorUI.querySelector("#map-editor-spawn-list");
     const spawnX = this.editorUI.querySelector("#map-editor-spawn-x");
@@ -696,6 +720,15 @@ export default class MainScene extends Phaser.Scene {
         this.renderEditorPalette();
       }
     });
+    baseTileInput.addEventListener("change", () => {
+      const nextValue = Number(baseTileInput.value);
+      if (Number.isFinite(nextValue)) {
+        this.editorBlendBaseTile = Math.floor(nextValue);
+      }
+    });
+    autoToggle.addEventListener("change", () => {
+      this.editorAutoTileEnabled = autoToggle.checked;
+    });
     saveBtn.addEventListener("click", () => this.saveEditorMap());
     downloadBtn.addEventListener("click", () => this.downloadEditorMap());
     clearBtn.addEventListener("click", () => this.clearEditorLayer());
@@ -719,16 +752,74 @@ export default class MainScene extends Phaser.Scene {
       this.editorActive = !this.editorActive;
       this.editorUI.style.display = this.editorActive ? "block" : "none";
       this.renderEditorSpawnOverlay();
+      if (this.editorActive) {
+        this.editorPrevZoom = this.cameras.main.zoom;
+        this.cameras.main.stopFollow();
+      } else {
+        this.cameras.main.setZoom(1);
+        if (this.playerManager?.player) {
+          this.cameras.main.startFollow(this.playerManager.player);
+          this.cameras.main.centerOn(
+            this.playerManager.player.x,
+            this.playerManager.player.y
+          );
+        }
+      }
+    });
+    document.addEventListener("contextmenu", (event) => {
+      if (!this.editorActive) return;
+      event.preventDefault();
+    });
+    this.input.keyboard.on("keydown", (event) => {
+      if (!this.editorActive) return;
+      const isUndo =
+        (event.key === "z" || event.key === "Z") && (event.ctrlKey || event.metaKey);
+      if (!isUndo) return;
+      event.preventDefault();
+      this.undoEditorAction();
+    });
+    this.input.on("wheel", (pointer, gameObjects, deltaX, deltaY) => {
+      if (!this.editorActive) return;
+      if (pointer?.event?.preventDefault) {
+        pointer.event.preventDefault();
+      }
+      const zoomStep = 0.1;
+      const minZoom = 0.5;
+      const maxZoom = 3;
+      const direction = deltaY > 0 ? -1 : 1;
+      const nextZoom = Phaser.Math.Clamp(
+        this.cameras.main.zoom + direction * zoomStep,
+        minZoom,
+        maxZoom
+      );
+      this.cameras.main.setZoom(nextZoom);
     });
 
     this.input.on("pointerdown", (pointer) => {
       if (!this.editorActive) return;
-      if (pointer.rightButtonDown()) return;
+      if (pointer.rightButtonDown()) {
+        this.editorCameraDrag = {
+          startX: pointer.x,
+          startY: pointer.y,
+          scrollX: this.cameras.main.scrollX,
+          scrollY: this.cameras.main.scrollY,
+        };
+        return;
+      }
       if (this.editorMode === "spawns") {
         this.handleEditorSpawnPointerDown(pointer);
         return;
       }
+      if (this.editorMode === "terrain") {
+        this.editorIsPainting = true;
+        this.editorCurrentChanges = new Map();
+        this.editorCurrentLayer = this.editorLayer;
+        this.handleEditorTerrainPaint(pointer);
+        return;
+      }
       this.editorIsPainting = true;
+      this.editorCurrentChanges = new Map();
+      this.editorCurrentLayer = this.editorLayer;
       this.handleEditorPaint(pointer);
     });
 
@@ -739,13 +830,31 @@ export default class MainScene extends Phaser.Scene {
         this.editorIsPainting = false;
         return;
       }
+      if (this.editorCameraDrag) {
+        this.editorCameraDrag = null;
+        return;
+      }
       this.editorIsPainting = false;
+      this.commitEditorChanges();
     });
 
     this.input.on("pointermove", (pointer) => {
       if (!this.editorActive) return;
       if (this.editorMode === "spawns") {
         this.handleEditorSpawnPointerMove(pointer);
+        return;
+      }
+      if (this.editorCameraDrag) {
+        const camera = this.cameras.main;
+        const dx = (this.editorCameraDrag.startX - pointer.x) / camera.zoom;
+        const dy = (this.editorCameraDrag.startY - pointer.y) / camera.zoom;
+        camera.scrollX = this.editorCameraDrag.scrollX + dx;
+        camera.scrollY = this.editorCameraDrag.scrollY + dy;
+        return;
+      }
+      if (this.editorMode === "terrain") {
+        if (!this.editorIsPainting) return;
+        this.handleEditorTerrainPaint(pointer);
         return;
       }
       if (!this.editorIsPainting) return;
@@ -783,22 +892,103 @@ export default class MainScene extends Phaser.Scene {
       columns,
       rows,
     };
-    canvas.addEventListener("click", (event) => {
-      if (!this.editorPalette) return;
+    const getPaletteTile = (event) => {
       const rect = canvas.getBoundingClientRect();
       const localX = event.clientX - rect.left;
       const localY = event.clientY - rect.top;
       const tileX = Math.floor(localX / (tileWidth * scale));
       const tileY = Math.floor(localY / (tileHeight * scale));
       if (tileX < 0 || tileY < 0 || tileX >= columns || tileY >= rows) {
+        return null;
+      }
+      return { tileX, tileY };
+    };
+
+    const updateSelection = (start, end) => {
+      const minX = Math.min(start.tileX, end.tileX);
+      const minY = Math.min(start.tileY, end.tileY);
+      const maxX = Math.max(start.tileX, end.tileX);
+      const maxY = Math.max(start.tileY, end.tileY);
+      this.editorPaletteSelection = {
+        startX: minX,
+        startY: minY,
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+      };
+    };
+
+    const finalizeSelection = () => {
+      if (!this.editorPaletteSelection) return;
+      const { startX, startY, width, height } = this.editorPaletteSelection;
+      if (width === 1 && height === 1) {
+        const nextIndex = startY * columns + startX;
+        this.editorTileIndex = nextIndex;
+        const tileInput = this.editorUI.querySelector("#map-editor-tile");
+        tileInput.value = String(nextIndex);
+        this.editorPaletteSelection = null;
+        this.renderEditorPalette();
         return;
       }
-      const nextIndex = tileY * columns + tileX;
-      this.editorTileIndex = nextIndex;
-      const tileInput = this.editorUI.querySelector("#map-editor-tile");
-      tileInput.value = String(nextIndex);
+      if (width === 3 && height === 3) {
+        const tiles = [];
+        const tileSet = new Set();
+        for (let y = 0; y < height; y += 1) {
+          const row = [];
+          for (let x = 0; x < width; x += 1) {
+            const idx = (startY + y) * columns + (startX + x);
+            row.push(idx);
+            tileSet.add(idx);
+          }
+          tiles.push(row);
+        }
+        this.editorAutoTile = {
+          tiles,
+          tileSet,
+        };
+        const centerIndex = tiles[1][1];
+        this.editorTileIndex = centerIndex;
+        const tileInput = this.editorUI.querySelector("#map-editor-tile");
+        tileInput.value = String(centerIndex);
+      } else {
+        this.editorAutoTile = null;
+      }
+      this.renderEditorPalette();
+    };
+
+    canvas.addEventListener("mousedown", (event) => {
+      if (!this.editorPalette) return;
+      if (event.button !== 0) return;
+      const start = getPaletteTile(event);
+      if (!start) return;
+      this.editorPaletteSelecting = true;
+      this.editorPaletteSelectionStart = start;
+      updateSelection(start, start);
       this.renderEditorPalette();
     });
+
+    canvas.addEventListener("mousemove", (event) => {
+      if (!this.editorPaletteSelecting) return;
+      if (!this.editorPaletteSelectionStart) return;
+      const end = getPaletteTile(event);
+      if (!end || !this.editorPaletteSelection) return;
+      updateSelection(this.editorPaletteSelectionStart, end);
+      this.renderEditorPalette();
+    });
+
+    const endSelection = (event) => {
+      if (!this.editorPaletteSelecting) return;
+      this.editorPaletteSelecting = false;
+      if (!this.editorPaletteSelectionStart) return;
+      const end = getPaletteTile(event);
+      if (end) {
+        updateSelection(this.editorPaletteSelectionStart, end);
+      }
+      this.editorPaletteSelectionStart = null;
+      finalizeSelection();
+    };
+
+    canvas.addEventListener("mouseup", endSelection);
+    canvas.addEventListener("mouseleave", endSelection);
     this.renderEditorPalette();
   }
 
@@ -825,6 +1015,17 @@ export default class MainScene extends Phaser.Scene {
       ctx.moveTo(0, py);
       ctx.lineTo(canvas.width, py);
       ctx.stroke();
+    }
+    if (this.editorPaletteSelection) {
+      const { startX, startY, width, height } = this.editorPaletteSelection;
+      ctx.strokeStyle = "rgba(66,153,245,0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        startX * tileWidth * scale + 1,
+        startY * tileHeight * scale + 1,
+        width * tileWidth * scale - 2,
+        height * tileHeight * scale - 2
+      );
     }
     if (Number.isFinite(this.editorTileIndex) && this.editorTileIndex >= 0) {
       const tileX = this.editorTileIndex % columns;
@@ -1115,17 +1316,215 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
+    if (this.editorAutoTileEnabled && this.editorAutoTile) {
+      this.applyEditorAutoTile(layer, tileX, tileY, erase, this.editorCurrentChanges);
+      return;
+    }
+
     const value = erase ? -1 : this.editorTileIndex;
+    this.setEditorTileValue(layer, tileX, tileY, value, this.editorCurrentChanges);
+    this.refreshEditorLayerCollision();
+  }
+
+  handleEditorTerrainPaint(pointer) {
+    if (!this.editorAutoTile) return;
+    const tileX = this.map.worldToTileX(pointer.worldX);
+    const tileY = this.map.worldToTileY(pointer.worldY);
+    if (tileX < 0 || tileY < 0 || tileX >= this.map.width || tileY >= this.map.height) {
+      return;
+    }
+    const layer = this.getEditorLayer();
+    if (!layer) return;
+    this.applyEditorTerrainBlend(layer, tileX, tileY, this.editorCurrentChanges);
+  }
+
+  setEditorTileValue(layer, tileX, tileY, value, changes) {
+    const prev = this.getEditorTileIndexAt(layer, tileX, tileY);
+    if (prev === value) return;
+    this.recordEditorTileChange(changes, tileX, tileY, prev, value);
     layer.putTileAt(value, tileX, tileY);
     if (this.editorData?.layers?.[this.editorLayer]) {
       this.editorData.layers[this.editorLayer][tileY][tileX] = value;
     }
+  }
+
+  refreshEditorLayerCollision() {
     if (this.editorLayer === "collisions") {
       this.collisionLayer.setCollisionByExclusion([-1]);
     }
     if (this.editorLayer === "gather_rock") {
       this.gatherRockLayer.setCollisionByExclusion([-1]);
     }
+  }
+
+  getEditorTileIndexAt(layer, tileX, tileY) {
+    const tile = layer.getTileAt(tileX, tileY);
+    return tile ? tile.index : -1;
+  }
+
+  isEditorAutoTile(index) {
+    if (!this.editorAutoTile?.tileSet) return false;
+    return this.editorAutoTile.tileSet.has(index);
+  }
+
+  pickEditorAutoTileIndex(layer, tileX, tileY) {
+    const hasNeighbor = (x, y) => {
+      if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) {
+        return false;
+      }
+      const idx = this.getEditorTileIndexAt(layer, x, y);
+      return this.isEditorAutoTile(idx);
+    };
+
+    const hasN = hasNeighbor(tileX, tileY - 1);
+    const hasS = hasNeighbor(tileX, tileY + 1);
+    const hasW = hasNeighbor(tileX - 1, tileY);
+    const hasE = hasNeighbor(tileX + 1, tileY);
+
+    const { tiles } = this.editorAutoTile;
+    const connections = [hasN, hasS, hasW, hasE].filter(Boolean).length;
+    if (connections <= 1) {
+      return tiles[1][1];
+    }
+    if ((hasN && hasS && !hasE && !hasW) || (hasE && hasW && !hasN && !hasS)) {
+      return tiles[1][1];
+    }
+    if (!hasN && !hasW) return tiles[0][0];
+    if (!hasN && !hasE) return tiles[0][2];
+    if (!hasS && !hasW) return tiles[2][0];
+    if (!hasS && !hasE) return tiles[2][2];
+    if (!hasN) return tiles[0][1];
+    if (!hasS) return tiles[2][1];
+    if (!hasW) return tiles[1][0];
+    if (!hasE) return tiles[1][2];
+    return tiles[1][1];
+  }
+
+  hasEditorAutoTileNeighbor(layer, tileX, tileY) {
+    const hasNeighbor = (x, y) => {
+      if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) {
+        return false;
+      }
+      const idx = this.getEditorTileIndexAt(layer, x, y);
+      return this.isEditorAutoTile(idx);
+    };
+    return (
+      hasNeighbor(tileX, tileY - 1) ||
+      hasNeighbor(tileX, tileY + 1) ||
+      hasNeighbor(tileX - 1, tileY) ||
+      hasNeighbor(tileX + 1, tileY)
+    );
+  }
+
+  applyEditorTerrainBlend(layer, tileX, tileY, changes) {
+    const baseTile = Number.isFinite(this.editorBlendBaseTile)
+      ? this.editorBlendBaseTile
+      : null;
+    const radius = 1;
+    const minX = Math.max(0, tileX - radius);
+    const maxX = Math.min(this.map.width - 1, tileX + radius);
+    const minY = Math.max(0, tileY - radius);
+    const maxY = Math.min(this.map.height - 1, tileY + radius);
+
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const idx = this.getEditorTileIndexAt(layer, x, y);
+        if (this.isEditorAutoTile(idx)) continue;
+        if (baseTile !== null && idx !== baseTile) continue;
+        if (!this.hasEditorAutoTileNeighbor(layer, x, y)) continue;
+        const nextIndex = this.pickEditorAutoTileIndex(layer, x, y);
+        this.setEditorTileValue(layer, x, y, nextIndex, changes);
+      }
+    }
+
+    const updateRadius = 2;
+    const updateMinX = Math.max(0, tileX - updateRadius);
+    const updateMaxX = Math.min(this.map.width - 1, tileX + updateRadius);
+    const updateMinY = Math.max(0, tileY - updateRadius);
+    const updateMaxY = Math.min(this.map.height - 1, tileY + updateRadius);
+    for (let y = updateMinY; y <= updateMaxY; y += 1) {
+      for (let x = updateMinX; x <= updateMaxX; x += 1) {
+        const idx = this.getEditorTileIndexAt(layer, x, y);
+        if (!this.isEditorAutoTile(idx)) continue;
+        const nextIndex = this.pickEditorAutoTileIndex(layer, x, y);
+        this.setEditorTileValue(layer, x, y, nextIndex, changes);
+      }
+    }
+
+    this.refreshEditorLayerCollision();
+  }
+
+  applyEditorAutoTile(layer, tileX, tileY, erase, changes) {
+    if (erase) {
+      this.setEditorTileValue(layer, tileX, tileY, -1, changes);
+    } else {
+      const nextIndex = this.pickEditorAutoTileIndex(layer, tileX, tileY);
+      this.setEditorTileValue(layer, tileX, tileY, nextIndex, changes);
+    }
+
+    const minX = Math.max(0, tileX - 1);
+    const maxX = Math.min(this.map.width - 1, tileX + 1);
+    const minY = Math.max(0, tileY - 1);
+    const maxY = Math.min(this.map.height - 1, tileY + 1);
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const idx = this.getEditorTileIndexAt(layer, x, y);
+        if (!this.isEditorAutoTile(idx)) continue;
+        const nextIndex = this.pickEditorAutoTileIndex(layer, x, y);
+        if (nextIndex === idx) continue;
+        this.setEditorTileValue(layer, x, y, nextIndex, changes);
+      }
+    }
+
+    this.refreshEditorLayerCollision();
+  }
+
+  recordEditorTileChange(changes, tileX, tileY, prev, next) {
+    if (!changes) return;
+    const key = `${tileX},${tileY}`;
+    const existing = changes.get(key);
+    if (existing) {
+      existing.next = next;
+      return;
+    }
+    changes.set(key, { x: tileX, y: tileY, prev, next });
+  }
+
+  commitEditorChanges() {
+    if (!this.editorCurrentChanges || this.editorCurrentChanges.size === 0) {
+      this.editorCurrentChanges = null;
+      this.editorCurrentLayer = null;
+      return;
+    }
+    const changes = Array.from(this.editorCurrentChanges.values());
+    this.editorUndoStack.push({
+      layer: this.editorCurrentLayer || this.editorLayer,
+      changes,
+    });
+    if (this.editorUndoStack.length > 50) {
+      this.editorUndoStack.shift();
+    }
+    this.editorCurrentChanges = null;
+    this.editorCurrentLayer = null;
+  }
+
+  undoEditorAction() {
+    const action = this.editorUndoStack.pop();
+    if (!action || !action.changes) return;
+    const layer = this.getEditorLayerByName(action.layer);
+    if (!layer) return;
+    action.changes.forEach((change) => {
+      this.setEditorTileValue(layer, change.x, change.y, change.prev, null);
+    });
+    this.refreshEditorLayerCollision();
+  }
+
+  getEditorLayerByName(name) {
+    if (name === "background") return this.backgroundLayer;
+    if (name === "paths") return this.pathsLayer;
+    if (name === "collisions") return this.collisionLayer;
+    if (name === "gather_rock") return this.gatherRockLayer;
+    return null;
   }
 
   getEditorLayer() {
@@ -1159,8 +1558,12 @@ export default class MainScene extends Phaser.Scene {
     const layer = this.getEditorLayer();
     if (!layer || !this.editorData?.layers?.[this.editorLayer]) return;
     const rows = this.editorData.layers[this.editorLayer];
+    const changes = new Map();
     for (let y = 0; y < rows.length; y += 1) {
       for (let x = 0; x < rows[y].length; x += 1) {
+        const prev = rows[y][x];
+        if (prev === -1) continue;
+        this.recordEditorTileChange(changes, x, y, prev, -1);
         rows[y][x] = -1;
         layer.putTileAt(-1, x, y);
       }
@@ -1170,6 +1573,15 @@ export default class MainScene extends Phaser.Scene {
     }
     if (this.editorLayer === "gather_rock") {
       this.gatherRockLayer.setCollisionByExclusion([-1]);
+    }
+    if (changes.size > 0) {
+      this.editorUndoStack.push({
+        layer: this.editorLayer,
+        changes: Array.from(changes.values()),
+      });
+      if (this.editorUndoStack.length > 50) {
+        this.editorUndoStack.shift();
+      }
     }
   }
 
