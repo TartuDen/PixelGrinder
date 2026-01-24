@@ -87,11 +87,18 @@ export default class CharacterCreationScene extends Phaser.Scene {
   }
 
   createDOMElements() {
+    document.body.classList.add("char-creation-active");
+
     // Main container
     this.containerDiv = document.createElement("div");
     this.containerDiv.id = "char-creation-container";
     this.containerDiv.classList.add("char-creation-container");
     document.body.appendChild(this.containerDiv);
+
+    const title = document.createElement("h2");
+    title.textContent = "Create Your Adventurer";
+    title.classList.add("char-creation-title");
+    this.containerDiv.appendChild(title);
 
     // -- Character Name
     const nameLabel = document.createElement("label");
@@ -310,6 +317,7 @@ export default class CharacterCreationScene extends Phaser.Scene {
     playerBaseStats.dexterity += this.dexterityPoints;
     playerBaseStats.constitution += this.constitutionPoints;
 
+    document.body.classList.remove("char-creation-active");
     document.body.removeChild(this.containerDiv);
 
     this.scene.start("MainScene");
