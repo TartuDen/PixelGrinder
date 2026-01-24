@@ -53,7 +53,7 @@ export default class MainScene extends Phaser.Scene {
 
   preload() {
     // Tiled map
-    this.load.tilemapTiledJSON("Map1", "assets/map/map1..tmj");
+    this.load.tilemapTiledJSON("Map1", "assets/map/map1.tmj");
     this.load.image("terrain", "assets/map/terrain.png");
 
     // =======================

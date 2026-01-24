@@ -2,6 +2,27 @@
 
 This repo auto-deploys the HTML5 build to itch.io via GitHub Actions + Butler.
 
+## Manual ZIP upload (no Butler)
+
+Use this when you want to upload a ZIP manually in the itch.io UI.
+
+1) Build the HTML5 bundle
+   - From repo root:
+     - `cd pixelgrinder-frontend`
+     - `npm ci`
+     - `npm run build`
+
+2) Create a ZIP with `index.html` at the root
+   - From `pixelgrinder-frontend/dist`:
+     - PowerShell: `Compress-Archive -Path * -DestinationPath ..\pixelgrinder-html5.zip`
+     - Git Bash: `powershell.exe -NoProfile -Command "Compress-Archive -Path * -DestinationPath ..\pixelgrinder-html5.zip"`
+     - File Explorer: select all files in `dist` -> right click -> Send to -> Compressed (zipped) folder
+
+3) Upload on itch.io
+   - Upload the ZIP under "Uploads".
+   - Set the file type to HTML5 and check "This file will be played in the browser".
+   - Save.
+
 ## One-time setup
 
 1) Create an itch.io API key  

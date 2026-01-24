@@ -4,7 +4,7 @@ const zones = [
     name: "Starting Zone",
     levelRange: [1, 7],
     mapKey: "Map1",
-    mapPath: "assets/map/map1..tmj",
+    mapPath: "assets/map/map1.tmj",
     spawnKey: "HeroStart",
   },
 ];
