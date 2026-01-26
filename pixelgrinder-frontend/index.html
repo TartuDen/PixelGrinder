@@ -15,6 +15,8 @@
       /* Make the canvas full-width (responsive) */
       canvas {
         width: 100%;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
       }
     </style>
   </head>
@@ -84,7 +86,10 @@
       <div id="shop-content"></div>
     </div>
 
-    <button id="admin-toggle-button" class="admin-toggle-btn">Admin</button>
+    <div id="admin-toggle-container">
+      <button id="admin-toggle-button" class="admin-toggle-btn">Admin</button>
+      <button id="map-editor-toggle-button" class="admin-toggle-btn">Map Editor</button>
+    </div>
     <div id="admin-panel" class="admin-panel" style="display: none">
       <div class="admin-panel-header">
         <div class="admin-tabs">
@@ -92,6 +97,7 @@
           <button class="admin-tab" data-tab="player">Player</button>
           <button class="admin-tab" data-tab="skills">Skills</button>
           <button class="admin-tab" data-tab="spawns">Spawns</button>
+          <button class="admin-tab" data-tab="npcs">NPCs</button>
         </div>
         <div class="admin-header-actions">
           <button id="admin-reset" class="admin-btn">Reset Tab</button>
@@ -141,6 +147,24 @@
           <div class="admin-section-container">
             <div class="admin-section-title">Mob Types</div>
             <div id="admin-spawn-list" class="admin-spawn-list"></div>
+          </div>
+        </div>
+        <div id="admin-tab-npcs" class="admin-tab-panel">
+          <div class="admin-tab-actions">
+            <button id="admin-reset-npcs" class="admin-btn">Reset NPCs</button>
+            <button id="admin-add-npc" class="admin-btn">Add NPC</button>
+            <button id="admin-remove-npc" class="admin-btn">Remove NPC</button>
+          </div>
+          <div class="admin-split">
+            <div id="admin-npcs-list" class="admin-list"></div>
+            <div class="admin-detail">
+              <div id="admin-npc-fields" class="admin-section-container"></div>
+              <div class="admin-section-title">Placement</div>
+              <div class="admin-npc-placement">
+                <div class="admin-npc-hint">Drag NPC on the map to move it. Scroll to zoom.</div>
+                <button id="admin-npc-drag-toggle" class="admin-btn">Enable Drag</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

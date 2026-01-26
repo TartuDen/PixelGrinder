@@ -47,6 +47,7 @@ export function applyAdminOverrides(overrides, refs) {
     mobsData,
     allGameSkills,
     spawnControls,
+    npcVendors,
   } = refs;
 
   if (overrides.playerProfile && playerProfile) {
@@ -95,5 +96,11 @@ export function applyAdminOverrides(overrides, refs) {
     if (globalCap !== undefined) {
       spawnControls.globalCap = globalCap;
     }
+  }
+  if (overrides.npcVendors && npcVendors) {
+    npcVendors.length = 0;
+    overrides.npcVendors.forEach((vendor) => {
+      npcVendors.push({ ...vendor });
+    });
   }
 }

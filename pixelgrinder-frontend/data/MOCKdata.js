@@ -187,6 +187,7 @@ const defaultNaturalRegeneration = JSON.parse(JSON.stringify(naturalRegeneration
 const defaultPlayerEquippedItems = JSON.parse(JSON.stringify(playerEquippedItems));
 const defaultAllGameSkills = JSON.parse(JSON.stringify(allGameSkills));
 const defaultMobsData = JSON.parse(JSON.stringify(mobsData));
+const defaultNpcVendors = JSON.parse(JSON.stringify(npcVendors));
 
 const buildDefaultSpawnControls = () => {
   const enabledMobIds = {};
@@ -215,6 +216,7 @@ applyAdminOverrides(adminOverrides, {
   mobsData,
   allGameSkills,
   spawnControls,
+  npcVendors,
 });
 
 export {
@@ -243,6 +245,7 @@ export {
   MOB_CORPSE_DURATION,
   zones,
   npcVendors,
+  defaultNpcVendors,
   spawnControls,
   defaultMobsData,
   defaultSpawnControls,

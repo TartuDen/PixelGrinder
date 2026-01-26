@@ -24,6 +24,9 @@ import {
   naturalRegeneration,
   skillEnhancements,
   SKILL_RANGE_EXTENDER,
+  npcVendors,
+  defaultNpcVendors,
+  zones,
 } from "../data/MOCKdata.js";
 import { calculatePlayerStats } from "../helpers/calculatePlayerStats.js";
 import { calculateLevelProgress } from "../helpers/experience.js";
@@ -49,6 +52,7 @@ export default class UIManager {
     this.uiLevel = document.getElementById("player-level");
     this.uiGold = document.getElementById("player-gold");
     this.uiMode = document.getElementById("player-mode");
+    this.playerInfo = document.getElementById("player-info");
 
     // Menus
     this.statsMenu = document.getElementById("stats-menu");
@@ -107,17 +111,33 @@ export default class UIManager {
     this.adminResetPlayerButton = document.getElementById("admin-reset-player");
     this.adminResetSkillsButton = document.getElementById("admin-reset-skills");
     this.adminResetSpawnsButton = document.getElementById("admin-reset-spawns");
+    this.adminResetNpcsButton = document.getElementById("admin-reset-npcs");
+    this.adminAddNpcButton = document.getElementById("admin-add-npc");
+    this.adminRemoveNpcButton = document.getElementById("admin-remove-npc");
+    this.adminNpcList = document.getElementById("admin-npcs-list");
+    this.adminNpcFields = document.getElementById("admin-npc-fields");
+    this.adminNpcDragToggle = document.getElementById("admin-npc-drag-toggle");
     this.adminSelectedMobId = null;
     this.adminSelectedMobInstance = null;
     this.adminSelectedSkillId = null;
+    this.adminSelectedNpcId = null;
+    this.adminNpcTemplateId = null;
     this.adminSaveTimer = null;
     this.adminDebugTimer = null;
     this.adminMobDebug = null;
+    this.isAdminNpcDragEnabled = false;
 
     // Keep track of up to 9 skill slots
     this.skillBarSlots = new Array(9).fill(null);
 
     // Make menus draggable if no drag-header found
+    if (this.playerInfo && !this.playerInfo.querySelector(".drag-header")) {
+      const header = document.createElement("div");
+      header.className = "drag-header";
+      header.innerText = "Player";
+      this.playerInfo.insertBefore(header, this.playerInfo.firstChild);
+      makeDraggable(this.playerInfo, header);
+    }
     if (this.inventoryMenu && !this.inventoryMenu.querySelector(".drag-header")) {
       const invHeader = document.createElement("div");
       invHeader.className = "drag-header";
@@ -1322,6 +1342,26 @@ export default class UIManager {
         this.resetAdminSpawns()
       );
     }
+    if (this.adminResetNpcsButton) {
+      this.adminResetNpcsButton.addEventListener("click", () =>
+        this.resetAdminNpcs()
+      );
+    }
+    if (this.adminAddNpcButton) {
+      this.adminAddNpcButton.addEventListener("click", () =>
+        this.addAdminNpcFromTemplate()
+      );
+    }
+    if (this.adminRemoveNpcButton) {
+      this.adminRemoveNpcButton.addEventListener("click", () =>
+        this.removeAdminNpc()
+      );
+    }
+    if (this.adminNpcDragToggle) {
+      this.adminNpcDragToggle.addEventListener("click", () =>
+        this.toggleAdminNpcDrag()
+      );
+    }
     this.adminTabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         this.switchAdminTab(tab.dataset.tab);
@@ -1354,6 +1394,9 @@ export default class UIManager {
     if (!this.adminPanel) return;
     this.adminPanel.style.display = "none";
     this.isAdminOpen = false;
+    if (this.isAdminNpcDragEnabled) {
+      this.setAdminNpcDrag(false);
+    }
     if (this.adminSelectedMobInstance) {
       this.scene.mobManager?.setMobStandby(this.adminSelectedMobInstance, false);
     }
@@ -1403,6 +1446,10 @@ export default class UIManager {
     });
     if (tabId === "spawns") {
       this.renderAdminSpawnPanel();
+    } else if (tabId === "npcs") {
+      this.renderAdminNpcPanel();
+    } else if (this.isAdminNpcDragEnabled) {
+      this.setAdminNpcDrag(false);
     }
   }
 
@@ -1411,6 +1458,7 @@ export default class UIManager {
     this.renderAdminPlayerPanel();
     this.renderAdminSkillsList();
     this.renderAdminSpawnPanel();
+    this.renderAdminNpcPanel();
   }
 
   getActiveAdminTabId() {
@@ -1428,6 +1476,8 @@ export default class UIManager {
       this.resetAdminSkills();
     } else if (tabId === "spawns") {
       this.resetAdminSpawns();
+    } else if (tabId === "npcs") {
+      this.resetAdminNpcs();
     } else {
       this.resetAdminMobs();
     }
@@ -1489,6 +1539,242 @@ export default class UIManager {
     spawnControls.globalCap = defaults.globalCap ?? null;
     this.applySpawnControlsAndPersist();
     this.renderAdminSpawnPanel();
+  }
+
+  resetAdminNpcs() {
+    npcVendors.length = 0;
+    JSON.parse(JSON.stringify(defaultNpcVendors)).forEach((vendor) => {
+      npcVendors.push(vendor);
+    });
+    this.adminSelectedNpcId = npcVendors[0]?.id || null;
+    this.scene.npcManager?.refreshNpcsFromData();
+    this.renderAdminNpcPanel();
+    this.scheduleAdminOverridesSave();
+  }
+
+  renderAdminNpcPanel() {
+    this.renderAdminNpcList();
+    if (this.adminSelectedNpcId) {
+      this.renderAdminNpcDetails(this.adminSelectedNpcId);
+    } else if (this.adminNpcFields) {
+      this.adminNpcFields.innerHTML = "";
+      this.renderAdminNpcAddSection();
+    }
+    this.updateAdminNpcDragButton();
+  }
+
+  renderAdminNpcList() {
+    if (!this.adminNpcList) return;
+    this.adminNpcList.innerHTML = "";
+    if (!this.adminSelectedNpcId && npcVendors.length > 0) {
+      this.adminSelectedNpcId = npcVendors[0].id;
+    }
+    npcVendors.forEach((vendor) => {
+      const item = document.createElement("div");
+      item.className = "admin-list-item";
+      item.classList.toggle("active", vendor.id === this.adminSelectedNpcId);
+      const label = document.createElement("div");
+      label.innerText = vendor.name || vendor.id;
+      item.appendChild(label);
+      item.addEventListener("click", () => {
+        this.adminSelectedNpcId = vendor.id;
+        this.renderAdminNpcList();
+        this.renderAdminNpcDetails(vendor.id);
+      });
+      this.adminNpcList.appendChild(item);
+    });
+  }
+
+  renderAdminNpcDetails(npcId) {
+    if (!this.adminNpcFields) return;
+    const vendor = npcVendors.find((entry) => entry.id === npcId);
+    this.adminNpcFields.innerHTML = "";
+    if (!vendor) return;
+
+    const fieldsGrid = document.createElement("div");
+    fieldsGrid.className = "admin-fields";
+
+    fieldsGrid.appendChild(
+      this.createAdminField({
+        label: "ID",
+        value: vendor.id,
+        disabled: true,
+      })
+    );
+
+    fieldsGrid.appendChild(
+      this.createAdminField({
+        label: "Name",
+        value: vendor.name || "",
+        onChange: (nextValue) => {
+          vendor.name = String(nextValue || "").trim() || vendor.id;
+          this.scene.npcManager?.updateNpcVendor(vendor);
+          this.renderAdminNpcList();
+          this.scheduleAdminOverridesSave();
+        },
+      })
+    );
+
+    fieldsGrid.appendChild(
+      this.createAdminField({
+        label: "Zone",
+        value: vendor.zoneId,
+        options: (zones || []).map((zone) => ({
+          value: zone.id,
+          label: `${zone.id} (${zone.name})`,
+        })),
+        onChange: (nextValue) => {
+          if (!nextValue) return;
+          vendor.zoneId = nextValue;
+          this.scene.npcManager?.refreshNpcsFromData();
+          this.renderAdminNpcList();
+          this.scheduleAdminOverridesSave();
+        },
+      })
+    );
+
+    fieldsGrid.appendChild(
+      this.createAdminField({
+        label: "Pos X",
+        value: vendor.position?.x ?? 0,
+        valueType: "number",
+        onChange: (nextValue) => {
+          if (!vendor.position) vendor.position = { x: 0, y: 0 };
+          vendor.position.x = Number(nextValue) || 0;
+          this.scene.npcManager?.updateNpcPosition(vendor.id, vendor.position);
+          this.scheduleAdminOverridesSave();
+        },
+      })
+    );
+
+    fieldsGrid.appendChild(
+      this.createAdminField({
+        label: "Pos Y",
+        value: vendor.position?.y ?? 0,
+        valueType: "number",
+        onChange: (nextValue) => {
+          if (!vendor.position) vendor.position = { x: 0, y: 0 };
+          vendor.position.y = Number(nextValue) || 0;
+          this.scene.npcManager?.updateNpcPosition(vendor.id, vendor.position);
+          this.scheduleAdminOverridesSave();
+        },
+      })
+    );
+
+    fieldsGrid.appendChild(
+      this.createAdminField({
+        label: "Inventory",
+        value: vendor.inventory || [],
+        valueType: "array",
+        onChange: (nextValue) => {
+          vendor.inventory = Array.isArray(nextValue) ? nextValue : [];
+          this.scheduleAdminOverridesSave();
+        },
+        helpText: "Comma-separated item IDs",
+      })
+    );
+
+    this.adminNpcFields.appendChild(fieldsGrid);
+    this.renderAdminNpcAddSection();
+  }
+
+  renderAdminNpcAddSection() {
+    if (!this.adminNpcFields) return;
+    const addSectionTitle = document.createElement("div");
+    addSectionTitle.className = "admin-section-title";
+    addSectionTitle.innerText = "Add NPC";
+
+    const addWrapper = document.createElement("div");
+    addWrapper.className = "admin-fields";
+    const templateOptions = (defaultNpcVendors || npcVendors || []).map((tpl) => ({
+      value: tpl.id,
+      label: `${tpl.id} (${tpl.name || "NPC"})`,
+    }));
+    const templateField = this.createAdminField({
+      label: "Template",
+      value: this.adminNpcTemplateId || templateOptions[0]?.value || "",
+      options: templateOptions,
+      onChange: (nextValue) => {
+        this.adminNpcTemplateId = nextValue;
+      },
+    });
+    addWrapper.appendChild(templateField);
+
+    this.adminNpcFields.appendChild(addSectionTitle);
+    this.adminNpcFields.appendChild(addWrapper);
+  }
+
+  addAdminNpcFromTemplate() {
+    const templates = (defaultNpcVendors || npcVendors || []).map((tpl) => tpl.id);
+    const templateId = this.adminNpcTemplateId || templates[0];
+    const template = (defaultNpcVendors || npcVendors || []).find(
+      (tpl) => tpl.id === templateId
+    );
+    const base = template
+      ? JSON.parse(JSON.stringify(template))
+      : {
+          id: "npc_vendor",
+          name: "NPC Vendor",
+          zoneId: this.scene.currentZoneId || "start_zone",
+          inventory: [],
+          position: { x: 0, y: 0 },
+        };
+
+    const idBase = base.id || "npc";
+    let suffix = 1;
+    let nextId = `${idBase}_${suffix}`;
+    while (npcVendors.find((entry) => entry.id === nextId)) {
+      suffix += 1;
+      nextId = `${idBase}_${suffix}`;
+    }
+    base.id = nextId;
+    base.name = base.name || nextId;
+    base.zoneId = base.zoneId || this.scene.currentZoneId || "start_zone";
+    const player = this.scene.playerManager?.player;
+    if (player) {
+      base.position = {
+        x: Math.round(player.x),
+        y: Math.round(player.y),
+      };
+    } else if (!base.position) {
+      base.position = { x: 0, y: 0 };
+    }
+
+    npcVendors.push(base);
+    this.adminSelectedNpcId = base.id;
+    this.scene.npcManager?.addNpcVendor(base);
+    this.renderAdminNpcPanel();
+    this.scheduleAdminOverridesSave();
+  }
+
+  removeAdminNpc() {
+    if (!this.adminSelectedNpcId) return;
+    const index = npcVendors.findIndex((entry) => entry.id === this.adminSelectedNpcId);
+    if (index === -1) return;
+    const removed = npcVendors.splice(index, 1)[0];
+    if (removed) {
+      this.scene.npcManager?.removeNpcById(removed.id);
+    }
+    this.adminSelectedNpcId = npcVendors[0]?.id || null;
+    this.renderAdminNpcPanel();
+    this.scheduleAdminOverridesSave();
+  }
+
+  toggleAdminNpcDrag() {
+    this.setAdminNpcDrag(!this.isAdminNpcDragEnabled);
+  }
+
+  setAdminNpcDrag(enabled) {
+    this.isAdminNpcDragEnabled = Boolean(enabled);
+    this.scene.setAdminNpcPlacementActive(this.isAdminNpcDragEnabled);
+    this.updateAdminNpcDragButton();
+  }
+
+  updateAdminNpcDragButton() {
+    if (!this.adminNpcDragToggle) return;
+    this.adminNpcDragToggle.innerText = this.isAdminNpcDragEnabled
+      ? "Disable Drag"
+      : "Enable Drag";
   }
 
   renderAdminMobsList() {
@@ -2553,6 +2839,7 @@ export default class UIManager {
       playerEquippedItems: JSON.parse(JSON.stringify(playerEquippedItems)),
       allGameSkills: JSON.parse(JSON.stringify(allGameSkills)),
       spawnControls: JSON.parse(JSON.stringify(spawnControls)),
+      npcVendors: JSON.parse(JSON.stringify(npcVendors)),
     };
     saveAdminOverrides(payload);
   }

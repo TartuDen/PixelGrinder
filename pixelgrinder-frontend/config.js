@@ -14,6 +14,11 @@ export const gameConfig = {
   type: Phaser.AUTO,
   width: worldW,
   height: worldH,
+  render: {
+    pixelArt: true,
+    antialias: false,
+    roundPixels: true,
+  },
   // We'll inject scenes from outside (e.g., MainScene)
   physics: {
     default: "arcade",

@@ -23,6 +23,7 @@ import { map1Data } from "../data/generated/map1Data.js";
 import { generateProceduralMap } from "../data/generated/proceduralMap.js";
 import { mapMode, mapSeed, zoneWidth, zoneHeight, editorEnabled } from "../config.js";
 import { calculateLevelProgress } from "../helpers/experience.js";
+import { makeDraggable } from "../helpers/drag.js";
 import {
   loadSave,
   saveGame as persistSave,
@@ -73,6 +74,11 @@ export default class MainScene extends Phaser.Scene {
     this.editorCurrentLayer = null;
     this.editorCameraDrag = null;
     this.editorPrevZoom = null;
+    this.adminNpcPlacementActive = false;
+    this.adminNpcPrevZoom = null;
+    this.minimapOffset = { x: 0, y: 0 };
+    this.minimapDragActive = false;
+    this.minimapDragOffset = { x: 0, y: 0 };
     this.editorRoadSet = null;
     this.editorRoadOffset = 0;
     this.editorRoadTargetLayer = "paths";
@@ -441,6 +447,7 @@ export default class MainScene extends Phaser.Scene {
 
     // Camera
     this.setupCamera();
+    this.cameras.main.roundPixels = true;
 
     // UI
     this.uiManager = new UIManager(this);
@@ -478,7 +485,8 @@ export default class MainScene extends Phaser.Scene {
 
     // NPC Vendors
     this.npcManager = new NPCManager(this);
-    this.npcManager.createNPCs("start_zone", this.map);
+    this.currentZoneId = "start_zone";
+    this.npcManager.createNPCs(this.currentZoneId, this.map);
     if (this.npcManager.npcs) {
       this.physics.add.collider(
         this.playerManager.player,
@@ -519,6 +527,61 @@ export default class MainScene extends Phaser.Scene {
     if (editorEnabled) {
       this.initMapEditor();
     }
+
+    this.input.on("wheel", (pointer, gameObjects, deltaX, deltaY) => {
+      if (this.editorActive) return;
+      if (!this.adminNpcPlacementActive && !this.uiManager?.isAdminOpen) return;
+      if (pointer?.event?.preventDefault) {
+        pointer.event.preventDefault();
+      }
+      const zoomStep = 0.1;
+      const minZoom = 0.2;
+      const maxZoom = 3;
+      const direction = deltaY > 0 ? -1 : 1;
+      const nextZoom = Phaser.Math.Clamp(
+        this.cameras.main.zoom + direction * zoomStep,
+        minZoom,
+        maxZoom
+      );
+      this.cameras.main.setZoom(nextZoom);
+    });
+
+    this.input.on("pointerdown", (pointer) => {
+      if (!this.uiManager?.isAdminOpen || this.editorActive) return;
+      if (!this.minimapConfig) return;
+      const { size } = this.minimapConfig;
+      const origin = this.getMinimapOrigin();
+      const withinX = pointer.x >= origin.x && pointer.x <= origin.x + size;
+      const withinY = pointer.y >= origin.y && pointer.y <= origin.y + size;
+      if (!withinX || !withinY) return;
+      this.minimapDragActive = true;
+      this.minimapDragOffset = {
+        x: pointer.x - origin.x,
+        y: pointer.y - origin.y,
+      };
+    });
+
+    this.input.on("pointermove", (pointer) => {
+      if (!this.minimapDragActive) return;
+      const { size, padding } = this.minimapConfig || { size: 0, padding: 0 };
+      const cam = this.cameras.main;
+      const baseX = cam.width - size - padding;
+      const baseY = padding;
+      const nextX = pointer.x - this.minimapDragOffset.x;
+      const nextY = pointer.y - this.minimapDragOffset.y;
+      const minX = -baseX;
+      const maxX = cam.width - size - baseX;
+      const minY = -baseY;
+      const maxY = cam.height - size - baseY;
+      this.minimapOffset.x = Phaser.Math.Clamp(nextX, minX, maxX);
+      this.minimapOffset.y = Phaser.Math.Clamp(nextY, minY, maxY);
+      this.updateMinimapEntities();
+    });
+
+    this.input.on("pointerup", () => {
+      if (!this.minimapDragActive) return;
+      this.minimapDragActive = false;
+    });
   }
 
   update(time, delta) {
@@ -719,6 +782,18 @@ export default class MainScene extends Phaser.Scene {
       document.body.appendChild(this.editorUI);
     }
 
+    const editorHeader = this.editorUI.querySelector(".map-editor-header");
+    if (editorHeader && !this.editorUI.__pgDraggable) {
+      const rect = this.editorUI.getBoundingClientRect();
+      this.editorUI.style.left = `${rect.left}px`;
+      this.editorUI.style.top = `${rect.top}px`;
+      this.editorUI.style.right = "auto";
+      this.editorUI.style.bottom = "auto";
+      editorHeader.style.cursor = "move";
+      makeDraggable(this.editorUI, editorHeader);
+      this.editorUI.__pgDraggable = true;
+    }
+
     const modeSelect = this.editorUI.querySelector("#map-editor-mode");
     const layerSelect = this.editorUI.querySelector("#map-editor-layer");
     const tileInput = this.editorUI.querySelector("#map-editor-tile");
@@ -794,29 +869,30 @@ export default class MainScene extends Phaser.Scene {
       })
     );
 
-    this.input.keyboard.on("keydown-F2", () => {
+    const toggleEditor = () => {
       this.editorActive = !this.editorActive;
       this.editorUI.style.display = this.editorActive ? "block" : "none";
+      this.toggleEditorHud(this.editorActive);
       this.renderEditorSpawnOverlay();
       if (this.editorActive) {
         this.editorPrevZoom = this.cameras.main.zoom;
         this.cameras.main.stopFollow();
       } else {
-        this.cameras.main.setZoom(1);
-        if (this.playerManager?.player) {
-          this.cameras.main.startFollow(this.playerManager.player);
-          this.cameras.main.centerOn(
-            this.playerManager.player.x,
-            this.playerManager.player.y
-          );
-        }
+        this.cameras.main.setZoom(this.editorPrevZoom || 1);
+        this.startCenteredFollow();
       }
       if (this.editorTileIndexOverlay) {
         this.editorTileIndexOverlay.container.setVisible(
           this.editorActive && this.editorTileIndexOverlay.enabled
         );
       }
-    });
+    };
+    this.input.keyboard.on("keydown-F2", toggleEditor);
+    const mapEditorToggle = document.getElementById("map-editor-toggle-button");
+    if (mapEditorToggle && !mapEditorToggle.__pgBound) {
+      mapEditorToggle.__pgBound = true;
+      mapEditorToggle.addEventListener("click", toggleEditor);
+    }
     document.addEventListener("contextmenu", (event) => {
       if (!this.editorActive) return;
       event.preventDefault();
@@ -925,6 +1001,50 @@ export default class MainScene extends Phaser.Scene {
     this.initEditorTileOverlay();
     this.updateEditorSpawnList();
     this.renderEditorSpawnOverlay();
+  }
+
+  toggleEditorHud(isEditorActive) {
+    const playerInfo = document.getElementById("player-info");
+    if (playerInfo) {
+      playerInfo.style.display = isEditorActive ? "none" : "";
+    }
+
+    const castingBar = document.getElementById("casting-bar");
+    if (castingBar) {
+      castingBar.style.display = isEditorActive ? "none" : "";
+    }
+
+    const menuContainer = document.getElementById("game-menu-container");
+    if (menuContainer) {
+      menuContainer.style.display = isEditorActive ? "none" : "";
+    }
+
+    const chat = document.getElementById("system-chat");
+    if (chat) {
+      chat.style.display = isEditorActive ? "none" : "";
+    }
+
+    const minimapVisible = !isEditorActive;
+    if (this.minimapBase) this.minimapBase.setVisible(minimapVisible);
+    if (this.minimapEntities) this.minimapEntities.setVisible(minimapVisible);
+    if (this.minimapFrame) this.minimapFrame.setVisible(minimapVisible);
+    if (this.minimapMask) this.minimapMask.setVisible(false);
+    if (minimapVisible) {
+      this.updateMinimapEntities();
+    }
+  }
+
+  setAdminNpcPlacementActive(enabled) {
+    if (this.adminNpcPlacementActive === enabled) return;
+    this.adminNpcPlacementActive = enabled;
+    this.npcManager?.setAdminPlacementEnabled(enabled);
+    if (enabled) {
+      this.adminNpcPrevZoom = this.cameras.main.zoom;
+      this.cameras.main.stopFollow();
+    } else {
+      this.cameras.main.setZoom(this.adminNpcPrevZoom || 1);
+      this.startCenteredFollow();
+    }
   }
 
   createEditorRoadSet(offset = 0) {
@@ -1876,8 +1996,8 @@ export default class MainScene extends Phaser.Scene {
     const { size, padding } = this.minimapConfig;
     const cam = this.cameras.main;
     return {
-      x: cam.width - size - padding,
-      y: padding,
+      x: Math.max(0, cam.width - size - padding + (this.minimapOffset?.x || 0)),
+      y: Math.max(0, padding + (this.minimapOffset?.y || 0)),
     };
   }
 
@@ -2552,7 +2672,17 @@ export default class MainScene extends Phaser.Scene {
       this.map.widthInPixels,
       this.map.heightInPixels
     );
-    this.cameras.main.startFollow(this.playerManager.player);
+    this.startCenteredFollow();
+  }
+
+  startCenteredFollow() {
+    if (!this.playerManager?.player) return;
+    this.cameras.main.startFollow(this.playerManager.player, true, 1, 1, 0, 0);
+    this.cameras.main.setFollowOffset(0, 0);
+    this.cameras.main.centerOn(
+      this.playerManager.player.x,
+      this.playerManager.player.y
+    );
   }
 
   // ------------------------------

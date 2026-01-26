@@ -672,11 +672,16 @@ body {
 /* ------------------------------
    Admin Panel
 ------------------------------ */
-.admin-toggle-btn {
+#admin-toggle-container {
   position: fixed;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 3000;
+  display: flex;
+  gap: 10px;
+}
+.admin-toggle-btn {
   z-index: 3000;
   padding: 10px 15px;
   background: linear-gradient(180deg, var(--paper), var(--paper-edge));
@@ -879,6 +884,15 @@ body {
   letter-spacing: 0.08em;
   color: #c8b8a4;
   grid-column: 1 / -1;
+}
+.admin-npc-placement {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-npc-hint {
+  font-size: 11px;
+  color: #c8b8a4;
 }
 
 #admin-mob-loot {
